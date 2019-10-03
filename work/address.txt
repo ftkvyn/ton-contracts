@@ -12,4 +12,9 @@ new wallet address = 0:bace57b332dfc11ec872279eaf0172f3c7c7bba230f76cca2c2728cfc
 Non-bounceable address (for init): 0QC6zlezMt_BHshyJ56vAXLzx8e7ojD3bMosJyjPzqNHcagv
 Bounceable address (for later access): kQC6zlezMt_BHshyJ56vAXLzx8e7ojD3bMosJyjPzqNHcfXq
 
+Custom wallet:
 
+new wallet address = 0:17e1a280378a303937378147802a634796882e340fe6656c58d956d0a4a00e93 
+(Saving address to file my_custom_wallet.addr)
+Non-bounceable address (for init): 0QAX4aKAN4owOTc3gUeAKmNHloguNA_mZWxY2VbQpKAOk9sH
+Bounceable address (for later access): kQAX4aKAN4owOTc3gUeAKmNHloguNA_mZWxY2VbQpKAOk4bC

@@ -4,6 +4,7 @@ PROGRAM{
   DECLPROC recv_internal
   DECLPROC recv_external
   85143 DECLMETHOD seqno
+  86011 DECLMETHOD seqnum
   recv_internal PROC:<{
     DROP
   }>
@@ -53,6 +54,11 @@ PROGRAM{
     c4 POP
   }>
   seqno PROC:<{
+    c4 PUSH
+    CTOS
+    32 PLDU
+  }>
+  seqnum PROC:<{
     c4 PUSH
     CTOS
     32 PLDU

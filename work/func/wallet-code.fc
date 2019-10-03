@@ -29,3 +29,7 @@
 int seqno() method_id {
   return get_data().begin_parse().preload_uint(32);
 }
+
+int seqnum() method_id {
+  return get_data().begin_parse().preload_uint(32);
+}
