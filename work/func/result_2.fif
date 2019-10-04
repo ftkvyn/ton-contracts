@@ -91,10 +91,4 @@ PROGRAM{
     CTOS
     32 PLDU
   }>
-}END>s
-
-dup csr.
-
-runvmdict .s
-
-// 2 boc+>B "test.boc" B>file
+}END>c

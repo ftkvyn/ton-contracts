@@ -1,0 +1,45 @@
+"Asm.fif" include
+
+PROGRAM{
+DECLPROC add
+DECLPROC sub
+DECLPROC mul
+DECLPROC init_data
+sub PROC:<{ s3 s3 XCHG2 SUB s2 XCHG0 SUB }> 
+// compute (5+i)^4 * (239-i)
+main PROC:<{
+init_data CALL
+}>
+
+init_data PROC:<{
+    102030 PUSHINT
+    10 PUSHINT
+    NEWC
+    32 STU
+    256 STU
+    ENDC
+    c4 POP
+  }>
+
+add PROC:<{
+s1 s2 XCHG
+ADD -ROT ADD SWAP
+}>
+
+// a b c d -- ac-bd ad+bc : complex number multiplication
+mul PROC:<{
+s3 s1 PUSH2 // a b c d a c
+MUL // a b c d ac
+s3 s1 PUSH2 // a b c d ac b d
+MUL // a b c d ac bd
+SUB // a b c d ac-bd
+s4 s4 XCHG2 // ac-bd b c a d
+MUL // ac-bd b c ad
+-ROT MUL ADD
+}>
+
+}END>s
+
+dup csr.
+
+runvmdict .s

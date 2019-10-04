@@ -1,7 +1,25 @@
 ;; Simple wallet smart contract
 
+() init_data() impure {
+  set_data(begin_cell().store_uint(10, 32).store_uint(102030, 256).end_cell());
+}
+
+int process_msg(slice in_msg) impure {
+  var value = in_msg~load_uint(6);
+  return value;
+}
+
 () recv_internal(slice in_msg) impure {
-  ;; do nothing for internal messages
+  init_data();
+
+  var msg = begin_cell()
+    .store_uint(72, 6)
+    .store_uint(0, 1)
+    .store_grams(10)
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .end_cell();
+
+  process_msg(msg.begin_parse());
 }
 
 () recv_external(slice in_msg) impure {
