@@ -1,7 +1,14 @@
 () main(slice in_msg) impure {
- var signa = in_msg~load_bits(512);
- var body_cell = in_msg~load_ref();
- var data_slice = get_data().begin_parse();
+ slice signa = in_msg~load_bits(512);
+ cell body_cell = in_msg~load_ref();
+ cell data_cell = get_data();
+ slice data_slice = data_cell.begin_parse();
  var my_key = data_slice~load_uint(256);
  throw_unless(34, check_signature(slice_hash(body_cell.begin_parse()), signa, my_key));
+
+ slice data_count_slice = data_slice~load_ref().begin_parse();
+ int counter = data_count_slice~load_uint(8);
+ counter += 123;
+ cell updated_data_cell = begin_cell().store_uint(counter, 8).end_cell();
+ set_data(begin_cell().store_uint(my_key, 256).store_ref(updated_data_cell).end_cell());
 }
