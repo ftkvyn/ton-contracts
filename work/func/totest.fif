@@ -37,7 +37,7 @@ PROGRAM{
     ENDC	//  _40
     c4 POP
   }>
-}END>s constant code
+}END>c constant code
 
 <b 10 8 u, 
 b> constant count_data
@@ -63,7 +63,7 @@ body hash key1_pk ed25519_sign_uint constant signa
 
 ."Message: " cr message csr. cr
 
-message code storage runvm
+message code <s storage runvm
 
 constant updated_storage
 constant exit_code
