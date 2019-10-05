@@ -3,20 +3,20 @@
 PROGRAM{
   DECLPROC main
   main PROC:<{
-    8 LDU
-    SWAP
-    REPEAT:<{
-      256 LDU
-      9 PUSHPOW2
-      LDSLICEX
-      DUP
-      HASHSU
-      s0 s2 XCHG
-      SWAP
-      s0 s3 XCHG
-      CHKSIGNU
-      34 THROWIF
-    }>
+    9 PUSHPOW2
+    LDSLICEX
+    LDREF
     DROP
+    c4 PUSH
+    CTOS
+    256 LDU
+    DROP
+    SWAP
+    CTOS
+    HASHSU
+    s0 s2 XCHG
+    SWAP
+    CHKSIGNU
+    34 THROWIFNOT
   }>
 }END>c

@@ -5,47 +5,40 @@
 PROGRAM{
   DECLPROC main
   main PROC:<{
-    8 LDU
-    SWAP
-    REPEAT:<{
-      256 LDU
-      9 PUSHPOW2
-      LDSLICEX
-      DUP
-      HASHSU
-      s0 s2 XCHG
-      SWAP
-      s0 s3 XCHG
-      CHKSIGNU
-      34 THROWIF
-    }>
+    9 PUSHPOW2
+    LDSLICEX
+    LDREF
     DROP
+    c4 PUSH
+    CTOS
+    256 LDU
+    DROP
+    SWAP
+    CTOS
+    HASHSU
+    s0 s2 XCHG
+    SWAP
+    CHKSIGNU
+    34 THROWIFNOT
   }>
 }END>s constant code
-<b 2 8 u, 
-    "key_1.pk" load-generate-keypair
+<b "key_1.pk" load-generate-keypair
    constant key1_pk
-   B,
-   "key_2.pk" load-generate-keypair
-   constant key2_pk
    B,
 b>  constant storage
 
 ."Storage: " cr storage <s csr. cr
 
 <b 2 8 u, 
-    "key_1.pk" load-generate-keypair
-   constant key1_pk
-   B,
-   "key_2.pk" load-generate-keypair
-   constant key2_pk
-   B,
-   "key_2.pk" load-generate-keypair
-   constant key2_pk
-   B,
-b> <s constant message
+b> constant body
 
-."Message: " cr message csr. cr
+."Body: " cr body <s csr. cr
+
+body hash key1_pk ed25519_sign_uint constant signa
+
+."Sign: " cr signa .s cr
+
+<b signa B, body ref, b> <s constant message
 
 message code storage runvm
 
