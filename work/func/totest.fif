@@ -61,6 +61,8 @@ body hash key1_pk ed25519_sign_uint constant signa
 
 <b signa B, body ref, b> <s constant message
 
+."Message: " cr message csr. cr
+
 message code storage runvm
 
 constant updated_storage
