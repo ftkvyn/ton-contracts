@@ -17,20 +17,46 @@ PROGRAM{
     c4 POP
   }>
   process_msg PROC:<{
-    6 LDU
+    32 LDU
+    OVER
+    REPEAT:<{
+      256 LDU
+      9 PUSHPOW2
+      LDSLICEX
+      DUP
+      HASHSU
+      s0 s2 XCHG
+      SWAP
+      s0 s3 XCHG
+      CHKSIGNU
+      34 THROWIF
+    }>
     DROP
   }>
   recv_internal PROC:<{
     init_data CALLDICT
-    0 PUSHINT
-    DUP
-    72 PUSHINT
+    3 PUSHINT
     NEWC
-    6 STU
-    1 STU
-    10 PUSHINT
-    STGRAMS
-    107 STU
+    OVER
+    SWAP
+    32 STU
+    SWAP
+    REPEAT:<{
+      172839 PUSHINT
+      NEWC
+      256 STU
+      ENDC
+      CTOS
+      STSLICER
+      4232 PUSHINT
+      6646 PUSHINT
+      NEWC
+      256 STU
+      256 STU
+      ENDC
+      CTOS
+      STSLICER
+    }>
     ENDC
     CTOS
     process_msg CALLDICT

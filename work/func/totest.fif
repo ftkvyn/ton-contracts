@@ -1,0 +1,55 @@
+"Asm.fif" include
+"TonUtil.fif" include
+
+// automatically generated from `stdlib.fc` `t2.fc`
+PROGRAM{
+  DECLPROC main
+  main PROC:<{
+    8 LDU
+    SWAP
+    REPEAT:<{
+      256 LDU
+      9 PUSHPOW2
+      LDSLICEX
+      DUP
+      HASHSU
+      s0 s2 XCHG
+      SWAP
+      s0 s3 XCHG
+      CHKSIGNU
+      34 THROWIF
+    }>
+    DROP
+  }>
+}END>s constant code
+<b 2 8 u, 
+    "key_1.pk" load-generate-keypair
+   constant key1_pk
+   B,
+   "key_2.pk" load-generate-keypair
+   constant key2_pk
+   B,
+b>  constant storage
+
+."Storage: " cr storage <s csr. cr
+
+<b 2 8 u, 
+    "key_1.pk" load-generate-keypair
+   constant key1_pk
+   B,
+   "key_2.pk" load-generate-keypair
+   constant key2_pk
+   B,
+   "key_2.pk" load-generate-keypair
+   constant key2_pk
+   B,
+b> <s constant message
+
+."Message: " cr message csr. cr
+
+message code storage runvm
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+."Updated storage: " cr updated_storage <s csr. cr

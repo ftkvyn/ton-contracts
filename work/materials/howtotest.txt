@@ -1,0 +1,38 @@
+I have finished my version of the multi-signature contract, and now it's time for the test.
+My method of contract testing
+Big thanks to Eugene Koinov, @koinoff, this manual is mostly his method of testing, rather than mine
+Let's test the simplest possible contract on funC, which just store counter in the storage and increase it each time being invoked.
+test.fc:
+() recv_external(slice in_msg) impure {
+ slice persistent_data = get_data().begin_parse();
+ int counter = persistent_data~load_uint(8);
+ counter += 1;
+ set_data(begin_cell().store_uint(counter, 8).end_cell());
+}
+The TVM feature is that only main and recv_internal subroutines are top-level, but not recv_external. Thus code above has not _entry point._
+To deal with it we will rename recv_external to main.
+
+Compiling ( ./func -SPA -R -o test.fif stdlib.fc test.fc ) and getting test.fif.
+To test this code, we need to emulate contract persistent storage and check how it is affected by contract execution.
+To do it, we will modify test.fif with follows:
+1) store asm-code to the code constant
+2) create a cell with one 8-bit number (this is our contract storage emulation) and store it to the storage constant
+3) create an empty slice that emulates the incoming message (it is not used in our code in any way) and store it to the message constant
+4) call runvm passing to it message, code, and storage
+5) Finally, print the result of the contract execution: exit_code and the updated state of the contract memory (it should show the initial number + 1).
+The final form of test.fif is as follows:
+"Asm.fif" include
+
+// automatically generated from `stdlib.fc` `t2.fc`
+PROGRAM{
+... ASMCODE ...
+}END>s constant code
+<b 0 8 u, b>  constant storage
+<b b> <s constant message
+message code storage runvm
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+."Updated storage: " cr updated_storage <s csr. cr
+We can call runvm again and get next counter tick.

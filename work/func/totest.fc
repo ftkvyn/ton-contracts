@@ -1,0 +1,10 @@
+() main(slice in_msg) impure {
+ var items_count = in_msg~load_uint(8);
+
+  repeat (items_count) {
+    var value3 = in_msg~load_uint(256);
+    var value4 = in_msg~load_bits(512);
+    var is_good = check_signature(slice_hash(in_msg), value4, value3);
+    throw_if(34, is_good);
+  }
+}

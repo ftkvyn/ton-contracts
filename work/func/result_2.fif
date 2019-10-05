@@ -1,94 +1,22 @@
 "Asm.fif" include
-// automatically generated from `stdlib.fc` `wallet-code.fc` 
+// automatically generated from `stdlib.fc` `totest.fc` 
 PROGRAM{
-  DECLPROC init_data
-  DECLPROC process_msg
-  DECLPROC recv_internal
-  DECLPROC recv_external
-  85143 DECLMETHOD seqno
-  86011 DECLMETHOD seqnum
-  init_data PROC:<{
-    102030 PUSHINT
-    10 PUSHINT
-    NEWC
-    32 STU
-    256 STU
-    ENDC
-    c4 POP
-  }>
-  process_msg PROC:<{
-    6 LDU
-    DROP
-  }>
-  recv_internal PROC:<{
-    init_data CALLDICT
-    0 PUSHINT
-    DUP
-    72 PUSHINT
-    NEWC
-    6 STU
-    1 STU
-    10 PUSHINT
-    STGRAMS
-    107 STU
-    ENDC
-    CTOS
-    process_msg CALLDICT
-    DROP
-  }>
-  recv_external PROC:<{
-    9 PUSHPOW2
-    LDSLICEX
-    DUP
-    32 LDU
-    32 LDU
-    NOW
-    s1 s2 XCHG
-    LESS
-    35 THROWIF
-    c4 PUSH
-    CTOS
-    32 LDU
-    256 LDU
-    ENDS
-    s0 s3 XCHG
-    OVER
-    EQUAL
-    33 THROWIFNOT
-    s0 s3 XCHG
-    HASHSU
+  DECLPROC main
+  main PROC:<{
+    8 LDU
     SWAP
-    s0 s4 XCHG
-    s2 PUSH
-    CHKSIGNU
-    34 THROWIFNOT
-    ACCEPT
-    s0 s2 XCHG
-    WHILE:<{
+    REPEAT:<{
+      256 LDU
+      9 PUSHPOW2
+      LDSLICEX
       DUP
-      SREFS
-    }>DO<{
-      8 LDU
-      LDREF
+      HASHSU
       s0 s2 XCHG
-      SENDRAWMSG
+      SWAP
+      s0 s3 XCHG
+      CHKSIGNU
+      34 THROWIF
     }>
-    ENDS
-    INC
-    NEWC
-    32 STU
-    256 STU
-    ENDC
-    c4 POP
-  }>
-  seqno PROC:<{
-    c4 PUSH
-    CTOS
-    32 PLDU
-  }>
-  seqnum PROC:<{
-    c4 PUSH
-    CTOS
-    32 PLDU
+    DROP
   }>
 }END>c

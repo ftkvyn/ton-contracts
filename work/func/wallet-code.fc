@@ -5,21 +5,49 @@
 }
 
 int process_msg(slice in_msg) impure {
-  var value = in_msg~load_uint(6);
-  return value;
+  var items_count = in_msg~load_uint(32);
+
+  repeat (items_count) {
+    var value3 = in_msg~load_uint(256);
+    var value4 = in_msg~load_bits(512);
+    var is_good = check_signature(slice_hash(in_msg), value4, value3);
+    throw_if(34, is_good);
+  }
+  return items_count;
 }
 
 () recv_internal(slice in_msg) impure {
   init_data();
 
+  var items_count = 3;
+
   var msg = begin_cell()
-    .store_uint(72, 6)
-    .store_uint(0, 1)
-    .store_grams(10)
-    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    .store_uint(items_count, 32);
+
+  repeat (items_count) {
+    var slc_key = begin_cell()
+      .store_uint(172839, 256)
+      .end_cell();
+
+    var slc_sig = begin_cell()
+      .store_uint(6646, 256)
+      .store_uint(4232, 256)
+      .end_cell();
+
+    msg = msg
+      .store_slice(begin_cell()
+        .store_uint(172839, 256)
+        .end_cell().begin_parse())
+      .store_slice(begin_cell()
+        .store_uint(6646, 256)
+        .store_uint(4232, 256)
+        .end_cell().begin_parse());
+  }
+
+  var end_msg = msg    
     .end_cell();
 
-  process_msg(msg.begin_parse());
+  process_msg(end_msg.begin_parse());
 }
 
 () recv_external(slice in_msg) impure {
