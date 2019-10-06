@@ -22,7 +22,27 @@
     throw_unless(34, is_signed_well);
 }
 
+() process_local_dict() impure {
+    slice data_slice = get_data().begin_parse();
+    data_slice~load_uint(256);
+    data_slice~load_ref(); ;; body_cell
+    cell keys_dict = data_slice~load_ref();
+
+    var (key_slice, is_found) = keys_dict.udict_get?(8, 101);
+    throw_unless(99, is_found);
+
+    var (key_slice, is_found) = keys_dict.udict_get?(8, 102);
+    throw_unless(99, is_found);
+
+    var (key_slice, is_found) = keys_dict.udict_get?(8, 103);
+    throw_unless(99, is_found);
+
+    var (no_key_slice, is_found) = keys_dict.udict_get?(8, 99);
+    throw_if(93, is_found);
+}
+
 () main(slice in_msg) impure {
+ process_local_dict();
  slice signa = in_msg~load_bits(512);
  cell body_cell = in_msg~load_ref();
  cell data_cell = get_data();

@@ -3,8 +3,8 @@
 "Asm.fif" include
 
 { ."usage: " @' $0 type ." <workchain-id> [<filename-base>]" cr
-  ."Creates a new wallet in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
-  ."('new-wallet.pk' by default)" cr 1 halt
+  ."Creates a new multisign wallet in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
+  ."('new-multi-wallet.pk' by default)" cr 1 halt
 } : usage
 $# 1- -2 and ' usage if
 
