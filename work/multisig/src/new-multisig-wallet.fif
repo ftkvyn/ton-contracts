@@ -2,14 +2,19 @@
 "TonUtil.fif" include
 "Asm.fif" include
 
-{ ."usage: " @' $0 type ." <workchain-id> [<filename-base>]" cr
+{ ."usage: " @' $0 type ." <workchain-id> <n> <k> [<filename-base>]" cr
   ."Creates a new multisign wallet in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
-  ."('new-multi-wallet.pk' by default)" cr 1 halt
+  ."('new-multi-wallet.pk' by default)" cr
+  ."  n is the number of keys" cr
+  ."  k is the number of signs needed for a message" cr
+  1 halt
 } : usage
-$# 1- -2 and ' usage if
+$# dup 3 < swap 4 > or ' usage if
 
 $1 parse-workchain-id =: wc    // set workchain id from command line argument
-def? $2 { @' $2 } { "new-wallet" } cond constant file-base
+$2 parse-int =: total-keys
+$3 parse-int =: sign-keys
+def? $4 { @' $4 } { "new-multi-wallet" } cond constant file-base
 
 ."Creating new wallet in workchain " wc . cr
 
@@ -38,14 +43,35 @@ def? $2 { @' $2 } { "new-wallet" } cond constant file-base
    INC NEWC 32 STU 256 STU ENDC c4 POPCTR
 }>c // >libref
 // code
-<b 0 32 u, 
-   file-base +".pk" load-generate-keypair
-   constant wallet_pk
-   B, 
-b> // data
-null // no libraries
-// Libs{ x{ABACABADABACABA} drop x{AAAA} s>c public_lib x{1234} x{5678} |_ s>c public_lib }Libs
-<b b{0011} s, 3 roll ref, rot ref, swap dict, b>  // create StateInit
+
+constant code
+
+dictnew constant keys-dict
+
+keys-dict
+1
+{
+    dup
+    "key_" swap (.) +".pk" $+
+    load-generate-keypair
+    drop // private key
+    <b swap B, b> <s .s
+    over 100 + 3 roll 8 udict!+ 0= abort"key already added"
+    swap
+     1 +
+} total-keys times
+."done generating/loading keys" cr
+
+drop // counter
+constant keys-dict
+
+<b total-keys 8 u, sign-keys 8 u,
+   keys-dict ref,
+b>  constant storage
+
+."Storage: " cr storage <s csr. cr
+
+<b b{0011} s, code ref, storage ref, null dict, b>  // create StateInit
 dup ."StateInit: " <s csr. cr
 dup hash wc swap 2dup 2constant wallet_addr
 ."new wallet address = " 2dup .addr cr
