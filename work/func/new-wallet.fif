@@ -39,27 +39,27 @@ def? $2 { @' $2 } { "new-wallet" } cond constant file-base
    }>
    ENDS
    INC NEWC 32 STU 256 STU ENDC c4 POPCTR
-}>c // >libref
-// code
+}>c constant code
 <b 0 32 u, 
    file-base +".pk" load-generate-keypair
    constant wallet_pk
    B, 
-b> // data
-null // no libraries
-// Libs{ x{ABACABADABACABA} drop x{AAAA} s>c public_lib x{1234} x{5678} |_ s>c public_lib }Libs
-.s
-<b b{0011} s, 3 roll ref, rot ref, swap dict, b>  // create StateInit
-dup ."StateInit: " <s csr. cr
-dup hash wc swap 2dup 2constant wallet_addr
+b> constant data
+<b b{0011} s, code ref, data ref, null dict, b> constant state-init  // create StateInit
+state-init .s
+state-init ."StateInit: " <s csr. cr
+state-init hash wc swap 2dup 2constant wallet_addr
 ."new wallet address = " 2dup .addr cr
 2dup file-base +".addr" save-address-verbose
 ."Non-bounceable address (for init): " 2dup 7 .Addr cr
 ."Bounceable address (for later access): " 6 .Addr cr
-<b 0 32 u, b>
+<b 0 32 u, b> constant msg
+msg
+.s cr
 dup ."signing message: " <s csr. cr
 dup hash wallet_pk ed25519_sign_uint rot
-<b b{1000100} s, wallet_addr addr, b{000010} s, swap <s s, b{0} s, swap B, swap <s s, b>
+drop
+<b b{1000100} s, wallet_addr addr, b{000010} s, state-init <s s, b{0} s, swap B, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-query.boc" tuck B>file

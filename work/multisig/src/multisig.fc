@@ -5,6 +5,7 @@
 }
 
 () recv_external(slice in_msg) impure {
+  accept_message();
   var signature = in_msg~load_bits(512);
   var cs = in_msg;
   var (msg_seqno, valid_until) = (cs~load_uint(32), cs~load_uint(32));
