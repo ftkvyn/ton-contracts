@@ -1,38 +1,106 @@
 "Asm.fif" include
 // automatically generated from `stdlib.fc` `totest.fc` 
 PROGRAM{
+  DECLPROC process_data
   DECLPROC main
+  process_data PROC:<{
+    // 
+    c4 PUSH	//  data_cell
+    CTOS	//  data_slice
+    256 LDU	//  _48 _47
+    NIP	//  data_slice
+    LDDICT	//  my_dict data_slice
+    LDREF	//  my_dict _52 _51
+    NIP	//  my_dict data_slice
+    LDREF	//  my_dict _54 _53
+    DROP	//  my_dict body_cell
+    777 PUSHINT	//  my_dict body_cell _18=777
+    16 PUSHINT	//  my_dict body_cell _18=777 _19=16
+    s3 PUSH
+    SWAP	//  my_dict body_cell _18=777 my_dict _19=16
+    DICTUGET
+    NULLSWAPIFNOT	//  my_dict body_cell signa is_found
+    61 THROWIFNOT
+    333 PUSHINT	//  my_dict body_cell signa _25=333
+    16 PUSHINT	//  my_dict body_cell signa _25=333 _26=16
+    s4 PUSH
+    SWAP	//  my_dict body_cell signa _25=333 my_dict _26=16
+    DICTUGET
+    NULLSWAPIFNOT	//  my_dict body_cell signa key_slice is_found
+    61 THROWIFNOT
+    539 PUSHINT	//  my_dict body_cell signa key_slice _32=539
+    16 PUSHINT	//  my_dict body_cell signa key_slice _32=539 _33=16
+    s1 s2 XCHG
+    s1 s5 XCHG	//  key_slice body_cell signa _32=539 my_dict _33=16
+    DICTUGET
+    NULLSWAPIFNOT	//  key_slice body_cell signa _59 _60
+    NIP	//  key_slice body_cell signa is_found
+    62 THROWIF
+    s0 s2 XCHG	//  signa body_cell key_slice
+    256 LDU	//  signa body_cell _62 _61
+    DROP	//  signa body_cell my_key
+    SWAP	//  signa my_key body_cell
+    CTOS	//  signa my_key _42
+    HASHSU	//  signa my_key _43
+    s0 s2 XCHG
+    SWAP	//  _43 signa my_key
+    CHKSIGNU	//  is_signed_well
+    34 THROWIFNOT
+  }>
   main PROC:<{
     //  in_msg
     9 PUSHPOW2	//  in_msg _3=512
     LDSLICEX	//  signa in_msg
-    LDREF	//  signa _45 _44
+    LDREF	//  signa _64 _63
     DROP	//  signa body_cell
     c4 PUSH	//  signa body_cell data_cell
     CTOS	//  signa body_cell data_slice
     256 LDU	//  signa body_cell my_key data_slice
-    s0 s2 XCHG	//  signa data_slice my_key body_cell
-    CTOS	//  signa data_slice my_key _17
-    HASHSU	//  signa data_slice my_key _18
-    SWAP
-    s0 s3 XCHG
-    s3 PUSH	//  my_key data_slice _18 signa my_key
-    CHKSIGNU	//  my_key data_slice _19
+    s2 PUSH	//  signa body_cell my_key data_slice body_cell
+    CTOS	//  signa body_cell my_key data_slice _17
+    HASHSU	//  signa body_cell my_key data_slice _18
+    s4 PUSH
+    s3 PUSH	//  signa body_cell my_key data_slice _18 signa my_key
+    CHKSIGNU	//  signa body_cell my_key data_slice is_signed_well
     34 THROWIFNOT
-    LDREF	//  my_key _49 _48
-    DROP	//  my_key _22
-    CTOS	//  my_key data_count_slice
-    8 LDU	//  my_key _51 _50
-    DROP	//  my_key counter
-    123 ADDCONST	//  my_key counter
-    NEWC	//  my_key counter _32
-    8 STU	//  my_key _34
-    ENDC	//  my_key updated_data_cell
-    NEWC	//  my_key updated_data_cell _36
-    s1 s2 XCHG	//  updated_data_cell my_key _36
-    256 STU	//  updated_data_cell _38
-    STREF	//  _39
-    ENDC	//  _40
+    LDREF	//  signa body_cell my_key _68 _67
+    DROP	//  signa body_cell my_key _23
+    CTOS	//  signa body_cell my_key data_count_slice
+    8 LDU	//  signa body_cell my_key _70 _69
+    DROP	//  signa body_cell my_key counter
+    123 ADDCONST	//  signa body_cell my_key counter
+    NEWC	//  signa body_cell my_key counter _33
+    8 STU	//  signa body_cell my_key _35
+    ENDC	//  signa body_cell my_key updated_data_cell
+    NEWDICT	//  signa body_cell my_key updated_data_cell my_dict
+    NEWC	//  signa body_cell my_key updated_data_cell my_dict _40
+    s3 PUSH
+    SWAP	//  signa body_cell my_key updated_data_cell my_dict my_key _40
+    256 STU	//  signa body_cell my_key updated_data_cell my_dict _42
+    333 PUSHINT	//  signa body_cell my_key updated_data_cell my_dict _42 _43=333
+    16 PUSHINT	//  signa body_cell my_key updated_data_cell my_dict _42 _43=333 _44=16
+    s2 s3 XCHG
+    s1 s2 XCHG	//  signa body_cell my_key updated_data_cell _42 _43=333 my_dict _44=16
+    DICTUSETB	//  signa body_cell my_key updated_data_cell my_dict
+    NEWC	//  signa body_cell my_key updated_data_cell my_dict _47
+    SWAP
+    s0 s5 XCHG	//  my_dict body_cell my_key updated_data_cell _47 signa
+    STSLICER	//  my_dict body_cell my_key updated_data_cell _48
+    777 PUSHINT	//  my_dict body_cell my_key updated_data_cell _48 _49=777
+    16 PUSHINT	//  my_dict body_cell my_key updated_data_cell _48 _49=777 _50=16
+    s2 s3 XCHG
+    s1 s2 XCHG
+    s1 s6 XCHG	//  updated_data_cell body_cell my_key _48 _49=777 my_dict _50=16
+    DICTUSETB	//  updated_data_cell body_cell my_key my_dict
+    NEWC	//  updated_data_cell body_cell my_key my_dict _52
+    s1 s2 XCHG	//  updated_data_cell body_cell my_dict my_key _52
+    256 STU	//  updated_data_cell body_cell my_dict _54
+    STDICT	//  updated_data_cell body_cell _55
+    s1 s2 XCHG	//  body_cell updated_data_cell _55
+    STREF	//  body_cell _56
+    STREF	//  _57
+    ENDC	//  _58
     c4 POP
+    process_data CALLDICT
   }>
-}END>s
+}END>c

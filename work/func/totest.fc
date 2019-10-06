@@ -1,14 +1,50 @@
+() process_data() impure {
+    cell data_cell = get_data();
+    slice data_slice = data_cell.begin_parse();
+    int my_key = data_slice~load_uint(256);
+    cell my_dict = data_slice~load_dict();
+
+    data_slice~load_ref(); ;; updated_data_cell
+    cell body_cell = data_slice~load_ref();
+
+    var (signa, is_found) = my_dict.udict_get?(16, 777);
+    throw_unless(61, is_found);
+
+    var (key_slice, is_found) = my_dict.udict_get?(16, 333);
+    throw_unless(61, is_found);
+
+    var (something, is_found) = my_dict.udict_get?(16, 539);
+    throw_if(62, is_found);
+
+    var my_key = key_slice~load_uint(256);
+
+    int is_signed_well = check_signature(slice_hash(body_cell.begin_parse()), signa, my_key);
+    throw_unless(34, is_signed_well);
+}
+
 () main(slice in_msg) impure {
  slice signa = in_msg~load_bits(512);
  cell body_cell = in_msg~load_ref();
  cell data_cell = get_data();
  slice data_slice = data_cell.begin_parse();
  var my_key = data_slice~load_uint(256);
- throw_unless(34, check_signature(slice_hash(body_cell.begin_parse()), signa, my_key));
+ int is_signed_well = check_signature(slice_hash(body_cell.begin_parse()), signa, my_key);
+ throw_unless(34, is_signed_well);
 
  slice data_count_slice = data_slice~load_ref().begin_parse();
  int counter = data_count_slice~load_uint(8);
  counter += 123;
  cell updated_data_cell = begin_cell().store_uint(counter, 8).end_cell();
- set_data(begin_cell().store_uint(my_key, 256).store_ref(updated_data_cell).end_cell());
+ var my_dict = new_dict();
+ my_dict~udict_set_builder(16, 333, begin_cell().store_uint(my_key, 256));
+ my_dict~udict_set_builder(16, 777, begin_cell().store_slice(signa));
+ set_data(begin_cell()
+    .store_uint(my_key, 256)
+    .store_dict(my_dict)
+    .store_ref(updated_data_cell)
+    .store_ref(body_cell)
+    .end_cell());
+
+  process_data();
 }
+
