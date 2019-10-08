@@ -26,6 +26,20 @@
     return (n, k, seq_num, keys_dict, transactions_dict);
 }
 
+() garbage_collect(int seq_num, cell transactions_dict) {
+    int counter = 0;
+    int now_time = now();
+    repeat(seq_num) {
+      (slice tran_slice, int is_found) = transactions_dict.udict_get?(32, counter);
+      if (is_found) {
+          (int is_executed, int expires) = (tran_slice~load_uint(1), tran_slice~load_uint(32));
+          if ( ((counter < seq_num) & is_executed) | (expires < now_time)) {
+              transactions_dict~udict_delete_get?(32, counter);
+          }
+      }
+    }
+}
+
 () execute_order(slice message_slice) {
     accept_message();
     var mode = message_slice~load_uint(8);
@@ -89,6 +103,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
                     .store_uint(1, 1) ;; is_executed
                     );
                   execute_order(order_slice~load_ref().begin_parse());
+                  garbage_collect(seq_num, transactions_dict);
                   save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
                   return -1;
                 }
@@ -109,6 +124,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
           .store_dict(confirmed_signs_dict)
           .store_ref(order)
           );
+    garbage_collect(seq_num, transactions_dict);
     save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
     counter += 1;
     return -1;

@@ -4,6 +4,7 @@ PROGRAM{
   DECLPROC recv_internal
   DECLPROC save_internal_data
   DECLPROC load_internal_data
+  DECLPROC garbage_collect
   DECLPROC execute_order
   DECLPROC process_message
   DECLPROC recv_external
@@ -31,6 +32,55 @@ PROGRAM{
     32 LDU
     LDREF
     LDREF
+    DROP
+  }>
+  garbage_collect PROC:<{
+    0 PUSHINT
+    NOW
+    s3 PUSH
+    REPEAT:<{
+      32 PUSHINT
+      s2 PUSH
+      SWAP
+      s4 PUSH
+      SWAP
+      DICTUGET
+      NULLSWAPIFNOT
+      IF:<{
+        1 LDU
+        32 LDU
+        DROP
+        s5 PUSH
+        0 GTINT
+        SWAP
+        s0 s2 XCHG
+        AND
+        SWAP
+        s2 PUSH
+        LESS
+        OR
+        IF:<{
+          32 PUSHINT
+          s2 PUSH
+          s0 s2 XCHG
+          s1 s4 XCHG
+          s0 s4 XCHG
+          DICTUDELGET
+          NULLSWAPIFNOT
+          DROP
+          DROP
+        }>ELSE<{
+          s0 s2 XCHG
+        }>
+      }>ELSE<{
+        s1 s3 XCHG
+        DROP
+      }>
+      s0 s2 XCHG
+    }>
+    DROP
+    DROP
+    DROP
     DROP
   }>
   execute_order PROC:<{
