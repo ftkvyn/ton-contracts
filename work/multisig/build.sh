@@ -14,3 +14,4 @@ sed -i 's/0 constant seq_no/3 constant seq_no/' ./temp/test-2.fif
 cd temp
 fift -s ./../dist/new-multisig.fif 0 6 4 test-run
 fift -s ./test-1.fif 0 6 4 test-run
+fift -s ./test-2.fif 0 6 4 test-run
