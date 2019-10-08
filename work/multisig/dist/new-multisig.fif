@@ -27,35 +27,21 @@ PROGRAM{
     8 LDU
     8 LDU
     8 LDU
-    LDDICT
-    LDDICT
+    LDREF
+    LDREF
     DROP
   }>
   recv_external PROC:<{
-    load_internal_data CALLDICT
-    s0 s5 XCHG
-    LDREF
     DROP
+    load_internal_data CALLDICT
     s0 s2 XCHG
     0 EQINT
     IF:<{
-      SWAP
-      DICTEMPTY
-      IF:<{
-        ACCEPT
-        1 PUSHINT
-        s3 s4 XCHG
-        s2 s3 XCHG
-        s0 s2 XCHG
-        save_internal_data CALLDICT
-      }>ELSE<{
-        DROP
-        DROP
-        DROP
-        DROP
-      }>
+      ACCEPT
+      1 PUSHINT
+      s0 s2 XCHG
+      save_internal_data CALLDICT
     }>ELSE<{
-      DROP
       DROP
       DROP
       DROP

@@ -20,8 +20,8 @@
     int n = data_slice~load_uint(8);
     int k = data_slice~load_uint(8);
     int seq_num = data_slice~load_uint(8);
-    cell keys_dict = data_slice~load_dict();
-    cell transactions_dict = data_slice~load_dict();
+    cell keys_dict = data_slice~load_ref();
+    cell transactions_dict = data_slice~load_ref();
 
     return (n, k, seq_num, keys_dict, transactions_dict);
 }
@@ -29,15 +29,13 @@
 () recv_external(slice in_msg) impure {
     (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
 
-    cell signs_dict = in_msg~load_ref();
     if (seq_num == 0) { 
-      if (signs_dict.dict_empty?()) { ;; Initialization of the contract
-        accept_message();
-        ;; updating seq_num to 1 so that we will never land here again.
-        save_internal_data(n, k, 1, keys_dict, transactions_dict);
-      }
+      accept_message();
+      ;; updating seq_num to 1 so that we will never land here again.
+      save_internal_data(n, k, 1, keys_dict, transactions_dict);
     } else {
-      
+      cell signs_dict = in_msg~load_ref();
+       
     }
 }
 
