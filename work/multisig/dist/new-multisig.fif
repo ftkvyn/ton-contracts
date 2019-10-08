@@ -1,0 +1,136 @@
+"Asm.fif" include
+// automatically generated from `./lib/stdlib.fc` `./src/multisig.fc` 
+PROGRAM{
+  DECLPROC recv_internal
+  DECLPROC save_internal_data
+  DECLPROC load_internal_data
+  DECLPROC recv_external
+  85143 DECLMETHOD seqno
+  recv_internal PROC:<{
+    DROP
+  }>
+  save_internal_data PROC:<{
+    NEWC
+    s1 s5 XCHG
+    8 STU
+    s1 s3 XCHG
+    8 STU
+    8 STU
+    STDICT
+    STDICT
+    ENDC
+    c4 POP
+  }>
+  load_internal_data PROC:<{
+    c4 PUSH
+    CTOS
+    8 LDU
+    8 LDU
+    8 LDU
+    LDDICT
+    LDDICT
+    DROP
+  }>
+  recv_external PROC:<{
+    load_internal_data CALLDICT
+    s0 s5 XCHG
+    LDREF
+    DROP
+    s0 s2 XCHG
+    0 EQINT
+    IF:<{
+      SWAP
+      DICTEMPTY
+      IF:<{
+        ACCEPT
+        1 PUSHINT
+        s3 s4 XCHG
+        s2 s3 XCHG
+        s0 s2 XCHG
+        save_internal_data CALLDICT
+      }>ELSE<{
+        DROP
+        DROP
+        DROP
+        DROP
+      }>
+    }>ELSE<{
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+    }>
+  }>
+  seqno PROC:<{
+    c4 PUSH
+    CTOS
+    32 PLDU
+  }>
+}END>c
+constant code
+
+"TonUtil.fif" include
+
+{ ."usage: " @' $0 type ." <workchain-id> <n> <k> [<filename-base>]" cr
+  ."Creates a new multisign wallet in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
+  ."('new-multi-wallet.pk' by default)" cr
+  ."  n is the number of keys" cr
+  ."  k is the number of signs needed for a message" cr
+  1 halt
+} : usage
+$# dup 3 < swap 4 > or ' usage if
+
+$1 parse-workchain-id =: wc    // set workchain id from command line argument
+$2 parse-int =: total-keys
+$3 parse-int =: sign-keys
+def? $4 { @' $4 } { "new-multi-wallet" } cond constant file-base
+
+."Creating new wallet in workchain " wc . cr
+
+dictnew constant keys-dict
+
+keys-dict
+1
+{
+    dup
+    "key_" swap (.) +".pk" $+
+    load-generate-keypair
+    drop // private key
+    <b swap B, b> <s .s
+    over 100 + 3 roll 8 udict!+ 0= abort"key already added"
+    swap
+     1 +
+} total-keys times
+."done generating/loading keys" cr
+
+drop // counter
+constant keys-dict
+
+// dictnew constant transactions-dict
+
+<b b>
+constant transactions-dict
+
+<b total-keys 8 u, 
+   sign-keys 8 u,
+   0 8 u, // seq_no
+   keys-dict ref,
+   transactions-dict ref, // transactions
+b>  constant storage
+
+."Storage: " cr storage <s csr. cr
+
+<b b{0011} s, code ref, storage ref, null dict, b> constant state_init // create StateInit
+state_init
+dup ."StateInit: " <s csr. cr
+dup hash wc swap 2dup 2constant wallet_addr
+."new wallet address = " 2dup .addr cr
+2dup file-base +".addr" save-address-verbose
+."Non-bounceable address (for init): " 2dup 7 .Addr cr
+."Bounceable address (for later access): " 6 .Addr cr
+<b b{1000100} s, wallet_addr addr, b{000010} s, state_init <s s, b{0} s, transactions-dict ref, b>
+dup ."External message for initialization is " <s csr. cr
+2 boc+>B dup Bx. cr
+file-base +"-query.boc" tuck B>file
+."(Saved wallet creating query to file " type .")" cr

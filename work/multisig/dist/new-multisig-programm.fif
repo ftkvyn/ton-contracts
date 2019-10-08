@@ -1,0 +1,70 @@
+"Asm.fif" include
+// automatically generated from `./lib/stdlib.fc` `./src/multisig.fc` 
+PROGRAM{
+  DECLPROC recv_internal
+  DECLPROC save_internal_data
+  DECLPROC load_internal_data
+  DECLPROC recv_external
+  85143 DECLMETHOD seqno
+  recv_internal PROC:<{
+    DROP
+  }>
+  save_internal_data PROC:<{
+    NEWC
+    s1 s5 XCHG
+    8 STU
+    s1 s3 XCHG
+    8 STU
+    8 STU
+    STDICT
+    STDICT
+    ENDC
+    c4 POP
+  }>
+  load_internal_data PROC:<{
+    c4 PUSH
+    CTOS
+    8 LDU
+    8 LDU
+    8 LDU
+    LDDICT
+    LDDICT
+    DROP
+  }>
+  recv_external PROC:<{
+    load_internal_data CALLDICT
+    s0 s5 XCHG
+    LDREF
+    DROP
+    s0 s2 XCHG
+    0 EQINT
+    IF:<{
+      SWAP
+      DICTEMPTY
+      IF:<{
+        ACCEPT
+        1 PUSHINT
+        s3 s4 XCHG
+        s2 s3 XCHG
+        s0 s2 XCHG
+        save_internal_data CALLDICT
+      }>ELSE<{
+        DROP
+        DROP
+        DROP
+        DROP
+      }>
+    }>ELSE<{
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+    }>
+  }>
+  seqno PROC:<{
+    c4 PUSH
+    CTOS
+    32 PLDU
+  }>
+}END>c

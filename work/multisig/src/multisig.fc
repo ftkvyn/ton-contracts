@@ -4,25 +4,41 @@
   ;; do nothing for internal messages
 }
 
+() save_internal_data(int n, int k, int seq_num, cell keys_dict, cell transactions_dict) impure {
+  set_data(begin_cell()
+      .store_uint(n, 8)
+      .store_uint(k, 8)
+      .store_uint(seq_num, 8)
+      .store_dict(keys_dict)
+      .store_dict(transactions_dict)
+      .end_cell());
+}
+
+;; (int n, int k, int seq_num, cell keys_dict, cell transactions_dict)
+(int, int, int, cell, cell) load_internal_data() {
+    slice data_slice = get_data().begin_parse();
+    int n = data_slice~load_uint(8);
+    int k = data_slice~load_uint(8);
+    int seq_num = data_slice~load_uint(8);
+    cell keys_dict = data_slice~load_dict();
+    cell transactions_dict = data_slice~load_dict();
+
+    return (n, k, seq_num, keys_dict, transactions_dict);
+}
+
 () recv_external(slice in_msg) impure {
-  accept_message();
-  var signature = in_msg~load_bits(512);
-  var cs = in_msg;
-  var (msg_seqno, valid_until) = (cs~load_uint(32), cs~load_uint(32));
-  throw_if(35, valid_until < now());
-  var ds = get_data().begin_parse();
-  var (stored_seqno, public_key) = (ds~load_uint(32), ds~load_uint(256));
-  ds.end_parse();
-  throw_unless(33, msg_seqno == stored_seqno);
-  throw_unless(34, check_signature(slice_hash(in_msg), signature, public_key));
-  accept_message();
-  cs~touch();
-  while (cs.slice_refs()) {
-    var mode = cs~load_uint(8);
-    send_raw_message(cs~load_ref(), mode);
-  }
-  cs.end_parse();
-  set_data(begin_cell().store_uint(stored_seqno + 1, 32).store_uint(public_key, 256).end_cell());
+    (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
+
+    cell signs_dict = in_msg~load_ref();
+    if (seq_num == 0) { 
+      if (signs_dict.dict_empty?()) { ;; Initialization of the contract
+        accept_message();
+        ;; updating seq_num to 1 so that we will never land here again.
+        save_internal_data(n, k, 1, keys_dict, transactions_dict);
+      }
+    } else {
+      
+    }
 }
 
 ;; Get methods
