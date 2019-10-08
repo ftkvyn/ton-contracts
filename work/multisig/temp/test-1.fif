@@ -1,12 +1,12 @@
 "Asm.fif" include
 // automatically generated from `./lib/stdlib.fc` `./src/multisig.fc` 
 PROGRAM{
-  DECLPROC recv_internal
+  DECLPROC recv_internal_deleted
   DECLPROC save_internal_data
   DECLPROC load_internal_data
-  DECLPROC recv_external
+  DECLPROC main
   85143 DECLMETHOD seqno
-  recv_internal PROC:<{
+  recv_internal_deleted PROC:<{
     DROP
   }>
   save_internal_data PROC:<{
@@ -31,7 +31,7 @@ PROGRAM{
     LDDICT
     DROP
   }>
-  recv_external PROC:<{
+  main PROC:<{
     load_internal_data CALLDICT
     s0 s5 XCHG
     LDREF
@@ -132,3 +132,15 @@ dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-query.boc" tuck B>file
 ."(Saved wallet creating query to file " type .")" cr
+
+
+<b b> <s constant message
+
+."Message: " cr message csr. cr
+
+message code <s storage runvm
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+."Updated storage: " cr updated_storage <s csr. cr
