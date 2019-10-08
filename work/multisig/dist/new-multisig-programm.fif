@@ -4,6 +4,8 @@ PROGRAM{
   DECLPROC recv_internal
   DECLPROC save_internal_data
   DECLPROC load_internal_data
+  DECLPROC execute_order
+  DECLPROC process_message
   DECLPROC recv_external
   85143 DECLMETHOD seqno
   recv_internal PROC:<{
@@ -15,7 +17,7 @@ PROGRAM{
     8 STU
     s1 s3 XCHG
     8 STU
-    8 STU
+    32 STU
     STDICT
     STDICT
     ENDC
@@ -26,27 +28,262 @@ PROGRAM{
     CTOS
     8 LDU
     8 LDU
-    8 LDU
+    32 LDU
     LDREF
     LDREF
     DROP
   }>
-  recv_external PROC:<{
+  execute_order PROC:<{
+    ACCEPT
+    8 LDU
+    LDREF
     DROP
-    load_internal_data CALLDICT
-    s0 s2 XCHG
+    SWAP
+    SENDRAWMSG
+  }>
+  process_message PROC:<{
+    s0 s5 XCHG
+    LDREF
+    OVER
+    DICTEMPTY
+    36 THROWIF
+    LDREF
+    DROP
+    DUP
+    HASHCU
+    OVER
+    CTOS
+    32 LDU
+    32 LDU
+    DROP
+    NOW
+    OVER
+    OVER
+    LESS
+    35 THROWIF
+    s2 PUSH
+    s8 PUSH
+    GREATER
+    34 THROWIF
+    s2 PUSH
+    1 LESSINT
+    33 THROWIF
+    32 PUSHINT
+    s3 PUSH
+    SWAP
+    s12 PUSH
+    SWAP
+    DICTUGET
+    NULLSWAPIFNOT
+    s4 PUSH
+    s10 PUSH
+    LESS
+    OVER
     0 EQINT
+    AND
+    40 THROWIF
+    s4 PUSH
+    s10 PUSH
+    EQUAL
     IF:<{
-      ACCEPT
-      1 PUSHINT
-      s0 s2 XCHG
-      save_internal_data CALLDICT
+      s0 s9 XCHG
+      INC
     }>ELSE<{
+      s0 s9 XCHG
+    }>
+    NEWDICT
+    0 PUSHINT
+    s11 PUSH
+    IF:<{
       DROP
       DROP
+      SWAP
+      1 LDU
+      32 LDU
+      s0 s2 XCHG
+      37 THROWIF
+      SWAP
+      s0 s3 XCHG
+      LESS
+      38 THROWIF
+      SWAP
+      8 LDU
+      LDREF
+      LDREF
+      DROP
+      HASHCU
+      s6 PUSH
+      EQUAL
+      41 THROWIFNOT
+    }>ELSE<{
+      s2 s4 XCHG
+      s0 s3 XCHG
+      s1 s2 XCHG
       DROP
       DROP
     }>
+    1 PUSHINT
+    s12 PUSH
+    REPEAT:<{
+      8 PUSHINT
+      OVER
+      SWAP
+      s10 PUSH
+      SWAP
+      DICTUGET
+      NULLSWAPIFNOT
+      IF:<{
+        8 PUSHINT
+        s2 PUSH
+        SWAP
+        s4 PUSH
+        SWAP
+        DICTUGET
+        NULLSWAPIFNOT
+        SWAP
+        1 LDU
+        DROP
+        SWAP
+        AND
+        IFNOT:<{
+          9 PUSHPOW2
+          LDSLICEX
+          DROP
+          8 PUSHINT
+          s2 PUSH
+          SWAP
+          s12 PUSH
+          SWAP
+          DICTUGET
+          NULLSWAPIFNOT
+          DROP
+          256 LDU
+          DROP
+          s8 PUSH
+          s0 s2 XCHG
+          SWAP
+          CHKSIGNU
+          IF:<{
+            s0 s2 XCHG
+            INC
+            1 PUSHINT
+            NEWC
+            1 STU
+            8 PUSHINT
+            s1 s2 XCHG
+            s4 PUSH
+            s0 s2 XCHG
+            s1 s4 XCHG
+            s0 s4 XCHG
+            DICTUSETB
+            OVER
+            s12 PUSH
+            EQUAL
+            IFJMP:<{
+              DROP
+              DROP
+              DROP
+              NIP
+              s2 POP
+              s2 POP
+              s2 POP
+              s0 s3 XCHG
+              IF:<{
+                32 PUSHINT
+                s3 PUSH
+                s0 s2 XCHG
+                s1 s7 XCHG
+                s0 s7 XCHG
+                DICTUDELGET
+                NULLSWAPIFNOT
+                DROP
+                DROP
+              }>ELSE<{
+                s0 s5 XCHG
+              }>
+              1 PUSHINT
+              NEWC
+              1 STU
+              32 PUSHINT
+              s1 s3 XCHG
+              s2 s4 XCHG
+              s1 s4 XCHG
+              DICTUSETB
+              s3 s4 XCHG
+              s2 s3 XCHG
+              save_internal_data CALLDICT
+              -1 PUSHINT
+            }>
+          }>ELSE<{
+            s0 s2 XCHG
+            SWAP
+          }>
+        }>ELSE<{
+          s1 s3 XCHG
+          s1 s2 XCHG
+          DROP
+        }>
+      }>ELSE<{
+        s1 s3 XCHG
+        s1 s2 XCHG
+        DROP
+      }>
+      s1 s2 XCHG
+      SWAP
+    }>
+    DROP
+    s5 POP
+    s6 POP
+    s0 s7 XCHG
+    IF:<{
+      32 PUSHINT
+      s2 PUSH
+      s0 s2 XCHG
+      s1 s11 XCHG
+      s0 s11 XCHG
+      DICTUDELGET
+      NULLSWAPIFNOT
+      DROP
+      DROP
+    }>ELSE<{
+      s0 s9 XCHG
+    }>
+    ACCEPT
+    1 PUSHINT
+    NEWC
+    1 STU
+    s1 s10 XCHG
+    32 STU
+    s1 s4 XCHG
+    8 STU
+    STDICT
+    STREF
+    32 PUSHINT
+    s1 s3 XCHG
+    s1 s7 XCHG
+    DICTUSETB
+    s3 s4 XCHG
+    s2 s3 XCHG
+    s1 s2 XCHG
+    save_internal_data CALLDICT
+    -1 PUSHINT
+  }>
+  recv_external PROC:<{
+    load_internal_data CALLDICT
+    s2 PUSH
+    0 EQINT
+    IFNOTJMP:<{
+      process_message CALLDICT
+    }>
+    s2 POP
+    s4 POP
+    ACCEPT
+    1 PUSHINT
+    s3 s4 XCHG
+    s2 s3 XCHG
+    s0 s2 XCHG
+    SWAP
+    save_internal_data CALLDICT
   }>
   seqno PROC:<{
     c4 PUSH

@@ -26,7 +26,7 @@
     return (n, k, seq_num, keys_dict, transactions_dict);
 }
 
-int execute_order(slice message_slice) {
+() execute_order(slice message_slice) {
     accept_message();
     var mode = message_slice~load_uint(8);
     send_raw_message(message_slice~load_ref(), mode);
@@ -73,7 +73,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
           ifnot (is_allready_signed & is_found) {
              ;; was not signed by this key before.
              var signature = signature_slice~load_bits(512);
-             (slice key_slice, int _) = keys_dict.udict_get?(8, counter);
+             (slice key_slice, int is_found) = keys_dict.udict_get?(8, counter);
              int public_key = key_slice~load_uint(256);
              int is_signed_well = check_signature(order_hash, signature, public_key);
              if (is_signed_well) {
@@ -87,35 +87,34 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
                   transactions_dict~udict_set_builder(32, msg_seqno, 
                     begin_cell()
                     .store_uint(1, 1) ;; is_executed
-                    .end_cell()
-                  );
+                    );
                   execute_order(order_slice~load_ref().begin_parse());
                   save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
                   return -1;
                 }
              }
           }
-      }
-      if (is_transaction_found_in_local_storage) {
-          transactions_dict~udict_delete_get?(32, msg_seqno);
-      }
-      accept_message();
-      transactions_dict~udict_set_builder(32, msg_seqno, 
-            begin_cell()
-            .store_uint(1, 1) ;; is_executed
-            .store_uint(valid_until, 32)
-            .store_uint(signed_num)
-            .store_dict(confirmed_signs_dict)
-            .store_ref(order)
-            .end_cell()
-            );
-      save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
-      counter += 1;
-      return -1;
+      }      
     }
+
+    if (is_transaction_found_in_local_storage) {
+        transactions_dict~udict_delete_get?(32, msg_seqno);
+    }
+    accept_message();
+    transactions_dict~udict_set_builder(32, msg_seqno, 
+          begin_cell()
+          .store_uint(1, 1) ;; is_executed
+          .store_uint(valid_until, 32)
+          .store_uint(signed_num, 8)
+          .store_dict(confirmed_signs_dict)
+          .store_ref(order)
+          );
+    save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
+    counter += 1;
+    return -1;
 }
 
-() recv_external(slice in_msg) impure {
+int recv_external(slice in_msg) impure {
     (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
 
     if (seq_num == 0) { 
@@ -125,6 +124,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     } else {
       return process_message(in_msg, n, k, seq_num, keys_dict, transactions_dict);
     }
+    return -1;
 }
 
 ;; Get methods
