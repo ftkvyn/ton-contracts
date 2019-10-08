@@ -8,7 +8,7 @@
   set_data(begin_cell()
       .store_uint(n, 8)
       .store_uint(k, 8)
-      .store_uint(seq_num, 8)
+      .store_uint(seq_num, 32)
       .store_dict(keys_dict)
       .store_dict(transactions_dict)
       .end_cell());
@@ -19,11 +19,67 @@
     slice data_slice = get_data().begin_parse();
     int n = data_slice~load_uint(8);
     int k = data_slice~load_uint(8);
-    int seq_num = data_slice~load_uint(8);
+    int seq_num = data_slice~load_uint(32);
     cell keys_dict = data_slice~load_ref();
     cell transactions_dict = data_slice~load_ref();
 
     return (n, k, seq_num, keys_dict, transactions_dict);
+}
+
+int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cell transactions_dict) {
+    cell signs_dict = in_msg~load_ref();
+    throw_if(36, signs_dict.dict_empty?()); 
+    cell order = in_msg~load_ref();
+    int order_hash = cell_hash(order);
+    slice order_slice = order.begin_parse();
+    (int msg_seqno, int valid_until) = (order_slice~load_uint(32), order_slice~load_uint(32));
+    int now_time = now();
+    throw_if(35, valid_until < now_time);
+    ;; msg_seqno == seq_num for new messages and msg_seqno < seq_num for additional signs
+    throw_if(34, msg_seqno > seq_num); 
+    throw_if(33, msg_seqno < 1);
+
+    (slice tran_slice, int is_found) = transactions_dict.udict_get?(32, msg_seqno);
+    ;; check if transaction was garbage collected.
+    throw_if(40, (msg_seqno < seq_num) & (is_found == 0));
+    cell confirmed_signs_dict = new_dict();
+    int signed_num = 0;
+    if (is_found) {
+      (int is_executed, int expires) = (tran_slice~load_uint(1), tran_slice~load_uint(32));
+      throw_if(37, is_executed);
+      throw_if(38, expires < now_time);
+      signed_num = tran_slice~load_uint(8);
+      confirmed_signs_dict = tran_slice~load_ref();
+      cell original_order = tran_slice~load_ref();
+      throw_unless(41, cell_hash(original_order) == order_hash);
+    }
+    
+    int counter = 1;
+    repeat (n) {
+      (slice signature_slice, int is_found) = signs_dict.udict_get?(8, counter);
+      if (is_found) {
+          ;; there is a signature in a message.
+          (slice is_allready_signed_slice, int is_found) = confirmed_signs_dict.udict_get?(8, counter);
+          int is_allready_signed = is_allready_signed_slice~load_uint(1);
+          ifnot (is_allready_signed & is_found) {
+             ;; was not signed by this key before.
+             ;; ToDo: check signature.
+             var signature = signature_slice~load_bits(512);
+             (slice key_slice, int _) = keys_dict.udict_get?(8, counter);
+             int public_key = key_slice~load_uint(256);
+             int is_signed_well = check_signature(order_hash, signature, public_key);
+             if (is_signed_well) {
+                signed_num += 1;
+                confirmed_signs_dict~udict_set_builder(8, counter, begin_cell().store_uint(1, 1));
+
+                if (signed_num == k) {
+                  ;; ToDo: accept message, mark current transaction as executed or delete if it's not the last.
+                }
+             }
+          }
+      }
+      counter += 1;
+    }
 }
 
 () recv_external(slice in_msg) impure {
@@ -34,8 +90,7 @@
       ;; updating seq_num to 1 so that we will never land here again.
       save_internal_data(n, k, 1, keys_dict, transactions_dict);
     } else {
-      cell signs_dict = in_msg~load_ref();
-       
+      return process_message(in_msg, n, k, seq_num, keys_dict, transactions_dict);
     }
 }
 
