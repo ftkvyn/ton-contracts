@@ -26,6 +26,12 @@
     return (n, k, seq_num, keys_dict, transactions_dict);
 }
 
+int execute_order(slice message_slice) {
+    accept_message();
+    var mode = message_slice~load_uint(8);
+    send_raw_message(message_slice~load_ref(), mode);
+}
+
 int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cell transactions_dict) {
     cell signs_dict = in_msg~load_ref();
     throw_if(36, signs_dict.dict_empty?()); 
@@ -39,12 +45,15 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     throw_if(34, msg_seqno > seq_num); 
     throw_if(33, msg_seqno < 1);
 
-    (slice tran_slice, int is_found) = transactions_dict.udict_get?(32, msg_seqno);
+    (slice tran_slice, int is_transaction_found_in_local_storage) = transactions_dict.udict_get?(32, msg_seqno);
     ;; check if transaction was garbage collected.
-    throw_if(40, (msg_seqno < seq_num) & (is_found == 0));
+    throw_if(40, (msg_seqno < seq_num) & (is_transaction_found_in_local_storage == 0));
+    if (msg_seqno == seq_num) {
+      seq_num += 1;
+    }
     cell confirmed_signs_dict = new_dict();
     int signed_num = 0;
-    if (is_found) {
+    if (is_transaction_found_in_local_storage) {
       (int is_executed, int expires) = (tran_slice~load_uint(1), tran_slice~load_uint(32));
       throw_if(37, is_executed);
       throw_if(38, expires < now_time);
@@ -63,7 +72,6 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
           int is_allready_signed = is_allready_signed_slice~load_uint(1);
           ifnot (is_allready_signed & is_found) {
              ;; was not signed by this key before.
-             ;; ToDo: check signature.
              var signature = signature_slice~load_bits(512);
              (slice key_slice, int _) = keys_dict.udict_get?(8, counter);
              int public_key = key_slice~load_uint(256);
@@ -73,12 +81,37 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
                 confirmed_signs_dict~udict_set_builder(8, counter, begin_cell().store_uint(1, 1));
 
                 if (signed_num == k) {
-                  ;; ToDo: accept message, mark current transaction as executed or delete if it's not the last.
+                  if (is_transaction_found_in_local_storage) {
+                     transactions_dict~udict_delete_get?(32, msg_seqno);
+                  }
+                  transactions_dict~udict_set_builder(32, msg_seqno, 
+                    begin_cell()
+                    .store_uint(1, 1) ;; is_executed
+                    .end_cell()
+                  );
+                  execute_order(order_slice~load_ref().begin_parse());
+                  save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
+                  return -1;
                 }
              }
           }
       }
+      if (is_transaction_found_in_local_storage) {
+          transactions_dict~udict_delete_get?(32, msg_seqno);
+      }
+      accept_message();
+      transactions_dict~udict_set_builder(32, msg_seqno, 
+            begin_cell()
+            .store_uint(1, 1) ;; is_executed
+            .store_uint(valid_until, 32)
+            .store_uint(signed_num)
+            .store_dict(confirmed_signs_dict)
+            .store_ref(order)
+            .end_cell()
+            );
+      save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
       counter += 1;
+      return -1;
     }
 }
 
