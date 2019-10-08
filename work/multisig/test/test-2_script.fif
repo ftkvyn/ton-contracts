@@ -1,0 +1,13 @@
+
+<b b> constant message_body
+
+<b message_body ref, b> <s constant message
+
+."Message: " cr message csr. cr
+
+message code <s storage runvm
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+."Updated storage: " cr updated_storage <s csr. cr

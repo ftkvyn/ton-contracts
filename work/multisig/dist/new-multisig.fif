@@ -72,6 +72,8 @@ $2 parse-int =: total-keys
 $3 parse-int =: sign-keys
 def? $4 { @' $4 } { "new-multi-wallet" } cond constant file-base
 
+0 constant seq_no
+
 ."Creating new wallet in workchain " wc . cr
 
 dictnew constant keys-dict
@@ -98,7 +100,7 @@ constant transactions-dict
 
 <b total-keys 8 u, 
    sign-keys 8 u,
-   0 8 u, // seq_no
+   seq_no 8 u,
    keys-dict ref,
    transactions-dict ref, // transactions
 b>  constant storage
