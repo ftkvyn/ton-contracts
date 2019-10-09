@@ -27,7 +27,7 @@
 }
 
 () garbage_collect(int seq_num, cell transactions_dict) {
-    int counter = 0;
+    int counter = 1;
     int now_time = now();
     repeat(seq_num) {
       (slice tran_slice, int is_found) = transactions_dict.udict_get?(32, counter);
@@ -37,6 +37,7 @@
               transactions_dict~udict_delete_get?(32, counter);
           }
       }
+      counter += 1;
     }
 }
 
@@ -92,7 +93,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
              int is_signed_well = check_signature(order_hash, signature, public_key);
              if (is_signed_well) {
                 signed_num += 1;
-                confirmed_signs_dict~udict_set_builder(8, counter, begin_cell().store_uint(1, 1));
+                confirmed_signs_dict~udict_set_builder(8, counter, begin_cell().store_uint(1, -1));
 
                 if (signed_num == k) {
                   if (is_transaction_found_in_local_storage) {
@@ -100,7 +101,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
                   }
                   transactions_dict~udict_set_builder(32, msg_seqno, 
                     begin_cell()
-                    .store_uint(1, 1) ;; is_executed
+                    .store_uint(1, -1) ;; is_executed
                     );
                   execute_order(order_slice~load_ref().begin_parse());
                   garbage_collect(seq_num, transactions_dict);
@@ -118,7 +119,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     accept_message();
     transactions_dict~udict_set_builder(32, msg_seqno, 
           begin_cell()
-          .store_uint(1, 1) ;; is_executed
+          .store_uint(1, -1) ;; is_executed
           .store_uint(valid_until, 32)
           .store_uint(signed_num, 8)
           .store_dict(confirmed_signs_dict)
@@ -146,5 +147,67 @@ int recv_external(slice in_msg) impure {
 ;; Get methods
 
 int seqno() method_id {
-  return get_data().begin_parse().preload_uint(32);
+    slice data_slice = get_data().begin_parse();
+    data_slice~load_uint(8);
+    data_slice~load_uint(8);
+    return data_slice~load_uint(32);
+}
+
+_ load_order_by_condition(int key_num, int is_signed) {
+    (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
+    var orders_list = nil;
+    int counter = 1;
+    int now_time = now();
+    repeat(seq_num) {
+      (slice tran_slice, int is_found) = transactions_dict.udict_get?(32, counter);
+      if (is_found) {
+          (int is_executed, int expires) = (tran_slice~load_uint(1), tran_slice~load_uint(32));
+          tran_slice~load_uint(8); ;; signed_num
+          cell confirmed_signs_dict = tran_slice~load_ref();
+          cell original_order = tran_slice~load_ref();
+          ifnot ( ((counter < seq_num) & is_executed) | (expires < now_time)) {
+              if (key_num == -1) {
+                orders_list = cons(original_order, orders_list);
+              } else {
+                (slice is_allready_signed_slice, int is_found) = confirmed_signs_dict.udict_get?(8, key_num);
+                int is_allready_signed = is_allready_signed_slice~load_uint(1);
+                if (is_signed == is_allready_signed) {
+                    orders_list = cons(original_order, orders_list);
+                }
+              } 
+          }
+      }
+      counter += 1;
+    }
+    return orders_list;
+}
+
+int get_key_num(int pubkey) {
+    (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
+    int counter = 0;
+    repeat(n) { 
+        (slice key_slice, int is_found) = keys_dict.udict_get?(8, counter);
+        int public_key = key_slice~load_uint(256);
+        if (public_key == pubkey) {
+          return counter;
+        }
+    }
+    return -1;
+}
+
+_ pending_orders() method_id {
+    return load_order_by_condition(0, 0);
+}
+
+_ is_signed_orders(int pubkey, int is_signed) {
+  int key_num = get_key_num(pubkey);
+  return load_order_by_condition(key_num, is_signed);
+}
+
+_ signed_orders(int pubkey) method_id {
+    return is_signed_orders(pubkey, -1);
+}
+
+_ not_signed_orders(int pubkey) method_id {
+    return is_signed_orders(pubkey, 0);
 }

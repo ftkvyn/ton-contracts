@@ -9,6 +9,12 @@ PROGRAM{
   DECLPROC process_message
   DECLPROC recv_external
   85143 DECLMETHOD seqno
+  DECLPROC load_order_by_condition
+  DECLPROC get_key_num
+  103571 DECLMETHOD pending_orders
+  DECLPROC is_signed_orders
+  122190 DECLMETHOD signed_orders
+  121650 DECLMETHOD not_signed_orders
   recv_internal PROC:<{
     DROP
   }>
@@ -35,7 +41,7 @@ PROGRAM{
     DROP
   }>
   garbage_collect PROC:<{
-    0 PUSHINT
+    1 PUSHINT
     NOW
     s3 PUSH
     REPEAT:<{
@@ -50,8 +56,9 @@ PROGRAM{
         1 LDU
         32 LDU
         DROP
-        s5 PUSH
-        0 GTINT
+        s3 PUSH
+        s6 PUSH
+        LESS
         SWAP
         s0 s2 XCHG
         AND
@@ -76,7 +83,10 @@ PROGRAM{
         s1 s3 XCHG
         DROP
       }>
-      s0 s2 XCHG
+      SWAP
+      INC
+      s1 s2 XCHG
+      SWAP
     }>
     DROP
     DROP
@@ -218,7 +228,8 @@ PROGRAM{
             INC
             1 PUSHINT
             NEWC
-            1 STU
+            -1 PUSHINT
+            STUX
             8 PUSHINT
             s1 s2 XCHG
             s4 PUSH
@@ -253,7 +264,8 @@ PROGRAM{
               }>
               1 PUSHINT
               NEWC
-              1 STU
+              -1 PUSHINT
+              STUX
               32 PUSHINT
               s1 s3 XCHG
               s2 s4 XCHG
@@ -301,7 +313,8 @@ PROGRAM{
     ACCEPT
     1 PUSHINT
     NEWC
-    1 STU
+    -1 PUSHINT
+    STUX
     s1 s10 XCHG
     32 STU
     s1 s4 XCHG
@@ -338,7 +351,148 @@ PROGRAM{
   seqno PROC:<{
     c4 PUSH
     CTOS
-    32 PLDU
+    8 LDU
+    NIP
+    8 LDU
+    NIP
+    32 LDU
+    DROP
+  }>
+  load_order_by_condition PROC:<{
+    load_internal_data CALLDICT
+    NIP
+    s2 POP
+    s2 POP
+    PUSHNULL
+    1 PUSHINT
+    NOW
+    s4 PUSH
+    REPEAT:<{
+      32 PUSHINT
+      s2 PUSH
+      SWAP
+      s5 PUSH
+      SWAP
+      DICTUGET
+      NULLSWAPIFNOT
+      IF:<{
+        1 LDU
+        32 LDU
+        8 LDU
+        NIP
+        LDREF
+        LDREF
+        DROP
+        s5 PUSH
+        s9 PUSH
+        LESS
+        SWAP
+        s0 s4 XCHG
+        AND
+        s0 s2 XCHG
+        s4 PUSH
+        LESS
+        s1 s2 XCHG
+        OR
+        IFNOT:<{
+          s8 PUSH
+          -1 EQINT
+          IF:<{
+            DROP
+            SWAP
+            s0 s3 XCHG
+            CONS
+          }>ELSE<{
+            8 PUSHINT
+            s9 PUSH
+            s0 s2 XCHG
+            SWAP
+            DICTUGET
+            NULLSWAPIFNOT
+            DROP
+            1 LDU
+            DROP
+            s7 PUSH
+            SWAP
+            EQUAL
+            IF:<{
+              SWAP
+              s0 s3 XCHG
+              CONS
+            }>ELSE<{
+              s1 s3 XCHG
+              DROP
+            }>
+          }>
+        }>ELSE<{
+          s2 s4 XCHG
+          DROP
+          DROP
+        }>
+      }>ELSE<{
+        s1 s3 XCHG
+        DROP
+      }>
+      SWAP
+      INC
+      s1 s2 XCHG
+      SWAP
+    }>
+    DROP
+    DROP
+    NIP
+    NIP
+    NIP
+    NIP
+  }>
+  get_key_num PROC:<{
+    load_internal_data CALLDICT
+    DROP
+    NIP
+    NIP
+    0 PUSHINT
+    s0 s2 XCHG
+    REPEAT:<{
+      8 PUSHINT
+      s2 PUSH
+      SWAP
+      s2 PUSH
+      SWAP
+      DICTUGET
+      NULLSWAPIFNOT
+      DROP
+      256 LDU
+      DROP
+      s3 PUSH
+      EQUAL
+      IFJMP:<{
+        DROP
+        NIP
+      }>
+    }>
+    DROP
+    DROP
+    DROP
+    -1 PUSHINT
+  }>
+  pending_orders PROC:<{
+    0 PUSHINT
+    DUP
+    load_order_by_condition CALLDICT
+  }>
+  is_signed_orders PROC:<{
+    SWAP
+    get_key_num CALLDICT
+    SWAP
+    load_order_by_condition CALLDICT
+  }>
+  signed_orders PROC:<{
+    -1 PUSHINT
+    is_signed_orders CALLDICT
+  }>
+  not_signed_orders PROC:<{
+    0 PUSHINT
+    is_signed_orders CALLDICT
   }>
 }END>c
 constant code
