@@ -94,7 +94,6 @@ PROGRAM{
     DROP
   }>
   execute_order PROC:<{
-    ACCEPT
     SENDRAWMSG
   }>
   process_message PROC:<{
@@ -147,6 +146,7 @@ PROGRAM{
     }>ELSE<{
       s0 s9 XCHG
     }>
+    ACCEPT
     NEWDICT
     0 PUSHINT
     s11 PUSH
@@ -347,7 +347,6 @@ PROGRAM{
     }>ELSE<{
       s0 s9 XCHG
     }>
-    ACCEPT
     0 PUSHINT
     NEWC
     1 STU
@@ -432,7 +431,7 @@ PROGRAM{
         OR
         IFNOT:<{
           s8 PUSH
-          -1 EQINT
+          0 EQINT
           IF:<{
             DROP
             SWAP
@@ -445,18 +444,23 @@ PROGRAM{
             SWAP
             DICTUGET
             NULLSWAPIFNOT
-            DROP
-            1 LDU
-            DROP
-            s7 PUSH
-            SWAP
-            EQUAL
             IF:<{
+              1 LDU
+              DROP
+              s7 PUSH
               SWAP
-              s0 s3 XCHG
-              CONS
+              EQUAL
+              IF:<{
+                SWAP
+                s0 s3 XCHG
+                CONS
+              }>ELSE<{
+                s1 s3 XCHG
+                DROP
+              }>
             }>ELSE<{
-              s1 s3 XCHG
+              s2 s4 XCHG
+              DROP
               DROP
             }>
           }>

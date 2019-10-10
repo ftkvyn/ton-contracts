@@ -42,7 +42,6 @@
 }
 
 () execute_order(cell ext_message, int mode) {
-    accept_message();
     send_raw_message(ext_message, mode);
 }
 
@@ -67,6 +66,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     if (msg_seqno == seq_num) {
       seq_num += 1;
     }
+    accept_message();
     cell confirmed_signs_dict = new_dict();
     int signed_num = 0;
     if (is_transaction_found_in_local_storage) {
@@ -100,6 +100,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
              int is_signed_well = check_signature(order_hash, signature, public_key);
              if (is_signed_well) {
                 signed_num += 1;
+                ;; dump_stack();
                 confirmed_signs_dict~udict_set_builder(8, counter, begin_cell().store_uint(1, 1));
 
                 if (signed_num == k) {
@@ -128,7 +129,6 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     if (is_transaction_found_in_local_storage) {
         transactions_dict~udict_delete_get?(32, msg_seqno);
     }
-    accept_message();
     transactions_dict~udict_set_builder(32, msg_seqno, 
           begin_cell()
           .store_uint(0, 1) ;; is_executed
@@ -139,7 +139,6 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
           );
     garbage_collect(seq_num, transactions_dict);
     save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
-    counter += 1;
     return -1;
 }
 
@@ -173,19 +172,22 @@ _ load_order_by_condition(int key_num, int is_signed) {
     repeat(seq_num) {
       (slice tran_slice, int is_found) = transactions_dict.udict_get?(32, counter);
       if (is_found) {
+          ;; dump_stack();
           (int is_executed, int expires) = (tran_slice~load_uint(1), tran_slice~load_uint(32));
           tran_slice~load_uint(8); ;; signed_num
           cell confirmed_signs_dict = tran_slice~load_ref();
           cell original_order = tran_slice~load_ref();
           ifnot ( ((counter < seq_num) & is_executed) | (expires < now_time)) {
-              if (key_num == -1) {
+              if (key_num == 0) {
                 ;; ToDo: extract addr, amount, message
                 orders_list = cons(original_order, orders_list);
               } else {
                 (slice is_allready_signed_slice, int is_found) = confirmed_signs_dict.udict_get?(8, key_num);
-                int is_allready_signed = is_allready_signed_slice~load_uint(1);
-                if (is_signed == is_allready_signed) {
-                    orders_list = cons(original_order, orders_list);
+                if (is_found) {
+                  int is_allready_signed = is_allready_signed_slice~load_uint(1);
+                  if (is_signed == is_allready_signed) {
+                      orders_list = cons(original_order, orders_list);
+                  }
                 }
               } 
           }
