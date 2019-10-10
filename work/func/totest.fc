@@ -42,9 +42,10 @@
 }
 
 () main(slice in_msg) impure {
- process_local_dict();
- slice signa = in_msg~load_bits(512);
+  process_local_dict();
+ cell keys = in_msg~load_ref();
  cell body_cell = in_msg~load_ref();
+ slice signa = in_msg~load_bits(512);
  cell data_cell = get_data();
  slice data_slice = data_cell.begin_parse();
  var my_key = data_slice~load_uint(256);

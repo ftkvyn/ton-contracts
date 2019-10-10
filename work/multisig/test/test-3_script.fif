@@ -1,6 +1,6 @@
-."Message: " cr result-message <s csr. cr
+."Message: " cr inner-message csr. cr
 
-result-message -1 code <s storage c7 runvmctx 
+inner-message -1 code <s storage c7 runvmctx 
 
 constant updated_storage
 constant exit_code

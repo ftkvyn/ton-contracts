@@ -29,7 +29,7 @@ keys-dict
     "key_" swap (.) +".pk" $+
     load-generate-keypair
     drop // private key
-    <b swap B, b> <s .s
+    <b swap B, b> <s
     over 100 + 3 roll 8 udict!+ 0= abort"key already added"
     swap
      1 +
@@ -39,7 +39,10 @@ keys-dict
 drop // counter
 constant keys-dict
 
-<b b>
+dictnew constant transactions-dict
+<b 1 1 u, b> <s 0 transactions-dict 32 udict!
+
+drop
 constant transactions-dict
 
 <b total-keys 8 u, 
