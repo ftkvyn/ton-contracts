@@ -94,12 +94,9 @@ PROGRAM{
     DROP
   }>
   execute_order PROC:<{
-    ACCEPT
-    8 LDU
-    LDREF
     DROP
-    SWAP
-    SENDRAWMSG
+    DROP
+    ACCEPT
   }>
   process_message PROC:<{
     s0 s5 XCHG

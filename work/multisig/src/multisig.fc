@@ -41,10 +41,9 @@
     }
 }
 
-() execute_order(slice message_slice) {
+() execute_order(cell ext_message, int mode) {
     accept_message();
-    var mode = message_slice~load_uint(8);
-    send_raw_message(message_slice~load_ref(), mode);
+    send_raw_message(ext_message, mode);
 }
 
 int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cell transactions_dict) {
@@ -54,6 +53,8 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     int order_hash = cell_hash(order);
     slice order_slice = order.begin_parse();
     (int msg_seqno, int valid_until) = (order_slice~load_uint(32), order_slice~load_uint(32));
+    int mode = order_slice~load_uint(8);
+    cell ext_message = order_slice~load_ref();
     int now_time = now();
     throw_if(35, valid_until < now_time);
     ;; msg_seqno == seq_num for new messages and msg_seqno < seq_num for additional signs
@@ -103,7 +104,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
                     begin_cell()
                     .store_uint(1, -1) ;; is_executed
                     );
-                  execute_order(order_slice~load_ref().begin_parse());
+                  execute_order(ext_message, mode);
                   garbage_collect(seq_num, transactions_dict);
                   save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
                   return -1;
