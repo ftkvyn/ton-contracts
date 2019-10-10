@@ -94,9 +94,8 @@ PROGRAM{
     DROP
   }>
   execute_order PROC:<{
-    DROP
-    DROP
     ACCEPT
+    SENDRAWMSG
   }>
   process_message PROC:<{
     s0 s5 XCHG
@@ -225,8 +224,7 @@ PROGRAM{
             INC
             1 PUSHINT
             NEWC
-            -1 PUSHINT
-            STUX
+            1 STU
             8 PUSHINT
             s1 s2 XCHG
             s4 PUSH
@@ -261,8 +259,7 @@ PROGRAM{
               }>
               1 PUSHINT
               NEWC
-              -1 PUSHINT
-              STUX
+              1 STU
               32 PUSHINT
               s1 s3 XCHG
               s2 s4 XCHG
@@ -310,8 +307,7 @@ PROGRAM{
     ACCEPT
     1 PUSHINT
     NEWC
-    -1 PUSHINT
-    STUX
+    1 STU
     s1 s10 XCHG
     32 STU
     s1 s4 XCHG

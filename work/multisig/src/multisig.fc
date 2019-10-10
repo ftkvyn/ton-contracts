@@ -94,7 +94,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
              int is_signed_well = check_signature(order_hash, signature, public_key);
              if (is_signed_well) {
                 signed_num += 1;
-                confirmed_signs_dict~udict_set_builder(8, counter, begin_cell().store_uint(1, -1));
+                confirmed_signs_dict~udict_set_builder(8, counter, begin_cell().store_uint(1, 1));
 
                 if (signed_num == k) {
                   if (is_transaction_found_in_local_storage) {
@@ -102,7 +102,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
                   }
                   transactions_dict~udict_set_builder(32, msg_seqno, 
                     begin_cell()
-                    .store_uint(1, -1) ;; is_executed
+                    .store_uint(1, 1) ;; is_executed
                     );
                   execute_order(ext_message, mode);
                   garbage_collect(seq_num, transactions_dict);
@@ -120,7 +120,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     accept_message();
     transactions_dict~udict_set_builder(32, msg_seqno, 
           begin_cell()
-          .store_uint(1, -1) ;; is_executed
+          .store_uint(1, 1) ;; is_executed
           .store_uint(valid_until, 32)
           .store_uint(signed_num, 8)
           .store_dict(confirmed_signs_dict)
