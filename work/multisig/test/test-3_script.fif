@@ -1,15 +1,6 @@
 ."Message: " cr result-message <s csr. cr
 
-0 tuple 0x076ef1ea , // magic
-0 , 0 , // actions msg_sents
-1570470873 , // unix_time
-1 , 1 , 0 , // block_lt, trans_lt, rand_seed
-0 tuple 9223372036854775807 , dictnew , , // remaining balance
-0 , dictnew , // contract_address, global_config
-1 tuple // wrap to another tuple
-constant c7 
-
-result-message "recv_external" code <s storage c7 runvmctx 
+result-message -1 code <s storage c7 runvmctx 
 
 constant updated_storage
 constant exit_code

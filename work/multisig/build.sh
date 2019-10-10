@@ -3,16 +3,12 @@ func -AP -O 0 -o ./dist/new-multisig-programm.fif ./lib/stdlib.fc ./src/multisig
 cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif > ./dist/new-multisig.fif
 cp ./src/multisig-transaction.fif ./dist/multisig-transaction.fif
 
-cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif ./test/test-1_script.fif > ./temp/test-1.fif
-sed -i 's/recv_external/main/' ./temp/test-1.fif
-sed -i 's/recv_internal/recv_internal_deleted/' ./temp/test-1.fif
+cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif ./test/init-c7.fif ./test/test-1_script.fif > ./temp/test-1.fif
 
-cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif ./test/test-2_script.fif > ./temp/test-2.fif
-sed -i 's/recv_external/main/' ./temp/test-2.fif
-sed -i 's/recv_internal/recv_internal_deleted/' ./temp/test-2.fif
+cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif ./test/init-c7.fif ./test/test-2_script.fif > ./temp/test-2.fif
 sed -i 's/0 constant seq_no/3 constant seq_no/' ./temp/test-2.fif
 
-cat ./dist/new-multisig-programm.fif ./dist/multisig-transaction.fif ./test/test-storage.fif ./test/test-3_script.fif > ./temp/test-3.fif
+cat ./dist/new-multisig-programm.fif ./dist/multisig-transaction.fif ./test/test-storage.fif ./test/init-c7.fif ./test/test-3_script.fif > ./temp/test-3.fif
 sed -i 's/0 constant seq_no/5 constant seq_no/' ./temp/test-3.fif
 sed -i 's/#!\/usr\/bin\/env fift -s/constant code/' ./temp/test-3.fif
 

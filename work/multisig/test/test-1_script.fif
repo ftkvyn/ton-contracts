@@ -5,7 +5,7 @@
 
 ."Message: " cr message csr. cr
 
-message code <s storage runvm
+message -1 code <s storage c7 runvmctx 
 
 constant updated_storage
 constant exit_code
