@@ -36,8 +36,8 @@ PROGRAM{
     8 LDU
     8 LDU
     32 LDU
-    LDREF
-    LDREF
+    LDDICT
+    LDDICT
     DROP
   }>
   garbage_collect PROC:<{
@@ -545,8 +545,8 @@ constant transactions-dict
 <b total-keys 8 u, 
    sign-keys 8 u,
    seq_no 32 u,
-   keys-dict ref,
-   transactions-dict ref, // transactions
+   keys-dict dict,
+   transactions-dict dict, // transactions
 b>  constant storage
 
 ."Storage: " cr storage <s csr. cr

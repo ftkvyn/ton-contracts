@@ -50,7 +50,7 @@ drop
 constant signs-dict
 
 <b b{1000100} s, wallet_addr addr, 0 Gram, b{00} s,
-   signs-dict ref, 
+   signs-dict dict, 
    order ref, b> constant result-message
 
 result-message

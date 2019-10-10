@@ -20,8 +20,8 @@
     int n = data_slice~load_uint(8);
     int k = data_slice~load_uint(8);
     int seq_num = data_slice~load_uint(32);
-    cell keys_dict = data_slice~load_ref();
-    cell transactions_dict = data_slice~load_ref();
+    cell keys_dict = data_slice~load_dict();
+    cell transactions_dict = data_slice~load_dict();
 
     return (n, k, seq_num, keys_dict, transactions_dict);
 }

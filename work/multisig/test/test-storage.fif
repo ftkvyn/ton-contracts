@@ -17,12 +17,15 @@ keys-dict
 drop // counter
 constant keys-dict
 
-<b b>
+dictnew constant transactions-dict
+<b 1 1 u, b> <s 0 transactions-dict 32 udict!
+
+drop
 constant transactions-dict
 
 <b 6 8 u, 
    4 8 u,
    5 32 u,
-   keys-dict ref,
-   transactions-dict ref, // transactions
+   keys-dict dict,
+   transactions-dict dict, // transactions
 b>  constant storage

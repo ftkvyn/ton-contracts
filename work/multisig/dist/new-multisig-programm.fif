@@ -36,8 +36,8 @@ PROGRAM{
     8 LDU
     8 LDU
     32 LDU
-    LDREF
-    LDREF
+    LDDICT
+    LDDICT
     DROP
   }>
   garbage_collect PROC:<{
