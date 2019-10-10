@@ -167,6 +167,7 @@ _ load_order_by_condition(int key_num, int is_signed) {
           cell original_order = tran_slice~load_ref();
           ifnot ( ((counter < seq_num) & is_executed) | (expires < now_time)) {
               if (key_num == -1) {
+                ;; ToDo: extract addr, amount, message
                 orders_list = cons(original_order, orders_list);
               } else {
                 (slice is_allready_signed_slice, int is_found) = confirmed_signs_dict.udict_get?(8, key_num);
