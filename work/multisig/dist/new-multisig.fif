@@ -348,7 +348,7 @@ PROGRAM{
       s0 s9 XCHG
     }>
     ACCEPT
-    1 PUSHINT
+    0 PUSHINT
     NEWC
     1 STU
     s1 s10 XCHG

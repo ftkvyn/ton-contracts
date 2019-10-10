@@ -23,4 +23,4 @@ fift -s ./../dist/new-multisig.fif 0 6 4 test-run
 fift -s ./test-1.fif 0 6 4 test-run
 fift -s ./test-2.fif 0 6 4 test-run
 fift -s ./test-3.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello
-#fift -s ./test-4.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello
+fift -s ./test-4.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello

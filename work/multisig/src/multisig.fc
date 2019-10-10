@@ -131,7 +131,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     accept_message();
     transactions_dict~udict_set_builder(32, msg_seqno, 
           begin_cell()
-          .store_uint(1, 1) ;; is_executed
+          .store_uint(0, 1) ;; is_executed
           .store_uint(valid_until, 32)
           .store_uint(signed_num, 8)
           .store_dict(confirmed_signs_dict)
