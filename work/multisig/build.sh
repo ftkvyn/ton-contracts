@@ -1,6 +1,7 @@
 rm ./dist/*.*
 func -AP -O 0 -o ./dist/new-multisig-programm.fif ./lib/stdlib.fc ./src/multisig.fc
 cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif > ./dist/new-multisig.fif
+cp ./src/multisig-transaction.fif ./dist/multisig-transaction.fif
 
 cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif ./test/test-1_script.fif > ./temp/test-1.fif
 sed -i 's/recv_external/main/' ./temp/test-1.fif
