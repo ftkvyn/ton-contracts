@@ -8,7 +8,7 @@ keys-dict
     load-generate-keypair
     drop // private key
     <b swap B, b> <s .s
-    over 100 + 3 roll 8 udict!+ 0= abort"key already added"
+    over 3 roll 8 .s cr udict!+ 0= abort"key already added"
     swap
      1 +
 } 6 times

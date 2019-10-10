@@ -46,7 +46,7 @@
     send_raw_message(ext_message, mode);
 }
 
-int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cell transactions_dict) {
+int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cell transactions_dict) impure {
     cell signs_dict = in_msg~load_ref();
     throw_if(36, signs_dict.dict_empty?()); 
     cell order = in_msg~load_ref();
@@ -85,12 +85,18 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
       if (is_found) {
           ;; there is a signature in a message.
           (slice is_allready_signed_slice, int is_found) = confirmed_signs_dict.udict_get?(8, counter);
-          int is_allready_signed = is_allready_signed_slice~load_uint(1);
+          int is_allready_signed = 0;
+          if (is_found) {
+            is_allready_signed = is_allready_signed_slice~load_uint(1);
+          }           
           ifnot (is_allready_signed & is_found) {
              ;; was not signed by this key before.
              var signature = signature_slice~load_bits(512);
              (slice key_slice, int is_found) = keys_dict.udict_get?(8, counter);
-             int public_key = key_slice~load_uint(256);
+             ifnot(is_found) {
+               return 91;
+             }
+             var public_key = key_slice~load_uint(256);
              int is_signed_well = check_signature(order_hash, signature, public_key);
              if (is_signed_well) {
                 signed_num += 1;
@@ -111,7 +117,12 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
                 }
              }
           }
-      }      
+      }   
+      counter += 1;   
+    }
+
+    ifnot(signed_num) {
+      return 0;
     }
 
     if (is_transaction_found_in_local_storage) {

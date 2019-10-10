@@ -7,6 +7,8 @@
 
 message -1 code <s storage c7 runvmctx 
 
+// Test for sending init message to initialized contract
+
 constant updated_storage
 constant exit_code
 ."Exit code " exit_code . cr

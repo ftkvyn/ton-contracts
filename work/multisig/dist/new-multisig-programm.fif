@@ -196,9 +196,18 @@ PROGRAM{
         SWAP
         DICTUGET
         NULLSWAPIFNOT
-        SWAP
-        1 LDU
-        DROP
+        0 PUSHINT
+        OVER
+        IF:<{
+          DROP
+          SWAP
+          1 LDU
+          DROP
+        }>ELSE<{
+          s1 s2 XCHG
+          SWAP
+          DROP
+        }>
         SWAP
         AND
         IFNOT:<{
@@ -212,7 +221,25 @@ PROGRAM{
           SWAP
           DICTUGET
           NULLSWAPIFNOT
-          DROP
+          IFNOTJMP:<{
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            DROP
+            91 PUSHINT
+          }>
           256 LDU
           DROP
           s8 PUSH
@@ -284,12 +311,28 @@ PROGRAM{
         s1 s2 XCHG
         DROP
       }>
+      s0 s2 XCHG
+      INC
       s1 s2 XCHG
-      SWAP
     }>
     DROP
     s5 POP
     s6 POP
+    s5 PUSH
+    IFNOTJMP:<{
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+      DROP
+      0 PUSHINT
+    }>
     s0 s7 XCHG
     IF:<{
       32 PUSHINT

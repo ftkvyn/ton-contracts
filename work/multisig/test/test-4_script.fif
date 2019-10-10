@@ -1,0 +1,52 @@
+
+."Message: " cr inner-message csr. cr
+
+inner-message -1 code <s storage c7 runvmctx 
+
+// Test for creating new sign for existing transaction
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+."Updated storage: " cr updated_storage <s csr. cr
+
+1 =: key-number
+
+wallet-name +".addr" load-address
+2dup 2constant wallet_addr
+."Source wallet address = " 2dup .addr cr 6 .Addr cr
+"key_" key-number (.) +".pk" $+ load-keypair nip constant wallet_pk
+
+order ."signing message: " <s csr. cr
+order hash wallet_pk ed25519_sign_uint constant sign
+
+dictnew constant signs-dict
+<b sign B, b> <s key-number signs-dict 8 udict!
+
+drop
+constant signs-dict
+
+<b b{1000100} s, wallet_addr addr, 0 Gram, b{00} s,
+   signs-dict dict, 
+   order ref, b> constant result-message
+
+result-message
+dup ."resulting external message: " <s csr. cr
+2 boc+>B dup Bx. cr
+savefile +".boc" tuck B>file
+."(Saved to file " type .")" cr
+
+// For testing purposes
+<b signs-dict dict, 
+   order ref, b> <s constant inner-message
+
+   ."Message: " cr inner-message csr. cr
+
+inner-message -1 code <s updated_storage c7 runvmctx 
+
+// Test for creating new sign for existing transaction
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+."Updated storage: " cr updated_storage <s csr. cr
