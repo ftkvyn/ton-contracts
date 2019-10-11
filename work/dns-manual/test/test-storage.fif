@@ -1,24 +1,23 @@
 "TonUtil.fif" include
 
-0 constant workchain
+3 constant workchain
 103040 constant destination
 
 "domain1" constant str-val
 
 { $len 8 * } : bit_len
 { dup $>s swap bit_len u@ } : to_uint
-{ drop 256 } : bit_len
 
 str-val to_uint constant uint-val
 uint-val .dump cr
 
 dictnew constant dns-dict
-<b workchain destination addr, b> <s uint-val dns-dict str-val bit_len udict!
+<b workchain destination addr, b> <s uint-val dns-dict 256 udict!
 
 drop
 constant dns-dict
 
-0 constant workchain
+19 constant workchain
 563032 constant destination
 
 "domain_3" constant str-val
@@ -26,8 +25,7 @@ constant dns-dict
 str-val to_uint constant uint-val
 uint-val .dump cr
 
-dictnew constant dns-dict
-<b workchain destination addr, b> <s uint-val dns-dict str-val bit_len udict!
+<b workchain destination addr, b> <s uint-val dns-dict 256 udict!
 
 drop
 constant dns-dict

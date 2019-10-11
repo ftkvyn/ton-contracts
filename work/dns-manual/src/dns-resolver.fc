@@ -12,5 +12,10 @@ _ recv_external(slice in_msg) impure {
 
     (slice value_slice, int is_found) = dns_dict.udict_get?(256, str_int);
 
-    return value_slice;
+    ;; return value_slice.slice_bits();
+    ;; var (my_wc, my_addr) = my_address().parse_std_addr();
+    ;; var (wc, dest) = 
+    int wc = value_slice~load_uint(8);
+    int dest = value_slice~load_uint(256);
+    return (wc, dest);
 }

@@ -22,5 +22,8 @@ PROGRAM{
     DICTUGET
     NULLSWAPIFNOT
     DROP
+    8 LDU
+    256 LDU
+    DROP
   }>
 }END>c

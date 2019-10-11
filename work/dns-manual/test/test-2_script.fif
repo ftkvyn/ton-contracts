@@ -2,11 +2,22 @@ constant code
 
 "TonUtil.fif" include
 
-<b b> constant message_body
-
 { $len 8 * } : bit_len
 
 <b "domain1" $, b> <s constant message
+
+."Message: " cr message csr. cr
+
+message -1 code <s storage runvm 
+
+// Test for sending init message to initialized contract
+.s cr
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+
+<b "domain_3" $, b> <s constant message
 
 ."Message: " cr message csr. cr
 
