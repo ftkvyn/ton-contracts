@@ -1,6 +1,6 @@
 rm ./dist/*.*
 rm ./temp/*.fif
-func -AP -O 0 -o ./dist/new-multisig-programm.fif ./lib/stdlib.fc ./src/multisig.fc
+func -AP -O0 -o ./dist/new-multisig-programm.fif ./lib/stdlib.fc ./src/multisig.fc
 cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif > ./dist/new-multisig.fif
 cp ./src/multisig-transaction.fif ./dist/multisig-transaction.fif
 
@@ -28,9 +28,9 @@ sed -i 's/#!\/usr\/bin\/env fift -s/constant code/' ./temp/test-6.fif
 mkdir -p temp
 cd temp
 fift -s ./../dist/new-multisig.fif 0 6 4 test-run
-#fift -s ./test-1.fif 0 6 4 test-run
-#fift -s ./test-2.fif 0 6 4 test-run
-#fift -s ./test-3.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello
-#fift -s ./test-4.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello
-#fift -s ./test-5.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello
+fift -s ./test-1.fif 0 6 4 test-run
+fift -s ./test-2.fif 0 6 4 test-run
+fift -s ./test-3.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello
+fift -s ./test-4.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello
+fift -s ./test-5.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello
 fift -s ./test-6.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 5 1 hello

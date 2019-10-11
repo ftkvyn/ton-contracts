@@ -10,7 +10,7 @@ constant exit_code
 ."Exit code " exit_code . cr
 ."Updated storage: " cr updated_storage <s csr. cr
 
-1 =: key-number
+2 =: key-number
 
 wallet-name +".addr" load-address
 2dup 2constant wallet_addr
@@ -55,6 +55,23 @@ constant exit_code
 
 constant updated_storage
 constant exit_code
+  .dump cr
+
+
+"key_" key-number (.) +".pk" $+ load-keypair drop constant pub_key
+
+pub_key 256 B>u@ 122190 code <s updated_storage c7 runvmctx // signed orders
+
+constant updated_storage
+constant exit_code
  .dump cr
-// ."Value " returned_val . cr
-// ."Value: " cr returned_val <s csr. cr
+
+1 =: key-number
+
+"key_" key-number (.) +".pk" $+ load-keypair drop constant pub_key
+
+pub_key 256 B>u@ 121650 code <s updated_storage c7 runvmctx // not signed orders
+
+constant updated_storage
+constant exit_code
+ .dump cr

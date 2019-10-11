@@ -68,6 +68,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
     }
     accept_message();
     cell confirmed_signs_dict = new_dict();
+    int counter = 1;
     int signed_num = 0;
     if (is_transaction_found_in_local_storage) {
       (int is_executed, int expires) = (tran_slice~load_uint(1), tran_slice~load_uint(32));
@@ -79,7 +80,7 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
       throw_unless(41, cell_hash(original_order) == order_hash);
     }
     
-    int counter = 1;
+    counter = 1;
     repeat (n) {
       (slice signature_slice, int is_found) = signs_dict.udict_get?(8, counter);
       if (is_found) {
@@ -164,8 +165,8 @@ int seqno() method_id {
     return data_slice~load_uint(32);
 }
 
-_ load_order_by_condition(int key_num, int is_signed) {
-    (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
+_ load_order_by_condition(int key_num, int is_signed, int n, int seq_num, cell keys_dict, cell transactions_dict) {
+  dump_stack();
     var orders_list = nil;
     int counter = 1;
     int now_time = now();
@@ -182,12 +183,13 @@ _ load_order_by_condition(int key_num, int is_signed) {
                 ;; ToDo: extract addr, amount, message
                 orders_list = cons(original_order, orders_list);
               } else {
+                int is_allready_signed = 0;
                 (slice is_allready_signed_slice, int is_found) = confirmed_signs_dict.udict_get?(8, key_num);
                 if (is_found) {
-                  int is_allready_signed = is_allready_signed_slice~load_uint(1);
-                  if (is_signed == is_allready_signed) {
-                      orders_list = cons(original_order, orders_list);
-                  }
+                  is_allready_signed = is_allready_signed_slice~load_uint(1);
+                }
+                if (is_signed == is_allready_signed) {
+                    orders_list = cons(original_order, orders_list);
                 }
               } 
           }
@@ -197,30 +199,38 @@ _ load_order_by_condition(int key_num, int is_signed) {
     return orders_list;
 }
 
-int get_key_num(int pubkey) {
-    (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
-    int counter = 0;
-    repeat(n) { 
+int get_key_num(int pubkey, int n, cell keys_dict) {
+    int counter = 1;
+    int num = -1;
+    do { 
         (slice key_slice, int is_found) = keys_dict.udict_get?(8, counter);
         int public_key = key_slice~load_uint(256);
         if (public_key == pubkey) {
-          return counter;
+          dump_stack();
+          num = counter;
         }
-    }
-    return -1;
+      counter += 1;
+    } until ( (counter > n) | (num != -1) )
+    return num;
 }
 
 _ pending_orders() method_id {
-    return load_order_by_condition(0, 0);
+    (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
+    return load_order_by_condition(0, 0, n, seq_num, keys_dict, transactions_dict);
 }
 
 _ is_signed_orders(int pubkey, int is_signed) {
-  int key_num = get_key_num(pubkey);
-  return load_order_by_condition(key_num, is_signed);
+  (int n, int k, int seq_num, cell keys_dict, cell transactions_dict) = load_internal_data();
+  int key_num = get_key_num(pubkey, n, keys_dict);
+  if  (key_num == -1) {
+    return nil;
+  }
+
+  return load_order_by_condition(key_num, is_signed, n, seq_num, keys_dict, transactions_dict);
 }
 
 _ signed_orders(int pubkey) method_id {
-    return is_signed_orders(pubkey, -1);
+    return is_signed_orders(pubkey, 1);
 }
 
 _ not_signed_orders(int pubkey) method_id {
