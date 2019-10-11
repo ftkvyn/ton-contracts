@@ -2,8 +2,15 @@
   ;; do nothing for internal messages
 }
 
-int recv_external(slice in_msg) impure {
+_ recv_external(slice in_msg) impure {
+    slice data_slice = get_data().begin_parse();
+    cell dns_dict = data_slice~load_dict();
+
     int len = in_msg.slice_bits();
     int str_int = in_msg~load_uint(len);
-    return str_int;
+    dump_stack();
+
+    (slice value_slice, int is_found) = dns_dict.udict_get?(256, str_int);
+
+    return value_slice;
 }
