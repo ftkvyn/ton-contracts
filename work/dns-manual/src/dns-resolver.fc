@@ -1,4 +1,4 @@
 int recv_external(slice in_msg) impure {
-    
+    cell dns_dict = in_msg~load_ref();
     return -1;
 }
