@@ -7,8 +7,8 @@ PROGRAM{
     DROP
   }>
   recv_external PROC:<{
-    32 LDU
-    SWAP
+    DUP
+    SBITS
     LDUX
     DROP
   }>

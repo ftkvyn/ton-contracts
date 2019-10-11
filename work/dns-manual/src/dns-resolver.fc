@@ -3,7 +3,7 @@
 }
 
 int recv_external(slice in_msg) impure {
-    int len = in_msg~load_uint(32);
+    int len = in_msg.slice_bits();
     int str_int = in_msg~load_uint(len);
     return str_int;
 }
