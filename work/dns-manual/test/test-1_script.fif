@@ -7,11 +7,14 @@
 
 "domain1" constant str-val
 
-str-val $>s str-val $len 8 * u@ constant uint-val
+{ $len 8 * } : bit_len
+{ dup $>s swap bit_len u@ } : to_uint
+
+str-val to_uint constant uint-val
 uint-val .dump cr
 
 dictnew constant dns-dict
-<b workchain destination addr, b> <s uint-val dns-dict str-val $len 8 * udict!
+<b workchain destination addr, b> <s uint-val dns-dict str-val bit_len udict!
 
 drop
 constant dns-dict
@@ -21,11 +24,11 @@ constant dns-dict
 
 "domain_3" constant str-val
 
-str-val $>s str-val $len 8 * u@ constant uint-val
+str-val to_uint constant uint-val
 uint-val .dump cr
 
 dictnew constant dns-dict
-<b workchain destination addr, b> <s uint-val dns-dict str-val $len 8 * udict!
+<b workchain destination addr, b> <s uint-val dns-dict str-val bit_len udict!
 
 drop
 constant dns-dict
@@ -33,3 +36,4 @@ constant dns-dict
 <b dns-dict dict, b> constant inner-message
 
 inner-message  <s csr. cr
+
