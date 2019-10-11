@@ -1,0 +1,4 @@
+int recv_external(slice in_msg) impure {
+    
+    return -1;
+}

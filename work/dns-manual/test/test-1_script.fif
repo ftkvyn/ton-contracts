@@ -1,0 +1,35 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+0 constant workchain
+103040 constant destination
+
+"domain1" constant str-val
+
+str-val $>s str-val $len 8 * u@ constant uint-val
+uint-val .dump cr
+
+dictnew constant dns-dict
+<b workchain destination addr, b> <s uint-val dns-dict str-val $len 8 * udict!
+
+drop
+constant dns-dict
+
+0 constant workchain
+563032 constant destination
+
+"domain_3" constant str-val
+
+str-val $>s str-val $len 8 * u@ constant uint-val
+uint-val .dump cr
+
+dictnew constant dns-dict
+<b workchain destination addr, b> <s uint-val dns-dict str-val $len 8 * udict!
+
+drop
+constant dns-dict
+
+<b dns-dict dict, b> constant inner-message
+
+inner-message  <s csr. cr
