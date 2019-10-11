@@ -172,149 +172,157 @@ PROGRAM{
       EQUAL
       41 THROWIFNOT
     }>ELSE<{
-      s2 s4 XCHG
-      s0 s3 XCHG
-      s1 s2 XCHG
+      s3 POP
+      s3 POP
+      1 PUSHINT
+      s12 PUSH
+      REPEAT:<{
+        DUMPSTK
+        0 PUSHINT
+        NEWC
+        1 STU
+        8 PUSHINT
+        s1 s2 XCHG
+        OVER
+        s1 s6 XCHG
+        s0 s6 XCHG
+        DICTUSETB
+        s0 s3 XCHG
+        INC
+      }>
       DROP
-      DROP
+      s0 s2 XCHG
     }>
     1 PUSHINT
-    s12 PUSH
+    0 PUSHINT
+    s13 PUSH
     REPEAT:<{
-      8 PUSHINT
-      OVER
-      SWAP
-      s10 PUSH
-      SWAP
-      DICTUGET
-      NULLSWAPIFNOT
-      IF:<{
+      DUP
+      IFNOT:<{
         8 PUSHINT
         s2 PUSH
         SWAP
-        s4 PUSH
+        s11 PUSH
         SWAP
         DICTUGET
         NULLSWAPIFNOT
-        0 PUSHINT
-        OVER
         IF:<{
-          DROP
-          SWAP
-          1 LDU
-          DROP
-        }>ELSE<{
-          s1 s2 XCHG
-          SWAP
-          DROP
-        }>
-        SWAP
-        AND
-        IFNOT:<{
-          9 PUSHPOW2
-          LDSLICEX
-          DROP
           8 PUSHINT
-          s2 PUSH
+          s3 PUSH
           SWAP
-          s12 PUSH
+          s5 PUSH
           SWAP
           DICTUGET
           NULLSWAPIFNOT
-          IFNOTJMP:<{
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            DROP
-            91 PUSHINT
-          }>
-          256 LDU
-          DROP
-          s8 PUSH
-          s0 s2 XCHG
-          SWAP
-          CHKSIGNU
+          0 PUSHINT
+          OVER
           IF:<{
-            s0 s2 XCHG
-            INC
-            1 PUSHINT
-            NEWC
-            1 STU
-            8 PUSHINT
+            DROP
+            SWAP
+            1 LDU
+            DROP
+          }>ELSE<{
             s1 s2 XCHG
-            s4 PUSH
+            SWAP
+            DROP
+          }>
+          SWAP
+          AND
+          IFNOT:<{
+            9 PUSHPOW2
+            LDSLICEX
+            DROP
+            8 PUSHINT
+            s3 PUSH
+            SWAP
+            s13 PUSH
+            SWAP
+            DICTUGET
+            NULLSWAPIFNOT
+            DROP
+            256 LDU
+            DROP
+            s9 PUSH
             s0 s2 XCHG
-            s1 s4 XCHG
-            s0 s4 XCHG
-            DICTUSETB
-            OVER
-            s12 PUSH
-            EQUAL
-            IFJMP:<{
-              DROP
-              DROP
-              DROP
-              NIP
-              s2 POP
-              s2 POP
-              s2 POP
+            SWAP
+            CHKSIGNU
+            IF:<{
               s0 s3 XCHG
-              IF:<{
-                32 PUSHINT
-                s3 PUSH
-                s0 s2 XCHG
-                s1 s7 XCHG
-                s0 s7 XCHG
-                DICTUDELGET
-                NULLSWAPIFNOT
-                DROP
-                DROP
-              }>ELSE<{
-                s0 s5 XCHG
-              }>
+              INC
               1 PUSHINT
               NEWC
               1 STU
-              32 PUSHINT
-              s1 s3 XCHG
-              s2 s4 XCHG
-              s1 s4 XCHG
+              8 PUSHINT
+              s1 s2 XCHG
+              s3 PUSH
+              s0 s2 XCHG
+              s1 s5 XCHG
+              s0 s5 XCHG
               DICTUSETB
-              s3 s4 XCHG
+              s2 PUSH
+              s13 PUSH
+              EQUAL
+              IF:<{
+                s3 POP
+                s10 PUSH
+                IF:<{
+                  32 PUSHINT
+                  s6 PUSH
+                  s0 s2 XCHG
+                  s1 s15 XCHG
+                  s0 s15 XCHG
+                  DICTUDELGET
+                  NULLSWAPIFNOT
+                  DROP
+                  DROP
+                }>ELSE<{
+                  s0 s13 XCHG
+                }>
+                1 PUSHINT
+                NEWC
+                1 STU
+                32 PUSHINT
+                s1 s2 XCHG
+                s7 PUSH
+                s0 s2 XCHG
+                SWAP
+                DICTUSETB
+                s12 PUSH
+                s12 PUSH
+                s5 PUSH
+                s12 PUSH
+                s4 PUSH
+                save_internal_data CALLDICT
+                1 PUSHINT
+              }>ELSE<{
+                s1 s14 XCHG
+                s0 s3 XCHG
+              }>
+            }>ELSE<{
+              s1 s14 XCHG
               s2 s3 XCHG
-              save_internal_data CALLDICT
-              -1 PUSHINT
             }>
           }>ELSE<{
-            s0 s2 XCHG
-            SWAP
+            s2 s15 XCHG
+            s3 s4 XCHG
+            DROP
           }>
         }>ELSE<{
-          s1 s3 XCHG
-          s1 s2 XCHG
+          s2 s15 XCHG
+          s3 s4 XCHG
           DROP
         }>
       }>ELSE<{
-        s1 s3 XCHG
-        s1 s2 XCHG
-        DROP
+        s1 s14 XCHG
+        s2 s3 XCHG
       }>
-      s0 s2 XCHG
+      s0 s14 XCHG
       INC
-      s1 s2 XCHG
+      s1 s14 XCHG
+      s2 s3 XCHG
+      SWAP
     }>
+    DROP
     DROP
     s5 POP
     s6 POP

@@ -78,10 +78,13 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
       confirmed_signs_dict = tran_slice~load_ref();
       cell original_order = tran_slice~load_ref();
       throw_unless(41, cell_hash(original_order) == order_hash);
-    }
+    } 
     
     counter = 1;
+    int is_fulfilled = 0;
     repeat (n) {
+      ifnot(is_fulfilled) { ;; dirty hack because it's not possible to return from line 119 without adding else blocks with returns for all nested ifs.
+
       (slice signature_slice, int is_found) = signs_dict.udict_get?(8, counter);
       if (is_found) {
           ;; there is a signature in a message.
@@ -94,9 +97,6 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
              ;; was not signed by this key before.
              var signature = signature_slice~load_bits(512);
              (slice key_slice, int is_found) = keys_dict.udict_get?(8, counter);
-             ifnot(is_found) {
-               return 91;
-             }
              var public_key = key_slice~load_uint(256);
              int is_signed_well = check_signature(order_hash, signature, public_key);
              if (is_signed_well) {
@@ -115,11 +115,14 @@ int process_message(slice in_msg, int n, int k, int seq_num, cell keys_dict, cel
                   execute_order(ext_message, mode);
                   garbage_collect(seq_num, transactions_dict);
                   save_internal_data(n, k, seq_num, keys_dict, transactions_dict);
-                  return -1;
-                }
+                  is_fulfilled = 1;
+                  ;; return -1;
+                } 
              }
           }
       }   
+
+      }
       counter += 1;   
     }
 
