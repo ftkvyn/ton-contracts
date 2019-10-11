@@ -1,31 +1,5 @@
-dictnew constant keys-dict
 
-keys-dict
-1
-{
-    dup
-    "key_" swap (.) +".pk" $+
-    load-generate-keypair
-    drop // private key
-    <b swap B, b> <s .s
-    over 3 roll 8 .s cr udict!+ 0= abort"key already added"
-    swap
-     1 +
-} 6 times
-."done generating/loading keys" cr
-
-drop // counter
-constant keys-dict
-
-dictnew constant transactions-dict
-<b 1 1 u, b> <s 0 transactions-dict 32 udict!
-
-drop
-constant transactions-dict
-
-<b 6 8 u, 
-   4 8 u,
-   5 32 u,
-   keys-dict dict,
-   transactions-dict dict, // transactions
+<b 0 8 u, 
 b>  constant storage
+
+
