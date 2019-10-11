@@ -14,7 +14,7 @@ str-val to_uint constant uint-val
 uint-val .dump cr
 
 dictnew constant dns-dict
-<b workchain destination addr, b> <s uint-val dns-dict str-val bit_len udict!
+<b workchain destination addr, b> <s uint-val dns-dict 256 udict!
 
 drop
 constant dns-dict
@@ -27,8 +27,7 @@ constant dns-dict
 str-val to_uint constant uint-val
 uint-val .dump cr
 
-dictnew constant dns-dict
-<b workchain destination addr, b> <s uint-val dns-dict str-val bit_len udict!
+<b workchain destination addr, b> <s uint-val dns-dict 256 udict!
 
 drop
 constant dns-dict
