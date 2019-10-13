@@ -172,26 +172,11 @@ PROGRAM{
       EQUAL
       41 THROWIFNOT
     }>ELSE<{
-      s3 POP
-      s3 POP
-      1 PUSHINT
-      s12 PUSH
-      REPEAT:<{
-        DUMPSTK
-        0 PUSHINT
-        NEWC
-        1 STU
-        8 PUSHINT
-        s1 s2 XCHG
-        OVER
-        s1 s6 XCHG
-        s0 s6 XCHG
-        DICTUSETB
-        s0 s3 XCHG
-        INC
-      }>
+      s2 s4 XCHG
+      s0 s3 XCHG
+      s1 s2 XCHG
       DROP
-      s0 s2 XCHG
+      DROP
     }>
     1 PUSHINT
     0 PUSHINT

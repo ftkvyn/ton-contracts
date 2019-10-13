@@ -19,3 +19,27 @@ _ recv_external(slice in_msg) impure {
     int dest = value_slice~load_uint(256);
     return (wc, dest);
 }
+
+_ dnsresolve(slice dns_str, int category) method_id {
+
+    slice data_slice = get_data().begin_parse();
+    cell dns_dict = data_slice~load_dict();
+
+    int len = dns_str.slice_bits();
+    int str_int = dns_str~load_uint(len);
+    dump_stack();
+
+    (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
+    ifnot(is_found) {
+        return (0,0);
+    }
+    (slice value_slice, int is_found) = categories_slice~load_dict().idict_get?(16, category);
+    ifnot(is_found) {
+        return (0,0);
+    }
+
+    int wc = value_slice~load_uint(8);
+    int dest = value_slice~load_uint(256);
+    return (wc, dest);
+
+}

@@ -1,31 +1,108 @@
 "TonUtil.fif" include
 
-3 constant workchain
-103040 constant destination
+{ $len 8 * } : bit_len
+{ dup $>s swap bit_len u@ } : to_uint
+
+dictnew constant dns-dict
+
+// First domain
 
 "domain1" constant str-val
 
-{ $len 8 * } : bit_len
-{ dup $>s swap bit_len u@ } : to_uint
+// Categories
+dictnew constant cat-dict 
+12 constant category
+
+3 constant workchain
+103040 constant destination
+
+<b workchain destination addr, b> <s category cat-dict 16 idict!
+
+drop
+constant cat-dict 
+
+41 constant category
+
+2 constant workchain
+7478223 constant destination
+
+<b workchain destination addr, b> <s category cat-dict 16 idict!
+
+drop
+constant cat-dict 
+
+-1 constant category
+
+0 constant workchain
+533443223 constant destination
+
+<b workchain destination addr, b> <s category cat-dict 16 idict!
+
+drop
+constant cat-dict 
+
+// Categories end
 
 str-val to_uint constant uint-val
 uint-val .dump cr
 
-dictnew constant dns-dict
-<b workchain destination addr, b> <s uint-val dns-dict 256 udict!
+<b cat-dict dict, b> <s uint-val dns-dict 256 udict!
 
 drop
 constant dns-dict
 
-19 constant workchain
-563032 constant destination
+// Second domain
 
 "domain_3" constant str-val
+
+// Categories
+dictnew constant cat-dict 
+12 constant category
+
+7 constant workchain
+234522 constant destination
+
+<b workchain destination addr, b> <s category cat-dict 16 idict!
+
+drop
+constant cat-dict 
+
+55 constant category
+
+13 constant workchain
+25445337 constant destination
+
+<b workchain destination addr, b> <s category cat-dict 16 idict!
+
+drop
+constant cat-dict 
+
+9 constant category
+
+5 constant workchain
+11335224 constant destination
+
+<b workchain destination addr, b> <s category cat-dict 16 idict!
+
+drop
+constant cat-dict 
+
+-1 constant category
+
+0 constant workchain
+533443223 constant destination
+
+<b workchain destination addr, b> <s category cat-dict 16 idict!
+
+drop
+constant cat-dict 
+
+// Categories end
 
 str-val to_uint constant uint-val
 uint-val .dump cr
 
-<b workchain destination addr, b> <s uint-val dns-dict 256 udict!
+<b cat-dict dict, b> <s uint-val dns-dict 256 udict!
 
 drop
 constant dns-dict

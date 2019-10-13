@@ -6,9 +6,11 @@ constant code
 
 <b "domain1" $, b> <s constant message
 
+41 constant category
+
 ."Message: " cr message csr. cr
 
-message -1 code <s storage runvm 
+message category 123660 code <s storage c7 runvmctx 
 
 // Test for sending init message to initialized contract
 .s cr
@@ -21,7 +23,7 @@ constant exit_code
 
 ."Message: " cr message csr. cr
 
-message -1 code <s storage runvm 
+message category 123660 -1 code <s storage c7 runvmctx 
 
 // Test for sending init message to initialized contract
 .s cr

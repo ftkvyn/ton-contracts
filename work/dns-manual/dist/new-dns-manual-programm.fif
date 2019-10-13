@@ -3,6 +3,7 @@
 PROGRAM{
   DECLPROC recv_internal
   DECLPROC recv_external
+  123660 DECLMETHOD dnsresolve
   recv_internal PROC:<{
     DROP
   }>
@@ -22,6 +23,42 @@ PROGRAM{
     DICTUGET
     NULLSWAPIFNOT
     DROP
+    8 LDU
+    256 LDU
+    DROP
+  }>
+  dnsresolve PROC:<{
+    c4 PUSH
+    CTOS
+    LDDICT
+    DROP
+    s2 PUSH
+    SBITS
+    s1 s3 XCHG
+    LDUX
+    DROP
+    DUMPSTK
+    8 PUSHPOW2
+    s1 s2 XCHG
+    s1 s3 XCHG
+    DICTUGET
+    NULLSWAPIFNOT
+    IFNOTJMP:<{
+      DROP
+      DROP
+      0 PUSHINT
+      DUP
+    }>
+    LDDICT
+    DROP
+    16 PUSHINT
+    DICTIGET
+    NULLSWAPIFNOT
+    IFNOTJMP:<{
+      DROP
+      0 PUSHINT
+      DUP
+    }>
     8 LDU
     256 LDU
     DROP
