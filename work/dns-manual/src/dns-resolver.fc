@@ -2,6 +2,67 @@
   ;; do nothing for internal messages
 }
 
+_ process_init(int public_key) impure {
+    ;; populating new dict with some trash because empty dict doesn't work well.
+    cell new_dns_dict = new_dict();
+    cell new_cat_dict = new_dict();
+    new_cat_dict~idict_set_builder(16, 0, begin_cell().store_uint(1,1));
+    new_dns_dict~udict_set_builder(256, 0, begin_cell().store_dict(new_cat_dict));
+    set_data(begin_cell()
+        .store_uint(1, 32)
+        .store_uint(public_key, 256)
+        ;; ToDo: divide into several dicts with different key length - 32, 64, 256 bits
+        .store_dict(new_dns_dict) ;; DNS entries dict
+        .end_cell());
+    return -1;
+}
+
+_ update_dns(int public_key, int seq_no, cell dns_dict, slice msg_slice) impure {
+    int domain_uint = msg_slice~load_uint(256);
+    int domain_category = msg_slice~load_int(16);
+    int addr_wc = msg_slice~load_int(8);
+    int addr_dest = msg_slice~load_uint(256);
+
+    cell categories_dict = new_dict();
+    (slice categories_slice, int is_found) = dns_dict.udict_get?(256, domain_uint);
+    if(is_found) {
+        categories_dict = categories_slice~load_dict();
+    }
+
+    ;; check if we need  to delete the entry first
+    ;; (categories_dict, int is_found) = categories_dict.idict_delete?(16, domain_category);
+
+    categories_dict~idict_set_builder(16, domain_category, begin_cell()
+        .store_int(addr_wc, 8)
+        .store_uint(addr_dest, 256));
+    dns_dict~udict_set_builder(256, domain_uint, begin_cell().store_dict(categories_dict));
+
+    set_data(begin_cell()
+        .store_uint(seq_no, 32)
+        .store_uint(public_key, 256)
+        .store_dict(dns_dict) ;; DNS entries dict
+        .end_cell());
+
+    return -1;
+}
+
+
+(int, cell) resolve_single_entry(int str_int, int category, int len, cell dns_dict) {
+    (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
+    ifnot(is_found) {
+        return (0, new_dict());
+    }
+    if (category == 0) {
+        return (len + 8, categories_slice~load_dict());
+    }
+    (slice value_slice, int is_found) = categories_slice~load_dict().idict_get?(16, category);
+    ifnot(is_found) {
+        return (0, new_dict());
+    }
+
+    return (len + 8, begin_cell().store_slice(value_slice).end_cell());
+}
+
 _ recv_external(slice in_msg) impure {
     var signature = in_msg~load_bits(512);
     cell msg_body = in_msg~load_ref();
@@ -18,18 +79,7 @@ _ recv_external(slice in_msg) impure {
     if(mode == 7) {
         ;; Initialization of the contract
         throw_if(32, stored_seqno);
-        ;; populating new dict with some trash because empty dict doesn't work well.
-        cell new_dns_dict = new_dict();
-        cell new_cat_dict = new_dict();
-        new_cat_dict~udict_set_builder(16, 0, begin_cell().store_uint(1,1));
-        new_dns_dict~udict_set_builder(256, 0, begin_cell().store_dict(new_cat_dict));
-        set_data(begin_cell()
-            .store_uint(1, 32)
-            .store_uint(public_key, 256)
-            ;; ToDo: divide into several dicts with different key length - 32, 64, 256 bits
-            .store_dict(new_dns_dict) ;; DNS entries dict
-            .end_cell());
-        return -1;
+        return process_init(public_key);
     }
 
     cell dns_dict = data_slice~load_ref();
@@ -48,31 +98,14 @@ _ recv_external(slice in_msg) impure {
     if (mode == 1) {
         ;; New dns entry
         int msg_seqno = msg_slice~load_uint(32);
+        throw_unless(35, stored_seqno == msg_seqno);
 
-        ;; ToDo: implement dns update
-
-        return -1;
+        return update_dns(public_key, stored_seqno + 1, dns_dict, msg_slice);
     }
     
     
     throw_if(404, -1); ;; Unknown message mode
     return 404;
-}
-
-(int, cell) resolve_single_entry(int str_int, int category, int len, cell dns_dict) {
-    (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
-    ifnot(is_found) {
-        return (0, new_dict());
-    }
-    if (category == 0) {
-        return (len + 8, categories_slice~load_dict());
-    }
-    (slice value_slice, int is_found) = categories_slice~load_dict().idict_get?(16, category);
-    ifnot(is_found) {
-        return (0, new_dict());
-    }
-
-    return (len + 8, begin_cell().store_slice(value_slice).end_cell());
 }
 
 (int, cell) dnsresolve(slice dns_str, int category) method_id {
@@ -85,7 +118,6 @@ _ recv_external(slice in_msg) impure {
     int bytes_len = 0;
     int str_int = 0;
     int not_str_found = -1;
-    ;; ToDo: look for other zero-byes and handle it.
     while(not_str_found & dns_str.slice_bits()) {
         int next_byte = dns_str~load_uint(8);
         if (next_byte == 0) {

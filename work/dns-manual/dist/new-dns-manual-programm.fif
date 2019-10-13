@@ -2,96 +2,85 @@
 // automatically generated from `./lib/stdlib.fc` `./src/dns-resolver.fc` 
 PROGRAM{
   DECLPROC recv_internal
-  DECLPROC recv_external
+  DECLPROC process_init
+  DECLPROC update_dns
   DECLPROC resolve_single_entry
+  DECLPROC recv_external
   123660 DECLMETHOD dnsresolve
   recv_internal PROC:<{
     DROP
   }>
-  recv_external PROC:<{
-    9 PUSHPOW2
-    LDSLICEX
-    LDREF
-    DROP
-    c4 PUSH
-    CTOS
-    32 LDU
+  process_init PROC:<{
+    NEWDICT
+    NEWDICT
+    1 PUSHINT
+    NEWC
+    1 STU
+    0 PUSHINT
+    16 PUSHINT
+    s2 s3 XCHG
+    s1 s2 XCHG
+    DICTISETB
+    NEWC
+    STDICT
+    0 PUSHINT
+    8 PUSHPOW2
+    s2 s3 XCHG
+    s1 s2 XCHG
+    DICTUSETB
+    1 PUSHINT
+    NEWC
+    32 STU
+    s1 s2 XCHG
+    256 STU
+    STDICT
+    ENDC
+    c4 POP
+    -1 PUSHINT
+  }>
+  update_dns PROC:<{
     256 LDU
-    s3 PUSH
-    HASHCU
+    16 LDI
+    8 LDI
+    256 LDU
+    DROP
+    NEWDICT
+    8 PUSHPOW2
+    s5 PUSH
     SWAP
-    s0 s5 XCHG
-    s2 PUSH
-    CHKSIGNU
-    34 THROWIFNOT
-    ACCEPT
-    s0 s2 XCHG
-    CTOS
-    8 LDU
-    OVER
-    7 EQINT
-    IFJMP:<{
+    s7 PUSH
+    SWAP
+    DICTUGET
+    NULLSWAPIFNOT
+    IF:<{
+      NIP
+      LDDICT
       DROP
+    }>ELSE<{
       DROP
-      s2 POP
-      SWAP
-      32 THROWIF
-      NEWDICT
-      NEWDICT
-      1 PUSHINT
-      NEWC
-      1 STU
-      0 PUSHINT
-      16 PUSHINT
-      s2 s3 XCHG
-      s1 s2 XCHG
-      DICTUSETB
-      NEWC
-      STDICT
-      0 PUSHINT
-      8 PUSHPOW2
-      s2 s3 XCHG
-      s1 s2 XCHG
-      DICTUSETB
-      1 PUSHINT
-      NEWC
-      32 STU
-      s1 s2 XCHG
-      256 STU
-      STDICT
-      ENDC
-      c4 POP
-      -1 PUSHINT
     }>
-    s3 POP
-    s0 s3 XCHG
-    LDREF
-    DROP
-    s3 PUSH
-    3 EQINT
-    IFJMP:<{
-      s3 POP
-      SWAP
-      256 LDU
-      DROP
-      NEWC
-      s1 s2 XCHG
-      32 STU
-      256 STU
-      STDICT
-      ENDC
-      c4 POP
-      -1 PUSHINT
-    }>
-    DROP
-    DROP
-    DROP
-    1 EQINT
-    IFJMP:<{
-      -1 PUSHINT
-    }>
-    404 THROW
-    404 PUSHINT
+    NEWC
+    s1 s3 XCHG
+    8 STI
+    256 STU
+    16 PUSHINT
+    s1 s3 XCHG
+    s1 s2 XCHG
+    DICTISETB
+    NEWC
+    STDICT
+    8 PUSHPOW2
+    s1 s3 XCHG
+    DICTUSETB
+    NEWC
+    s1 s2 XCHG
+    32 STU
+    s1 s2 XCHG
+    256 STU
+    STDICT
+    ENDC
+    c4 POP
+    -1 PUSHINT
   }>
   resolve_single_entry PROC:<{
     8 PUSHPOW2
@@ -133,6 +122,81 @@ PROGRAM{
     s0 s2 XCHG
     STSLICER
     ENDC
+  }>
+  recv_external PROC:<{
+    9 PUSHPOW2
+    LDSLICEX
+    LDREF
+    DROP
+    c4 PUSH
+    CTOS
+    32 LDU
+    256 LDU
+    s3 PUSH
+    HASHCU
+    SWAP
+    s0 s5 XCHG
+    s2 PUSH
+    CHKSIGNU
+    34 THROWIFNOT
+    ACCEPT
+    s0 s2 XCHG
+    CTOS
+    8 LDU
+    OVER
+    7 EQINT
+    IFJMP:<{
+      DROP
+      DROP
+      s2 POP
+      SWAP
+      32 THROWIF
+      process_init CALLDICT
+    }>
+    s0 s4 XCHG
+    LDREF
+    DROP
+    OVER
+    3 EQINT
+    IFJMP:<{
+      NIP
+      s2 POP
+      s0 s2 XCHG
+      256 LDU
+      DROP
+      NEWC
+      s1 s3 XCHG
+      32 STU
+      s1 s2 XCHG
+      256 STU
+      STDICT
+      ENDC
+      c4 POP
+      -1 PUSHINT
+    }>
+    SWAP
+    1 EQINT
+    IFJMP:<{
+      s0 s3 XCHG
+      32 LDU
+      s2 PUSH
+      SWAP
+      s0 s2 XCHG
+      EQUAL
+      35 THROWIFNOT
+      SWAP
+      INC
+      s2 s3 XCHG
+      s0 s2 XCHG
+      SWAP
+      update_dns CALLDICT
+    }>
+    DROP
+    DROP
+    DROP
+    DROP
+    404 THROW
+    404 PUSHINT
   }>
   dnsresolve PROC:<{
     c4 PUSH
