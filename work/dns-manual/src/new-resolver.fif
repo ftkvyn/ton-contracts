@@ -3,63 +3,37 @@ constant code
 "TonUtil.fif" include
 
 { ."usage: " @' $0 type ." <workchain-id> [<filename-base>]" cr
-   ."Creates a new manual dns resolver in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
-  ."('new-dns-resolver.pk' by default)" cr
-  1 halt
+  ."Creates a new manual dns resolver in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
+  ."('new-manual-dns.pk' by default)" cr 1 halt
 } : usage
-$# dup 1 < swap 2 > or ' usage if
+$# 1- -2 and ' usage if
 
 $1 parse-workchain-id =: wc    // set workchain id from command line argument
-def? $2 { @' $2 } { "new-dns-resolver" } cond constant file-base
-
-0 constant seq_no
+def? $2 { @' $2 } { "new-manual-dns" } cond constant file-base
 
 ."Creating new manual dns resolver in workchain " wc . cr
 
-dictnew constant keys-dict
-
-keys-dict
-1
-{
-    dup
-    "key_" swap (.) +".pk" $+
-    load-generate-keypair
-    drop // private key
-    <b swap B, b> <s
-    over 3 roll 8 udict!+ 0= abort"key already added"
-    swap
-     1 +
-} total-keys times
-."done generating/loading keys" cr
-
-drop // counter
-constant keys-dict
-
-dictnew constant transactions-dict
-<b 1 1 u, b> <s 0 transactions-dict 32 udict!
-
-drop
-constant transactions-dict
-
-<b total-keys 8 u, 
-   sign-keys 8 u,
-   seq_no 32 u,
-   keys-dict dict,
-   transactions-dict dict, // transactions
-b>  constant storage
-
-."Storage: " cr storage <s csr. cr
-
-<b b{0011} s, code ref, storage ref, null dict, b> constant state_init // create StateInit
-state_init
-dup ."StateInit: " <s csr. cr
-dup hash wc swap 2dup 2constant wallet_addr
-."new wallet address = " 2dup .addr cr
+<b 0 32 u, 
+   file-base +".pk" load-generate-keypair
+   constant dns_pk
+   B, 
+b> constant data
+<b b{0011} s, code ref, data ref, null dict, b> constant state-init  // create StateInit
+state-init .s
+state-init ."StateInit: " <s csr. cr
+state-init hash wc swap 2dup 2constant dns_addr
+."new manual dns resolver address = " 2dup .addr cr
 2dup file-base +".addr" save-address-verbose
 ."Non-bounceable address (for init): " 2dup 7 .Addr cr
 ."Bounceable address (for later access): " 6 .Addr cr
-<b b{1000100} s, wallet_addr addr, b{000010} s, state_init <s s, b{0} s, transactions-dict ref, b>
+<b 7 8 u, b> constant msg // mode = 7 - initializing the contract.
+msg
+.s cr
+dup ."signing message: " <s csr. cr
+dup hash dns_pk ed25519_sign_uint rot
+drop
+<b b{1000100} s, dns_addr addr, b{000010} s, state-init <s s, b{0} s, swap B, swap <s s, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-query.boc" tuck B>file
-."(Saved wallet creating query to file " type .")" cr
+."(Saved manual dns creating query to file " type .")" cr

@@ -1,2 +1,0 @@
-;; int bit_length(string s) asm "$len" "8" "*";
-;; int to_int(string s) asm "$>s" "dup" "$len" "8" "*" "u@";

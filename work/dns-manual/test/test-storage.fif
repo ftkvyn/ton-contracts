@@ -107,6 +107,9 @@ uint-val .dump cr
 drop
 constant dns-dict
 
-<b dns-dict dict, b> constant storage
+<b 
+0 8 u, // seq_no
+0 256 u, // public key
+dns-dict dict, b> constant storage
 
 

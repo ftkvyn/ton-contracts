@@ -3,12 +3,62 @@
 }
 
 _ recv_external(slice in_msg) impure {
+    var signature = in_msg~load_bits(512);
+    cell msg_body = in_msg~load_ref();
+
+    slice data_slice = begin_parse(get_data());
+    int stored_seqno = data_slice~load_uint(32);
+    int public_key = data_slice~load_uint(256);
     
+    throw_unless(34, check_signature(slice_hash(msg_body), signature, public_key));
+    accept_message();
+
+    slice msg_slice = msg_body.begin_parse();
+    int mode = msg_slice~load_uint(8);
+    if(mode == 7) {
+        ;; Initialization of the contract
+        throw_if(32, stored_seqno);
+        set_data(begin_cell()
+            .store_uint(1, 32)
+            .store_uint(public_key, 256)
+            ;; ToDo: divide into several dicts with different key length - 32, 64, 256 bits
+            .store_dict(new_dict()) ;; DNS entries dict
+            .end_cell());
+        return -1;
+    }
+
+    cell dns_dict = data_slice~load_ref();
+
+    if (mode == 3) {
+        ;; Updating stored public_key
+        int new_public_key = msg_slice~load_uint(256);
+        set_data(begin_cell()
+            .store_uint(stored_seqno, 32)
+            .store_uint(new_public_key, 256)
+            .store_dict(dns_dict)
+            .end_cell());
+        return -1;
+    }
+
+    if (mode == 1) {
+        ;; New dns entry
+        int msg_seqno = msg_slice~load_uint(32);
+
+        ;; ToDo: implement dns update
+
+        return -1;
+    }
+    
+    
+    throw_id(404, -1); ;; Unknown message mode
+    return 404;
 }
 
 _ dnsresolve(slice dns_str, int category) method_id {
 
     slice data_slice = get_data().begin_parse();
+    int stored_seqno = data_slice~load_uint(32);
+    int public_key = data_slice~load_uint(256);
     cell dns_dict = data_slice~load_dict();
 
     int len = dns_str.slice_bits();
