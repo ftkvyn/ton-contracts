@@ -23,7 +23,7 @@ constant cat-dict
 
 41 constant category
 
-2 constant workchain
+-1 constant workchain
 7478223 constant destination
 
 <b workchain destination addr, b> <s category cat-dict 16 idict!
