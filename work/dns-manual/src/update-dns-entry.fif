@@ -39,7 +39,7 @@ constant update_msg
 update_msg hash key_priv ed25519_sign_uint constant signature
   
 <b b{1000100} s, dns_addr addr, 0 Gram, b{00} s,
-   signature B, update_msg <s s, b>
+   signature B, update_msg ref, b>
 dup ."resulting external message: " <s csr. cr
 2 boc+>B dup Bx. cr
 savefile +".boc" tuck B>file
