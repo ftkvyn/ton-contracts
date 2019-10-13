@@ -18,14 +18,14 @@ drop // counter
 constant keys-dict
 
 dictnew constant transactions-dict
-<b 1 1 u, b> <s 0 transactions-dict 32 udict!
+<b 0 1 u, b> <s 0 transactions-dict 32 udict!
 
 drop
 constant transactions-dict
 
 <b 6 8 u, 
    4 8 u,
-   5 32 u,
+   1 32 u,
    keys-dict dict,
    transactions-dict dict, // transactions
 b>  constant storage
