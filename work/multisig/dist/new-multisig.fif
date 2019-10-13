@@ -599,7 +599,7 @@ drop // counter
 constant keys-dict
 
 dictnew constant transactions-dict
-<b 1 1 u, b> <s 0 transactions-dict 32 udict!
+<b 0 1 u, b> <s 0 transactions-dict 32 udict!
 
 drop
 constant transactions-dict
