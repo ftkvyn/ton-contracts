@@ -1,0 +1,158 @@
+"Asm.fif" include
+// automatically generated from `./lib/stdlib.fc` `./src/dns-resolver.fc` 
+PROGRAM{
+  DECLPROC recv_internal
+  DECLPROC recv_external
+  123660 DECLMETHOD dnsresolve
+  recv_internal PROC:<{
+    DROP
+  }>
+  recv_external PROC:<{
+    9 PUSHPOW2
+    LDSLICEX
+    LDREF
+    DROP
+    c4 PUSH
+    CTOS
+    32 LDU
+    256 LDU
+    s3 PUSH
+    HASHCU
+    SWAP
+    s0 s5 XCHG
+    s2 PUSH
+    CHKSIGNU
+    34 THROWIFNOT
+    ACCEPT
+    s0 s2 XCHG
+    CTOS
+    8 LDU
+    OVER
+    7 EQINT
+    IFJMP:<{
+      DROP
+      DROP
+      s2 POP
+      SWAP
+      32 THROWIF
+      NEWDICT
+      1 PUSHINT
+      NEWC
+      32 STU
+      s1 s2 XCHG
+      256 STU
+      STDICT
+      ENDC
+      c4 POP
+      -1 PUSHINT
+    }>
+    s3 POP
+    s0 s3 XCHG
+    LDREF
+    DROP
+    s3 PUSH
+    3 EQINT
+    IFJMP:<{
+      s3 POP
+      SWAP
+      256 LDU
+      DROP
+      NEWC
+      s1 s2 XCHG
+      32 STU
+      256 STU
+      STDICT
+      ENDC
+      c4 POP
+      -1 PUSHINT
+    }>
+    DROP
+    DROP
+    DROP
+    1 EQINT
+    IFJMP:<{
+      -1 PUSHINT
+    }>
+    404 THROW
+    404 PUSHINT
+  }>
+  dnsresolve PROC:<{
+    c4 PUSH
+    CTOS
+    32 LDU
+    NIP
+    256 LDU
+    NIP
+    LDDICT
+    DROP
+    s2 PUSH
+    SBITS
+    s1 s3 XCHG
+    LDUX
+    DROP
+    DUMPSTK
+    8 PUSHPOW2
+    s1 s2 XCHG
+    s1 s3 XCHG
+    DICTUGET
+    NULLSWAPIFNOT
+    IFNOTJMP:<{
+      DROP
+      DROP
+      0 PUSHINT
+      DUP
+    }>
+    LDDICT
+    DROP
+    16 PUSHINT
+    DICTIGET
+    NULLSWAPIFNOT
+    IFNOTJMP:<{
+      DROP
+      0 PUSHINT
+      DUP
+    }>
+    8 LDI
+    256 LDU
+    DROP
+  }>
+}END>c
+constant code
+
+"TonUtil.fif" include
+
+{ ."usage: " @' $0 type ." <workchain-id> [<filename-base>]" cr
+  ."Creates a new manual dns resolver in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
+  ."('new-manual-dns.pk' by default)" cr 1 halt
+} : usage
+$# 1- -2 and ' usage if
+
+$1 parse-workchain-id =: wc    // set workchain id from command line argument
+def? $2 { @' $2 } { "new-manual-dns" } cond constant file-base
+
+."Creating new manual dns resolver in workchain " wc . cr
+
+<b 0 32 u, 
+   file-base +".pk" load-generate-keypair
+   constant dns_pk
+   B, 
+b> constant data
+<b b{0011} s, code ref, data ref, null dict, b> constant state-init  // create StateInit
+state-init .s
+state-init ."StateInit: " <s csr. cr
+state-init hash wc swap 2dup 2constant dns_addr
+."new manual dns resolver address = " 2dup .addr cr
+2dup file-base +".addr" save-address-verbose
+."Non-bounceable address (for init): " 2dup 7 .Addr cr
+."Bounceable address (for later access): " 6 .Addr cr
+<b 7 8 u, b> constant msg // mode = 7 - initializing the contract.
+msg
+.s cr
+dup ."signing message: " <s csr. cr
+dup hash dns_pk ed25519_sign_uint rot
+drop
+<b b{1000100} s, dns_addr addr, b{000010} s, state-init <s s, b{0} s, swap B, swap <s s, b>
+dup ."External message for initialization is " <s csr. cr
+2 boc+>B dup Bx. cr
+file-base +"-query.boc" tuck B>file
+."(Saved manual dns creating query to file " type .")" cr
