@@ -137,3 +137,8 @@ _ recv_external(slice in_msg) impure {
     throw_if(55, not_str_found); ;; if we got there - there was no following zero, wrong format
     return resolve_single_entry(str_int, category, bytes_len * 8, dns_dict);
 }
+
+int seqno() method_id {
+    slice data_slice = get_data().begin_parse();
+    return data_slice~load_uint(32);
+}
