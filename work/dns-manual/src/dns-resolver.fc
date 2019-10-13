@@ -59,20 +59,7 @@ _ recv_external(slice in_msg) impure {
     return 404;
 }
 
-_ dnsresolve(slice dns_str, int category) method_id {
-
-    slice data_slice = get_data().begin_parse();
-    int stored_seqno = data_slice~load_uint(32);
-    int public_key = data_slice~load_uint(256);
-    cell dns_dict = data_slice~load_dict();
-
-    int len = dns_str.slice_bits();
-    len -= 8;
-    int str_int = dns_str~load_uint(len);
-    int following_zero = dns_str~load_uint(8);    
-    dump_stack();
-    throw_if(55, following_zero); ;;wrong format
-
+(int cell) resolve_single_entry(int str_int, int category) {
     (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
     ifnot(is_found) {
         return (0, new_dict());
@@ -86,5 +73,23 @@ _ dnsresolve(slice dns_str, int category) method_id {
     }
 
     return (len + 8, begin_cell().store_slice(value_slice).end_cell());
+}
 
+(int cell) dnsresolve(slice dns_str, int category) method_id {
+
+    slice data_slice = get_data().begin_parse();
+    int stored_seqno = data_slice~load_uint(32);
+    int public_key = data_slice~load_uint(256);
+    cell dns_dict = data_slice~load_dict();
+
+    int len = dns_str.slice_bits();
+    len -= 8;
+    int str_int = dns_str~load_uint(len);
+    int following_zero = dns_str~load_uint(8);    
+    dump_stack();
+    throw_if(55, following_zero); ;;wrong format
+
+    ;; ToDo: look for other zero-byes and handle it.
+    
+    return resolve_single_entry(str_int, category);
 }
