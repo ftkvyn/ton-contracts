@@ -113,3 +113,16 @@ constant dns-dict
 
 inner-message  <s csr. cr
 
+."====================" cr
+
+"domain1" constant str-val
+
+str-val to_uint constant uint-val
+
+uint-val .dump cr
+
+"domain1" 0 hold constant str-val
+
+str-val to_uint constant uint-val
+
+uint-val .dump cr

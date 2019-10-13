@@ -4,7 +4,7 @@ constant code
 
 { $len 8 * } : bit_len
 
-<b "domain1" $, b> <s constant message
+<b "domain1" 0 hold $, b> <s constant message
 
 41 constant category
 
@@ -32,7 +32,7 @@ constant updated_storage
 constant exit_code
 ."Exit code " exit_code . cr
 
-<b "domain_3" $, b> <s constant message
+<b "domain_3" 0 hold $, b> <s constant message
 
 ."Message: " cr message csr. cr
 

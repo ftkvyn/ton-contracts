@@ -103,11 +103,14 @@ PROGRAM{
     DROP
     s2 PUSH
     SBITS
+    -8 ADDCONST
     s0 s3 XCHG
     s3 PUSH
     LDUX
+    8 LDU
     DROP
     DUMPSTK
+    55 THROWIF
     8 PUSHPOW2
     s1 s2 XCHG
     DICTUGET

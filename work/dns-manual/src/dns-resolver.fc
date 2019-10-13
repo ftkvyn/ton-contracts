@@ -67,8 +67,11 @@ _ dnsresolve(slice dns_str, int category) method_id {
     cell dns_dict = data_slice~load_dict();
 
     int len = dns_str.slice_bits();
+    len -= 8;
     int str_int = dns_str~load_uint(len);
+    int following_zero = dns_str~load_uint(8);    
     dump_stack();
+    throw_if(55, following_zero); ;;wrong format
 
     (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
     ifnot(is_found) {
