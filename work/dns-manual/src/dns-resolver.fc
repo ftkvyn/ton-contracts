@@ -59,13 +59,13 @@ _ recv_external(slice in_msg) impure {
     return 404;
 }
 
-(int cell) resolve_single_entry(int str_int, int category) {
+(int, cell) resolve_single_entry(int str_int, int category, int len, cell dns_dict) {
     (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
     ifnot(is_found) {
         return (0, new_dict());
     }
     if (category == 0) {
-        return (len + 8, begin_cell().store_slice(categories_slice).end_cell());
+        return (len + 8, categories_slice~load_dict());
     }
     (slice value_slice, int is_found) = categories_slice~load_dict().idict_get?(16, category);
     ifnot(is_found) {
@@ -75,21 +75,33 @@ _ recv_external(slice in_msg) impure {
     return (len + 8, begin_cell().store_slice(value_slice).end_cell());
 }
 
-(int cell) dnsresolve(slice dns_str, int category) method_id {
+(int, cell) dnsresolve(slice dns_str, int category) method_id {
 
     slice data_slice = get_data().begin_parse();
     int stored_seqno = data_slice~load_uint(32);
     int public_key = data_slice~load_uint(256);
     cell dns_dict = data_slice~load_dict();
 
-    int len = dns_str.slice_bits();
-    len -= 8;
-    int str_int = dns_str~load_uint(len);
-    int following_zero = dns_str~load_uint(8);    
-    dump_stack();
-    throw_if(55, following_zero); ;;wrong format
-
+    int bytes_len = 0;
+    int str_int = 0;
+    int not_str_found = -1;
     ;; ToDo: look for other zero-byes and handle it.
-    
-    return resolve_single_entry(str_int, category);
+    while(not_str_found & dns_str.slice_bits()) {
+        int next_byte = dns_str~load_uint(8);
+        if (next_byte == 0) {
+            not_str_found = 0;
+        } else {
+            bytes_len += 1;
+            str_int = str_int << 8;
+            str_int = str_int + next_byte;
+        }
+    }
+
+    if (dns_str.slice_bits() > 0) {
+        ;; if not looking for a full string
+        category = -1;
+    }
+
+    throw_if(55, not_str_found); ;; if we got there - there was no following zero, wrong format
+    return resolve_single_entry(str_int, category, bytes_len * 8, dns_dict);
 }

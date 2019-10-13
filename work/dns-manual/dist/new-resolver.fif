@@ -3,6 +3,7 @@
 PROGRAM{
   DECLPROC recv_internal
   DECLPROC recv_external
+  DECLPROC resolve_single_entry
   123660 DECLMETHOD dnsresolve
   recv_internal PROC:<{
     DROP
@@ -92,27 +93,9 @@ PROGRAM{
     404 THROW
     404 PUSHINT
   }>
-  dnsresolve PROC:<{
-    c4 PUSH
-    CTOS
-    32 LDU
-    NIP
-    256 LDU
-    NIP
-    LDDICT
-    DROP
-    s2 PUSH
-    SBITS
-    -8 ADDCONST
-    s0 s3 XCHG
-    s3 PUSH
-    LDUX
-    8 LDU
-    DROP
-    DUMPSTK
-    55 THROWIF
+  resolve_single_entry PROC:<{
     8 PUSHPOW2
-    s1 s2 XCHG
+    s2 s4 XCHG
     DICTUGET
     NULLSWAPIFNOT
     IFNOTJMP:<{
@@ -128,11 +111,9 @@ PROGRAM{
       NIP
       SWAP
       8 ADDCONST
-      NEWC
       SWAP
-      s0 s2 XCHG
-      STSLICER
-      ENDC
+      LDDICT
+      DROP
     }>
     LDDICT
     DROP
@@ -152,6 +133,61 @@ PROGRAM{
     s0 s2 XCHG
     STSLICER
     ENDC
+  }>
+  dnsresolve PROC:<{
+    c4 PUSH
+    CTOS
+    32 LDU
+    NIP
+    256 LDU
+    NIP
+    LDDICT
+    DROP
+    0 PUSHINT
+    DUP
+    -1 PUSHINT
+    WHILE:<{
+      s5 PUSH
+      SBITS
+      OVER
+      SWAP
+      AND
+    }>DO<{
+      s0 s5 XCHG
+      8 LDU
+      OVER
+      0 EQINT
+      IF:<{
+        NIP
+        s5 POP
+        0 PUSHINT
+      }>ELSE<{
+        s0 s3 XCHG
+        INC
+        s0 s2 XCHG
+        8 LSHIFT#
+        SWAP
+        ADD
+        s2 s5 XCHG
+        s1 s2 XCHG
+        SWAP
+      }>
+    }>
+    s0 s5 XCHG
+    SBITS
+    0 GTINT
+    IF:<{
+      s3 POP
+      -1 PUSHINT
+    }>ELSE<{
+      s0 s3 XCHG
+    }>
+    s0 s4 XCHG
+    55 THROWIF
+    3 LSHIFT#
+    s2 s3 XCHG
+    SWAP
+    resolve_single_entry CALLDICT
   }>
 }END>c
 constant code
