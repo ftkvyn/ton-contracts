@@ -11,3 +11,6 @@ msg hash dns_pk ed25519_sign_uint constant signature
 message -1 code <s data cseven runvmctx 
 
 .s cr
+constant updated_storage
+constant exit_code
+constant return_value

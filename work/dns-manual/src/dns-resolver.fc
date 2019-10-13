@@ -18,11 +18,16 @@ _ recv_external(slice in_msg) impure {
     if(mode == 7) {
         ;; Initialization of the contract
         throw_if(32, stored_seqno);
+        ;; populating new dict with some trash because empty dict doesn't work well.
+        cell new_dns_dict = new_dict();
+        cell new_cat_dict = new_dict();
+        new_cat_dict~udict_set_builder(16, 0, begin_cell().store_uint(1,1));
+        new_dns_dict~udict_set_builder(256, 0, begin_cell().store_dict(new_cat_dict));
         set_data(begin_cell()
             .store_uint(1, 32)
             .store_uint(public_key, 256)
             ;; ToDo: divide into several dicts with different key length - 32, 64, 256 bits
-            .store_dict(new_dict()) ;; DNS entries dict
+            .store_dict(new_dns_dict) ;; DNS entries dict
             .end_cell());
         return -1;
     }

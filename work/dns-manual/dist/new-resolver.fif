@@ -36,6 +36,22 @@ PROGRAM{
       SWAP
       32 THROWIF
       NEWDICT
+      NEWDICT
+      1 PUSHINT
+      NEWC
+      1 STU
+      0 PUSHINT
+      16 PUSHINT
+      s2 s3 XCHG
+      s1 s2 XCHG
+      DICTUSETB
+      NEWC
+      STDICT
+      0 PUSHINT
+      8 PUSHPOW2
+      s2 s3 XCHG
+      s1 s2 XCHG
+      DICTUSETB
       1 PUSHINT
       NEWC
       32 STU
