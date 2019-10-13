@@ -8,23 +8,6 @@ PROGRAM{
     DROP
   }>
   recv_external PROC:<{
-    c4 PUSH
-    CTOS
-    LDDICT
-    DROP
-    OVER
-    SBITS
-    s1 s2 XCHG
-    LDUX
-    DROP
-    DUMPSTK
-    8 PUSHPOW2
-    s1 s2 XCHG
-    DICTUGET
-    NULLSWAPIFNOT
-    DROP
-    8 LDU
-    256 LDU
     DROP
   }>
   dnsresolve PROC:<{

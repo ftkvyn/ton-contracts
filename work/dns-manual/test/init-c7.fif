@@ -5,4 +5,4 @@
 0 tuple 9223372036854775807 , dictnew , , // remaining balance
 0 , dictnew , // contract_address, global_config
 1 tuple // wrap to another tuple
-constant c7 
+constant cseven

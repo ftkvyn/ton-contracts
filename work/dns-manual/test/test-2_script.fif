@@ -10,7 +10,20 @@ constant code
 
 ."Message: " cr message csr. cr
 
-message category 123660 code <s storage c7 runvmctx 
+message category 123660 code <s storage cseven runvmctx 
+
+// Test for sending init message to initialized contract
+.s cr
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+
+-1 constant category
+
+."Message: " cr message csr. cr
+
+message category 123660 code <s storage cseven runvmctx 
 
 // Test for sending init message to initialized contract
 .s cr
@@ -23,7 +36,22 @@ constant exit_code
 
 ."Message: " cr message csr. cr
 
-message category 123660 -1 code <s storage c7 runvmctx 
+55 constant category
+
+message category 123660 code <s storage cseven runvmctx 
+
+// Test for sending init message to initialized contract
+.s cr
+
+constant updated_storage
+constant exit_code
+."Exit code " exit_code . cr
+
+."Message: " cr message csr. cr
+
+29 constant category
+
+message category 123660 code <s storage cseven runvmctx 
 
 // Test for sending init message to initialized contract
 .s cr

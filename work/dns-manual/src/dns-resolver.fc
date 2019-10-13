@@ -3,21 +3,7 @@
 }
 
 _ recv_external(slice in_msg) impure {
-    slice data_slice = get_data().begin_parse();
-    cell dns_dict = data_slice~load_dict();
-
-    int len = in_msg.slice_bits();
-    int str_int = in_msg~load_uint(len);
-    dump_stack();
-
-    (slice value_slice, int is_found) = dns_dict.udict_get?(256, str_int);
-
-    ;; return value_slice.slice_bits();
-    ;; var (my_wc, my_addr) = my_address().parse_std_addr();
-    ;; var (wc, dest) = 
-    int wc = value_slice~load_uint(8);
-    int dest = value_slice~load_uint(256);
-    return (wc, dest);
+    
 }
 
 _ dnsresolve(slice dns_str, int category) method_id {
