@@ -2,8 +2,9 @@
 "TonUtil.fif" include
 
 { ."usage: " @' $0 type ." <dns-addr-file> <old-key-name> <new-key-name> [<savefile>]" cr
-  ."Creates a request to simple wallet created by new-wallet.fif, with private key loaded from file <filename-base>.pk "
-  ."and address from <filename-base>.addr, and saves it into <savefile>.boc ('wallet-query.boc' by default)" cr 1 halt
+  ."Creates a request to update manual dns resolver that has address written down in <dns-addr-file>.addr" cr
+   ."public key with a new public key loaded from file <new-key-name>.pk. The old privare key is in <old-key-name>.pk " cr
+   ."Saves it into <savefile>.boc ('key-update-query.boc' by default)" cr 1 halt
 } : usage
 $# dup 3 < swap 4 > or ' usage if
 

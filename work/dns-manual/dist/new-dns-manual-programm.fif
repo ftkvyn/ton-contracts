@@ -7,6 +7,7 @@ PROGRAM{
   DECLPROC resolve_single_entry
   DECLPROC recv_external
   123660 DECLMETHOD dnsresolve
+  85143 DECLMETHOD seqno
   recv_internal PROC:<{
     DROP
   }>
@@ -252,5 +253,11 @@ PROGRAM{
     s2 s3 XCHG
     SWAP
     resolve_single_entry CALLDICT
+  }>
+  seqno PROC:<{
+    c4 PUSH
+    CTOS
+    32 LDU
+    DROP
   }>
 }END>c

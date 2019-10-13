@@ -1,0 +1,46 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+
+{ ."usage: " @' $0 type ." <dns-addr-file> <key-name> <seq-no> <host-name> <category> <workchain-id> <address-value> [<savefile>]" cr
+  ."Creates a request to create or update dns entry. DNS resolver address is taken from <dns-addr-file>.addr" cr
+  ."Owner's private key is loaded from the file <key-name>.pk." cr
+  ."Saves it into <savefile>.boc ('update-dns-entry-query.boc' by default)" cr 1 halt
+} : usage
+$# dup 7 < swap 8 > or ' usage if
+
+$1 =: dns_addr_file
+$2 =: key_name
+$3 parse-int =: seqno
+$4 =: domain_name
+$5 parse-int =: domain_category
+$6 parse-int =: addr_wc
+$7 parse-int =: addr_dest
+def? $8 { @' $8 } { "update-dns-entry-query" } cond constant savefile
+
+{ $len 8 * } : bit_len
+{ dup $>s swap bit_len u@ } : to_uint
+
+dns_addr_file +".addr" load-address
+2dup 2constant dns_addr
+."DNS resolver address = " 2dup .addr cr 6 .Addr cr
+
+key_name +".pk" load-keypair 
+constant key_priv
+constant key_pub
+
+<b 1 8 u, // mode=1 update DNS entry
+   seqno 32 u, // seq_no
+   domain_name to_uint 256 u,
+   domain_category 16 i,
+   addr_wc addr_dest addr,
+b> // mode=1 updating dns entry
+constant update_msg
+
+update_msg hash key_priv ed25519_sign_uint constant signature
+  
+<b b{1000100} s, dns_addr addr, 0 Gram, b{00} s,
+   signature B, update_msg ref, b>
+dup ."resulting external message: " <s csr. cr
+2 boc+>B dup Bx. cr
+savefile +".boc" tuck B>file
+."(Saved to file " type .")" cr

@@ -7,6 +7,7 @@ PROGRAM{
   DECLPROC resolve_single_entry
   DECLPROC recv_external
   123660 DECLMETHOD dnsresolve
+  85143 DECLMETHOD seqno
   recv_internal PROC:<{
     DROP
   }>
@@ -253,6 +254,12 @@ PROGRAM{
     SWAP
     resolve_single_entry CALLDICT
   }>
+  seqno PROC:<{
+    c4 PUSH
+    CTOS
+    32 LDU
+    DROP
+  }>
 }END>c
 constant code
 
@@ -288,7 +295,7 @@ msg
 dup ."signing message: " <s csr. cr
 dup hash dns_pk ed25519_sign_uint rot
 drop
-<b b{1000100} s, dns_addr addr, b{000010} s, state-init <s s, b{0} s, swap B, swap <s s, b>
+<b b{1000100} s, dns_addr addr, b{000010} s, state-init <s s, b{0} s, swap B, swap ref, b>
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-query.boc" tuck B>file
