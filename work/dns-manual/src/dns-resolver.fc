@@ -72,15 +72,16 @@ _ dnsresolve(slice dns_str, int category) method_id {
 
     (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
     ifnot(is_found) {
-        return (0,0);
+        return (0, new_dict());
+    }
+    if (category == 0) {
+        return (len + 8, begin_cell().store_slice(categories_slice).end_cell());
     }
     (slice value_slice, int is_found) = categories_slice~load_dict().idict_get?(16, category);
     ifnot(is_found) {
-        return (0,0);
+        return (0, new_dict());
     }
 
-    int wc = value_slice~load_int(8);
-    int dest = value_slice~load_uint(256);
-    return (wc, dest);
+    return (len + 8, begin_cell().store_slice(value_slice).end_cell());
 
 }

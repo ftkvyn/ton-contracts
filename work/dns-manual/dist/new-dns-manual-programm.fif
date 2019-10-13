@@ -103,20 +103,33 @@ PROGRAM{
     DROP
     s2 PUSH
     SBITS
-    s1 s3 XCHG
+    s0 s3 XCHG
+    s3 PUSH
     LDUX
     DROP
     DUMPSTK
     8 PUSHPOW2
     s1 s2 XCHG
-    s1 s3 XCHG
     DICTUGET
     NULLSWAPIFNOT
     IFNOTJMP:<{
       DROP
       DROP
+      DROP
       0 PUSHINT
-      DUP
+      NEWDICT
+    }>
+    OVER
+    0 EQINT
+    IFJMP:<{
+      NIP
+      SWAP
+      8 ADDCONST
+      NEWC
+      SWAP
+      s0 s2 XCHG
+      STSLICER
+      ENDC
     }>
     LDDICT
     DROP
@@ -125,11 +138,16 @@ PROGRAM{
     NULLSWAPIFNOT
     IFNOTJMP:<{
       DROP
+      DROP
       0 PUSHINT
-      DUP
+      NEWDICT
     }>
-    8 LDI
-    256 LDU
-    DROP
+    SWAP
+    8 ADDCONST
+    NEWC
+    SWAP
+    s0 s2 XCHG
+    STSLICER
+    ENDC
   }>
 }END>c

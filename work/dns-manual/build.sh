@@ -16,6 +16,6 @@ sed -i 's/#!\/usr\/bin\/env fift -s/constant code/' ./temp/test-4.fif
 mkdir -p temp
 cd temp
 fift -s ./../dist/new-resolver.fif 0 test-run
-#fift -s ./test-2.fif
+fift -s ./test-2.fif
 #fift -s ./test-3.fif 0 test-run
-fift -s ./test-4.fif 0 test-run
+#fift -s ./test-4.fif 0 test-run
