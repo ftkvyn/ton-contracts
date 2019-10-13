@@ -1,5 +1,5 @@
 "Asm.fif" include
-// automatically generated from `./lib/stdlib.fc` `./src/helpers.fc` `./src/dns-resolver.fc` 
+// automatically generated from `./lib/stdlib.fc` `./src/dns-resolver.fc` 
 PROGRAM{
   DECLPROC recv_internal
   DECLPROC recv_external
@@ -8,11 +8,81 @@ PROGRAM{
     DROP
   }>
   recv_external PROC:<{
+    9 PUSHPOW2
+    LDSLICEX
+    LDREF
     DROP
+    c4 PUSH
+    CTOS
+    32 LDU
+    256 LDU
+    s3 PUSH
+    HASHCU
+    SWAP
+    s0 s5 XCHG
+    s2 PUSH
+    CHKSIGNU
+    34 THROWIFNOT
+    ACCEPT
+    s0 s2 XCHG
+    CTOS
+    8 LDU
+    OVER
+    7 EQINT
+    IFJMP:<{
+      DROP
+      DROP
+      s2 POP
+      SWAP
+      32 THROWIF
+      NEWDICT
+      1 PUSHINT
+      NEWC
+      32 STU
+      s1 s2 XCHG
+      256 STU
+      STDICT
+      ENDC
+      c4 POP
+      -1 PUSHINT
+    }>
+    s3 POP
+    s0 s3 XCHG
+    LDREF
+    DROP
+    s3 PUSH
+    3 EQINT
+    IFJMP:<{
+      s3 POP
+      SWAP
+      256 LDU
+      DROP
+      NEWC
+      s1 s2 XCHG
+      32 STU
+      256 STU
+      STDICT
+      ENDC
+      c4 POP
+      -1 PUSHINT
+    }>
+    DROP
+    DROP
+    DROP
+    1 EQINT
+    IFJMP:<{
+      -1 PUSHINT
+    }>
+    404 THROW
+    404 PUSHINT
   }>
   dnsresolve PROC:<{
     c4 PUSH
     CTOS
+    32 LDU
+    NIP
+    256 LDU
+    NIP
     LDDICT
     DROP
     s2 PUSH
@@ -42,7 +112,7 @@ PROGRAM{
       0 PUSHINT
       DUP
     }>
-    8 LDU
+    8 LDI
     256 LDU
     DROP
   }>

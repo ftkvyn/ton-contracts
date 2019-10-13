@@ -10,7 +10,7 @@ _ recv_external(slice in_msg) impure {
     int stored_seqno = data_slice~load_uint(32);
     int public_key = data_slice~load_uint(256);
     
-    throw_unless(34, check_signature(slice_hash(msg_body), signature, public_key));
+    throw_unless(34, check_signature(cell_hash(msg_body), signature, public_key));
     accept_message();
 
     slice msg_slice = msg_body.begin_parse();
@@ -50,7 +50,7 @@ _ recv_external(slice in_msg) impure {
     }
     
     
-    throw_id(404, -1); ;; Unknown message mode
+    throw_if(404, -1); ;; Unknown message mode
     return 404;
 }
 
@@ -74,7 +74,7 @@ _ dnsresolve(slice dns_str, int category) method_id {
         return (0,0);
     }
 
-    int wc = value_slice~load_uint(8);
+    int wc = value_slice~load_int(8);
     int dest = value_slice~load_uint(256);
     return (wc, dest);
 

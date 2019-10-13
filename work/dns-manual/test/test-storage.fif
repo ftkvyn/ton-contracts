@@ -108,7 +108,7 @@ drop
 constant dns-dict
 
 <b 
-0 8 u, // seq_no
+0 32 u, // seq_no
 0 256 u, // public key
 dns-dict dict, b> constant storage
 
