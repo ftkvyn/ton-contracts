@@ -143,7 +143,7 @@ _ recv_external(slice in_msg) impure {
 }
 
 (int, cell) dnsresolve_test(slice dns_str, int category) method_id {
-    ;; For the testing using light-client using space as a terminator
+    ;; For the testing using lite-client using space as a terminator
     return dnsresolve_internal(dns_str, category, 32);    
 }
 
