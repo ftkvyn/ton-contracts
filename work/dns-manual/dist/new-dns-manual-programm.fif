@@ -264,7 +264,7 @@ PROGRAM{
     dnsresolve_internal CALLDICT
   }>
   dnsresolve_test PROC:<{
-    32 PUSHINT
+    46 PUSHINT
     dnsresolve_internal CALLDICT
   }>
   seqno PROC:<{
