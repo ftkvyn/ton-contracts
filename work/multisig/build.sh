@@ -28,10 +28,10 @@ sed -i 's/#!\/usr\/bin\/env fift -s/constant code/' ./temp/test-6.fif
 
 mkdir -p temp
 cd temp
-#fift -s ./../dist/new-multisig.fif 0 6 4 test-run
-#fift -s ./test-1.fif 0 6 4 test-run
-#fift -s ./test-2.fif 0 6 4 test-run
-#fift -s ./test-3.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 1 1 hello
-#fift -s ./test-4.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 1 1 hello
-#fift -s ./test-5.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 1 1 hello
+fift -s ./../dist/new-multisig.fif 0 6 4 test-run
+fift -s ./test-1.fif 0 6 4 test-run
+fift -s ./test-2.fif 0 6 4 test-run
+fift -s ./test-3.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 1 1 hello
+fift -s ./test-4.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 1 1 hello
+fift -s ./test-5.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 1 1 hello
 fift -s ./test-6.fif test-run 3 0QCyt4ltzak71h6XkyK4ePfZCzJQDSVUNuvZ3VE7hP_Q-GTE 1 1 hello

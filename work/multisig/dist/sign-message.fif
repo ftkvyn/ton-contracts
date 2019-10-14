@@ -1,14 +1,16 @@
 #!/usr/bin/env fift -s
 "TonUtil.fif" include
 
-{ ."usage: " @' $0 type ." <wallet-name> <key-number> <dest-addr> <seqno> <amount> <message-text> [-B <body-boc>] [<savefile>]" cr
-  ."Creates a request to multisignature wallet created by new-multisig-wallet.fif, with private key" cr
+{ ."usage: " @' $0 type ." <wallet-name> <key-number> <dest-addr> <seqno> <amount> <message-text> <original-timeout> [-B <body-boc>] [<savefile>]" cr
+  ."Recreates original message to multisignature wallet created by new-multisig-wallet.fif, with private key" cr
   ." loaded from files key_<key-number>.pk and address from <wallet-name>.addr." cr
-  .", and saves it into <savefile>.boc ('multisig-query.boc' by default)" cr 1 halt
+  ."The same <dest-addr> <seqno> <amount> <message-text>  should be provided as in the original transaction." cr
+  ."<original-timeout> is the expiration timestamp of the original transaction." cr
+  ."Saves it into <savefile>.boc ('sign-multisig-query.boc' by default)" cr 1 halt
 } : usage
-def? $8 { @' $7 "-B" $= { @' $8 =: body-boc-file [forget] $8 def? $9 { @' $9 =: $7 [forget] $9 } { [forget] $7 } cond
+def? $9 { @' $8 "-B" $= { @' $9 =: body-boc-file [forget] $9 def? $10 { @' $10 =: $8 [forget] $10 } { [forget] $6 } cond
   @' $# 2- =: $# } if } if
-$# dup 6 < swap 7 > or ' usage if
+$# dup 7 < swap 8 > or ' usage if
 
 true constant bounce
 
@@ -18,9 +20,9 @@ $3 bounce parse-load-address =: bounce 2=: dest_addr
 $4 parse-int =: seqno
 $5 $>GR =: amount
 $6 =: message-text
-def? $7 { @' $7 } { "multisig-query" } cond constant savefile
+$7 parse-int =: timeout
+def? $8 { @' $8 } { "sign-multisig-query" } cond constant savefile
 3 constant send-mode  // mode for SENDRAWMSG: +1 - sender pays fees, +2 - ignore errors
-60 60 * 24 * 3 * constant timeout   // external message expires in 3 days
 
 wallet-name +".addr" load-address
 2dup 2constant wallet_addr

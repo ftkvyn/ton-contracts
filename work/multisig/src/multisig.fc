@@ -172,7 +172,7 @@ _ load_order_by_condition(int key_num, int is_signed, int n, int seq_num, cell k
     dump_stack();
     var orders_list = nil;
     int counter = 1;
-    int now_time = now();
+    ;; int now_time = now();
     repeat(seq_num) {
       (slice tran_slice, int is_found) = transactions_dict.udict_get?(32, counter);
       if (is_found) {
@@ -181,7 +181,9 @@ _ load_order_by_condition(int key_num, int is_signed, int n, int seq_num, cell k
           tran_slice~load_uint(8); ;; signed_num
           cell confirmed_signs_dict = tran_slice~load_ref();
           cell original_order = tran_slice~load_ref();
-          ifnot ( ((counter < seq_num) & is_executed) | (expires < now_time)) {
+          ;; get-methods don't support now(), so we can't check expiration.
+          ;; ifnot ( ((counter < seq_num) & is_executed) | (expires < now_time)) {
+          ifnot ( ((counter < seq_num) & is_executed)) {
               if (key_num == 0) {
                 ;; ToDo: extract addr, amount, message
                 orders_list = cons(original_order, orders_list);
