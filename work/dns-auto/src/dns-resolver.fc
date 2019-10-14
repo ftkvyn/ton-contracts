@@ -1,0 +1,153 @@
+() recv_internal(slice in_msg) impure {
+  ;; do nothing for internal messages
+}
+
+_ process_init(int public_key) impure {
+    ;; populating new dict with some trash because empty dict doesn't work well.
+    cell new_dns_dict = new_dict();
+    cell new_cat_dict = new_dict();
+    new_cat_dict~idict_set_builder(16, 0, begin_cell().store_uint(1,1));
+    new_dns_dict~udict_set_builder(256, 0, begin_cell().store_dict(new_cat_dict));
+    set_data(begin_cell()
+        .store_uint(1, 32)
+        .store_uint(public_key, 256)
+        ;; ToDo: divide into several dicts with different key length - 32, 64, 256 bits
+        .store_dict(new_dns_dict) ;; DNS entries dict
+        .end_cell());
+    return -1;
+}
+
+_ update_dns(int public_key, int seq_no, cell dns_dict, slice msg_slice) impure {
+    int domain_uint = msg_slice~load_uint(256);
+    int domain_category = msg_slice~load_int(16);
+    int addr_wc = msg_slice~load_int(8);
+    int addr_dest = msg_slice~load_uint(256);
+
+    cell categories_dict = new_dict();
+    (slice categories_slice, int is_found) = dns_dict.udict_get?(256, domain_uint);
+    if(is_found) {
+        categories_dict = categories_slice~load_dict();
+    }
+
+    ;; check if we need  to delete the entry first
+    ;; (categories_dict, int is_found) = categories_dict.idict_delete?(16, domain_category);
+
+    categories_dict~idict_set_builder(16, domain_category, begin_cell()
+        .store_int(addr_wc, 8)
+        .store_uint(addr_dest, 256));
+    dns_dict~udict_set_builder(256, domain_uint, begin_cell().store_dict(categories_dict));
+
+    set_data(begin_cell()
+        .store_uint(seq_no, 32)
+        .store_uint(public_key, 256)
+        .store_dict(dns_dict) ;; DNS entries dict
+        .end_cell());
+
+    return -1;
+}
+
+
+(int, cell) resolve_single_entry(int str_int, int category, int len, cell dns_dict) {
+    (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
+    ifnot(is_found) {
+        return (0, new_dict());
+    }
+    if (category == 0) {
+        return (len + 8, categories_slice~load_dict());
+    }
+    (slice value_slice, int is_found) = categories_slice~load_dict().idict_get?(16, category);
+    ifnot(is_found) {
+        return (0, new_dict());
+    }
+
+    return (len + 8, begin_cell().store_slice(value_slice).end_cell());
+}
+
+_ recv_external(slice in_msg) impure {
+    var signature = in_msg~load_bits(512);
+    cell msg_body = in_msg~load_ref();
+
+    slice data_slice = begin_parse(get_data());
+    int stored_seqno = data_slice~load_uint(32);
+    int public_key = data_slice~load_uint(256);
+    
+    throw_unless(34, check_signature(cell_hash(msg_body), signature, public_key));
+    accept_message();
+
+    slice msg_slice = msg_body.begin_parse();
+    int mode = msg_slice~load_uint(8);
+    if(mode == 7) {
+        ;; Initialization of the contract
+        throw_if(32, stored_seqno);
+        return process_init(public_key);
+    }
+
+    cell dns_dict = data_slice~load_ref();
+
+    if (mode == 3) {
+        ;; Updating stored public_key
+        int new_public_key = msg_slice~load_uint(256);
+        set_data(begin_cell()
+            .store_uint(stored_seqno, 32)
+            .store_uint(new_public_key, 256)
+            .store_dict(dns_dict)
+            .end_cell());
+        return -1;
+    }
+
+    if (mode == 1) {
+        ;; New dns entry
+        int msg_seqno = msg_slice~load_uint(32);
+        throw_unless(35, stored_seqno == msg_seqno);
+
+        return update_dns(public_key, stored_seqno + 1, dns_dict, msg_slice);
+    }
+    
+    
+    throw_if(404, -1); ;; Unknown message mode
+    return 404;
+}
+
+(int, cell) dnsresolve_internal(slice dns_str, int category, int terminator) {
+    slice data_slice = get_data().begin_parse();
+    int stored_seqno = data_slice~load_uint(32);
+    int public_key = data_slice~load_uint(256);
+    cell dns_dict = data_slice~load_dict();
+
+    int bytes_len = 0;
+    int str_int = 0;
+    int not_str_found = -1;
+    while(not_str_found & dns_str.slice_bits()) {
+        int next_byte = dns_str~load_uint(8);
+        if (next_byte == terminator) {
+            not_str_found = 0;
+        } else {
+            bytes_len += 1;
+            str_int = str_int << 8;
+            str_int = str_int + next_byte;
+        }
+    }
+
+    if (dns_str.slice_bits() > 0) {
+        ;; if not looking for a full string
+        category = -1;
+    }
+
+    throw_if(55, not_str_found); ;; if we got there - there was no following zero, wrong format
+    return resolve_single_entry(str_int, category, bytes_len * 8, dns_dict);
+}
+
+(int, cell) dnsresolve(slice dns_str, int category) method_id {
+    ;; Resolving with a zero-byte as a terminator, as in contest conditions
+    return dnsresolve_internal(dns_str, category, 0);    
+}
+
+(int, cell) dnsresolve_test(slice dns_str, int category) method_id {
+    ;; For the testing using lite-client using dot (code=46) as a terminator
+    return dnsresolve_internal(dns_str, category, 46);    
+}
+
+int seqno() method_id {
+    slice data_slice = get_data().begin_parse();
+    return data_slice~load_uint(32);
+}

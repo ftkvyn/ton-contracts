@@ -1,0 +1,55 @@
+// Test for updating key
+
+msg hash dns_pk ed25519_sign_uint constant signature
+
+<b signature B, msg ref, b> <s constant message
+
+message -1 code <s data cseven runvmctx // Initializing the contract
+
+.s cr
+constant updated_storage
+constant exit_code
+constant return_value
+
+file-base +"_new.pk" load-generate-keypair
+constant new_dns_private
+constant new_dns_public
+
+<b 3 8 u, 
+   new_dns_public B,
+b> // mode=3 updating public key
+constant update_msg
+
+update_msg hash dns_pk ed25519_sign_uint constant signature
+
+<b signature B, update_msg ref, b> <s constant message
+
+."Message: " cr message csr. cr
+
+message -1 code <s updated_storage cseven runvmctx // Updating the key
+
+.s cr
+constant updated_storage
+constant exit_code
+constant return_value
+
+message -1 code <s updated_storage cseven runvmctx // Should fail for the second time
+
+.s cr
+
+file-base +"_new_2.pk" load-generate-keypair
+constant new_dns_private_2
+constant new_dns_public
+
+<b 3 8 u, 
+   new_dns_public B,
+b> // mode=3 updating public key
+constant update_msg
+
+update_msg hash new_dns_private ed25519_sign_uint constant signature
+
+<b signature B, update_msg ref, b> <s constant message
+
+."Message: " cr message csr. cr
+
+message -1 code <s updated_storage cseven runvmctx // Updating the key again

@@ -1,0 +1,135 @@
+// Test for updating dns.
+
+msg hash dns_pk ed25519_sign_uint constant signature
+
+<b signature B, msg ref, b> <s constant message
+
+message -1 code <s data cseven runvmctx 
+
+constant data
+constant exit_code
+constant return_value
+
+"domain_new" constant domain_new
+domain_new to_uint constant domain_uint
+-1 constant domain_category
+-1 constant addr_wc
+3003002001 constant addr_dest
+
+<b 1 8 u, // mode=1 update DNS entry
+   1 32 u, // seq_no
+   domain_uint 256 u,
+   domain_category 16 i,
+   addr_wc addr_dest addr,
+b> constant message_body
+
+message_body hash dns_pk ed25519_sign_uint constant signature
+
+<b signature B, message_body ref, b> <s constant message
+
+."Message: " cr message csr. cr
+
+message -1 code <s data cseven runvmctx // Add a new entry
+
+.s cr
+constant data
+constant exit_code
+constant return_value
+
+// Then check if it will be found
+
+domain_new 0 hold constant str-val
+<b str-val $, b> <s constant message
+-1 constant category
+message category 123660 code <s data cseven runvmctx 
+
+constant updated_storage
+constant exit_code
+constant return_cell_1
+constant return_bits_1
+
+domain_new 0 hold type cr
+return_cell_1 .s drop
+return_bits_1 .s drop
+
+// Then add new category the value of dns
+
+10 constant domain_category
+2 constant addr_wc
+555666 constant addr_dest
+
+<b 1 8 u, // mode=1 update DNS entry
+   2 32 u, // seq_no
+   domain_uint 256 u,
+   domain_category 16 i,
+   addr_wc addr_dest addr,
+b> constant message_body
+
+message_body hash dns_pk ed25519_sign_uint constant signature
+
+<b signature B, message_body ref, b> <s constant message
+
+."Message: " cr message csr. cr
+
+message -1 code <s data cseven runvmctx // Add a new entry
+
+constant data
+constant exit_code
+constant return_value
+
+// look for a new category
+
+domain_new 0 hold constant str-val
+<b str-val $, b> <s constant message
+message domain_category 123660 code <s data cseven runvmctx 
+
+constant updated_storage
+constant exit_code
+constant return_cell_2
+constant return_bits_2
+
+domain_new 0 hold type cr
+return_cell_1 .s drop
+return_cell_2 .s drop
+
+// Then change the value of dns
+
+10 constant domain_category
+43 constant addr_wc
+77722 constant addr_dest
+
+<b 1 8 u, // mode=1 update DNS entry
+   3 32 u, // seq_no
+   domain_uint 256 u,
+   domain_category 16 i,
+   addr_wc addr_dest addr,
+b> constant message_body
+
+message_body hash dns_pk ed25519_sign_uint constant signature
+
+<b signature B, message_body ref, b> <s constant message
+
+."Message: " cr message csr. cr
+
+message -1 code <s data cseven runvmctx // Add a new entry
+
+constant data
+constant exit_code
+constant return_val
+
+// Now lookup for an updated value
+
+domain_new 0 hold constant str-val
+<b str-val $, b> <s constant message
+message domain_category 123660 code <s data cseven runvmctx 
+
+constant updated_storage
+constant exit_code
+constant return_cell_3
+constant return_bits_3
+
+
+domain_new 0 hold type cr
+return_cell_1 .s drop
+return_cell_2 .s drop
+return_cell_3 .s drop
