@@ -2,8 +2,9 @@
 "TonUtil.fif" include
 
 { ."usage: " @' $0 type ." <wallet-name> <key-number> <dest-addr> <seqno> <amount> <message-text> [-B <body-boc>] [<savefile>]" cr
-  ."Creates a request to simple wallet created by new-wallet.fif, with private key loaded from file <key-name>.pk "
-  ."and address from <wallet-name>.addr, and saves it into <savefile>.boc ('multisig-query.boc' by default)" cr 1 halt
+  ."Creates a request to multisignature wallet created by new-multisig-wallet.fif, with private key" cr
+  ." loaded from files key_<key-number>.pk and address from <wallet-name>.addr." cr
+  .", and saves it into <savefile>.boc ('multisig-query.boc' by default)" cr 1 halt
 } : usage
 def? $8 { @' $7 "-B" $= { @' $8 =: body-boc-file [forget] $8 def? $9 { @' $9 =: $7 [forget] $9 } { [forget] $7 } cond
   @' $# 2- =: $# } if } if
