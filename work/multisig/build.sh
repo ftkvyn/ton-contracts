@@ -3,6 +3,7 @@ rm ./temp/*.fif
 func -AP -O0 -o ./dist/new-multisig-programm.fif ./lib/stdlib.fc ./src/multisig.fc
 cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif > ./dist/new-multisig.fif
 cp ./src/multisig-transaction.fif ./dist/multisig-transaction.fif
+cp ./src/sign-message.fif ./dist/sign-message.fif
 
 cat ./dist/new-multisig-programm.fif ./src/new-multisig-wallet_script.fif ./test/init-c7.fif ./test/test-1_script.fif > ./temp/test-1.fif
 
