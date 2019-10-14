@@ -1,5 +1,7 @@
-() recv_internal(slice in_msg) impure {
-  ;; do nothing for internal messages
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+  ;; get sender address for saving or checking
+  ;; get grams to check the prices
+  ;; add special -2 category
 }
 
 _ process_init(int public_key) impure {
@@ -9,6 +11,9 @@ _ process_init(int public_key) impure {
     new_cat_dict~idict_set_builder(16, 0, begin_cell().store_uint(1,1));
     new_dns_dict~udict_set_builder(256, 0, begin_cell().store_dict(new_cat_dict));
     set_data(begin_cell()
+        ;; ADD:
+        ;; time, price-reg, price-bit, price-cell 
+        ;; special expirations dict. key - host_int, value - expiry date
         .store_uint(1, 32)
         .store_uint(public_key, 256)
         ;; ToDo: divide into several dicts with different key length - 32, 64, 256 bits
