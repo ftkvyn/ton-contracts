@@ -165,8 +165,22 @@ _ recv_external(slice in_msg) impure {
         return -1;
     }
 
-    ;; ToDo: add update prices
-    
+    if (mode == 22) {
+        ;; Updating prices
+        int new_host_price = msg_slice~load_grams();
+        int new_cell_price = msg_slice~load_grams();
+        int new_bit_price = msg_slice~load_grams();
+        set_data(begin_cell()
+            .store_uint(stored_seqno, 32)
+            .store_uint(new_public_key, 256)
+            .store_grams(new_host_price)
+            .store_grams(new_cell_price)
+            .store_grams(new_bit_price)
+            .store_dict(dns_dict) ;; DNS entries dict
+            .store_dict(expiry_dict)
+            .end_cell());
+        return -1;
+    }
     
     throw_if(404, -1); ;; Unknown message mode
     return 404;
