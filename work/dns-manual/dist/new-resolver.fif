@@ -6,7 +6,9 @@ PROGRAM{
   DECLPROC update_dns
   DECLPROC resolve_single_entry
   DECLPROC recv_external
+  DECLPROC dnsresolve_internal
   123660 DECLMETHOD dnsresolve
+  94497 DECLMETHOD dnsresolve_test
   85143 DECLMETHOD seqno
   recv_internal PROC:<{
     DROP
@@ -199,7 +201,7 @@ PROGRAM{
     404 THROW
     404 PUSHINT
   }>
-  dnsresolve PROC:<{
+  dnsresolve_internal PROC:<{
     c4 PUSH
     CTOS
     32 LDU
@@ -212,19 +214,20 @@ PROGRAM{
     DUP
     -1 PUSHINT
     WHILE:<{
-      s5 PUSH
+      s6 PUSH
       SBITS
       OVER
       SWAP
       AND
     }>DO<{
-      s0 s5 XCHG
+      s0 s6 XCHG
       8 LDU
       OVER
-      0 EQINT
+      s6 PUSH
+      EQUAL
       IF:<{
         NIP
-        s5 POP
+        s6 POP
         0 PUSHINT
       }>ELSE<{
         s0 s3 XCHG
@@ -233,11 +236,12 @@ PROGRAM{
         8 LSHIFT#
         SWAP
         ADD
-        s2 s5 XCHG
+        s2 s6 XCHG
         s1 s2 XCHG
         SWAP
       }>
     }>
+    s4 POP
     s0 s5 XCHG
     SBITS
     0 GTINT
@@ -247,12 +251,21 @@ PROGRAM{
     }>ELSE<{
       s0 s3 XCHG
     }>
-    s0 s4 XCHG
+    s0 s2 XCHG
     55 THROWIF
+    s0 s2 XCHG
     3 LSHIFT#
-    s2 s3 XCHG
+    s1 s2 XCHG
     SWAP
     resolve_single_entry CALLDICT
+  }>
+  dnsresolve PROC:<{
+    0 PUSHINT
+    dnsresolve_internal CALLDICT
+  }>
+  dnsresolve_test PROC:<{
+    32 PUSHINT
+    dnsresolve_internal CALLDICT
   }>
   seqno PROC:<{
     c4 PUSH

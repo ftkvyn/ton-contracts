@@ -108,8 +108,7 @@ _ recv_external(slice in_msg) impure {
     return 404;
 }
 
-(int, cell) dnsresolve(slice dns_str, int category) method_id {
-
+(int, cell) dnsresolve_internal(slice dns_str, int category, int terminator) {
     slice data_slice = get_data().begin_parse();
     int stored_seqno = data_slice~load_uint(32);
     int public_key = data_slice~load_uint(256);
@@ -120,7 +119,7 @@ _ recv_external(slice in_msg) impure {
     int not_str_found = -1;
     while(not_str_found & dns_str.slice_bits()) {
         int next_byte = dns_str~load_uint(8);
-        if (next_byte == 0) {
+        if (next_byte == terminator) {
             not_str_found = 0;
         } else {
             bytes_len += 1;
@@ -136,6 +135,16 @@ _ recv_external(slice in_msg) impure {
 
     throw_if(55, not_str_found); ;; if we got there - there was no following zero, wrong format
     return resolve_single_entry(str_int, category, bytes_len * 8, dns_dict);
+}
+
+(int, cell) dnsresolve(slice dns_str, int category) method_id {
+    ;; Resolving with a zero-byte as a terminator, as in contest conditions
+    return dnsresolve_internal(dns_str, category, 0);    
+}
+
+(int, cell) dnsresolve_test(slice dns_str, int category) method_id {
+    ;; For the testing using light-client using space as a terminator
+    return dnsresolve_internal(dns_str, category, 32);    
 }
 
 int seqno() method_id {

@@ -169,7 +169,7 @@ int seqno() method_id {
 }
 
 _ load_order_by_condition(int key_num, int is_signed, int n, int seq_num, cell keys_dict, cell transactions_dict) {
-  dump_stack();
+    dump_stack();
     var orders_list = nil;
     int counter = 1;
     int now_time = now();

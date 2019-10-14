@@ -10,7 +10,7 @@ constant exit_code
 ."Exit code " exit_code . cr
 ."Updated storage: " cr updated_storage <s csr. cr
 
-2 =: key-number
+3 =: key-number
 
 wallet-name +".addr" load-address
 2dup 2constant wallet_addr
@@ -60,7 +60,7 @@ constant exit_code
 
 "key_" key-number (.) +".pk" $+ load-keypair drop constant pub_key
 
-pub_key 256 B>u@ 122190 code <s updated_storage c7 runvmctx // signed orders
+29622498111030500635586554790677543056332847278129926830373917377435155843208 122190 code <s updated_storage c7 runvmctx // signed orders
 
 constant updated_storage
 constant exit_code

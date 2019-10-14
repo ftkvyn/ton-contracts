@@ -17,7 +17,7 @@ $6 parse-int =: addr_wc
 $7 parse-int =: addr_dest
 def? $8 { @' $8 } { "update-dns-entry-query" } cond constant savefile
 
-{ $len 8 * } : bit_len
+{ $len 8 * } : bit_len 
 { dup $>s swap bit_len u@ } : to_uint
 
 dns_addr_file +".addr" load-address
