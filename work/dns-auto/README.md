@@ -1,5 +1,7 @@
 # Description
 
+## Note: this contract wasn't tested well.
+
 The folder contains all the sources of automatic DNS resolver.
 To build contracts from source run: 
 
