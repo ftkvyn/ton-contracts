@@ -10,11 +10,11 @@ To build contracts from source run:
 To create new resolver use:
 
 ```
-fift -s ./dist/new-resolver.fif 0 resolver-name
+fift -s ./dist/new-resolver.fif 0 1 0.001 0.000001 resolver-name
 ```
 
 # Get methods
-
+* prices - returns three ints - price for a dns entry, price for a cell and price for a bit
 * dnsresolve (*123660*) args: string_slice *lookup*, int(16) *category* - lookups host name as described in the contest conditions.
 * dnsresolve_test (*94497*) args: string_slice *lookup*, int(16) *category* - same as **dnsresolve**, but assumes that each host name is terminated by dot, not zero byte. Used for testing in lite-client.
 
