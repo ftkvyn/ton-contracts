@@ -2,27 +2,33 @@ constant code
 
 "TonUtil.fif" include
 
-{ ."usage: " @' $0 type ." <workchain-id> [<filename-base>]" cr
-  ."Creates a new manual dns resolver in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
-  ."('new-manual-dns.pk' by default)" cr 1 halt
+{ ."usage: " @' $0 type ." <workchain-id> <host-price> <cell-price> <bit-price> [<filename-base>]" cr
+  ."Creates a new automatic dns resolver in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
+  ."('new-auto-dns.pk' by default)" cr 1 halt
 } : usage
-$# 1- -2 and ' usage if
+$# dup 4 < swap 5 > or ' usage if
 
 $1 parse-workchain-id =: wc    // set workchain id from command line argument
-def? $2 { @' $2 } { "new-manual-dns" } cond constant file-base
+$2 $>GR =: host-price
+$3 $>GR =: cell-price
+$4 $>GR =: bit-price
+def? $5 { @' $5 } { "new-auto-dns" } cond constant file-base
 
-."Creating new manual dns resolver in workchain " wc . cr
+."Creating new automatic dns resolver in workchain " wc . cr
 
-<b 0 32 u, 
+<b 0 32 u, // seq_no
    file-base +".pk" load-generate-keypair
    constant dns_pk
    B, 
+   host-price Gram,
+   cell-price Gram,
+   bit-price Gram,
 b> constant data
 <b b{0011} s, code ref, data ref, null dict, b> constant state-init  // create StateInit
 state-init .s
 state-init ."StateInit: " <s csr. cr
 state-init hash wc swap 2dup 2constant dns_addr
-."new manual dns resolver address = " 2dup .addr cr
+."new automatic dns resolver address = " 2dup .addr cr
 2dup file-base +".addr" save-address-verbose
 ."Non-bounceable address (for init): " 2dup 7 .Addr cr
 ."Bounceable address (for later access): " 6 .Addr cr
@@ -36,4 +42,4 @@ drop
 dup ."External message for initialization is " <s csr. cr
 2 boc+>B dup Bx. cr
 file-base +"-query.boc" tuck B>file
-."(Saved manual dns creating query to file " type .")" cr
+."(Saved automatic dns creating query to file " type .")" cr

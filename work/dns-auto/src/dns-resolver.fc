@@ -1,37 +1,23 @@
-() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
-  ;; get sender address for saving or checking
-  ;; get grams to check the prices
-  ;; add special -2 category
-}
-
-_ process_init(int public_key) impure {
-    ;; populating new dict with some trash because empty dict doesn't work well.
-    cell new_dns_dict = new_dict();
-    cell new_cat_dict = new_dict();
-    new_cat_dict~idict_set_builder(16, 0, begin_cell().store_uint(1,1));
-    new_dns_dict~udict_set_builder(256, 0, begin_cell().store_dict(new_cat_dict));
-    set_data(begin_cell()
-        ;; ADD:
-        ;; time, price-reg, price-bit, price-cell 
-        ;; special expirations dict. key - host_int, value - expiry date
-        .store_uint(1, 32)
-        .store_uint(public_key, 256)
-        ;; ToDo: divide into several dicts with different key length - 32, 64, 256 bits
-        .store_dict(new_dns_dict) ;; DNS entries dict
-        .end_cell());
-    return -1;
-}
-
-_ update_dns(int public_key, int seq_no, cell dns_dict, slice msg_slice) impure {
+_ update_dns(slice sender, int public_key, int seq_no, cell dns_dict, cell expiry_dict, slice msg_slice, int host_price, int cell_price, int bit_price) impure {
     int domain_uint = msg_slice~load_uint(256);
     int domain_category = msg_slice~load_int(16);
     int addr_wc = msg_slice~load_int(8);
     int addr_dest = msg_slice~load_uint(256);
 
     cell categories_dict = new_dict();
-    (slice categories_slice, int is_found) = dns_dict.udict_get?(256, domain_uint);
-    if(is_found) {
+    (slice categories_slice, int is_categories_found) = dns_dict.udict_get?(256, domain_uint);
+    (int sender_wc, int sender_addr) = parse_std_addr(sender);
+    if(is_categories_found) {
         categories_dict = categories_slice~load_dict();
+        (slice owner, int is_owner_found) = categories_dict.idict_get?(16, -2);
+        throw_unless(71, is_owner_found); ;; host owner not found
+        (int owner_wc, int owner_addr) = (owner~load_int(8), owner~load_uint(256));
+        throw_unless(74, (sender_wc == owner_wc) & (sender_addr == owner_addr)); ;; not an owner, can't modify the entry.
+    } else {
+        ;; setting the new owner
+        categories_dict~idict_set_builder(16, -2, begin_cell()
+            .store_int(sender_wc, 8)
+            .store_uint(sender_addr, 256));
     }
 
     ;; check if we need  to delete the entry first
@@ -42,15 +28,86 @@ _ update_dns(int public_key, int seq_no, cell dns_dict, slice msg_slice) impure 
         .store_uint(addr_dest, 256));
     dns_dict~udict_set_builder(256, domain_uint, begin_cell().store_dict(categories_dict));
 
+    int expiry_date = now() + (60 * 60 * 24 * 365); ;; One year
+    expiry_dict~udict_set_builder(256, domain_uint, begin_cell().store_uint(32, expiry_date));
+
     set_data(begin_cell()
         .store_uint(seq_no, 32)
         .store_uint(public_key, 256)
+        .store_grams(host_price)
+        .store_grams(cell_price)
+        .store_grams(bit_price)
         .store_dict(dns_dict) ;; DNS entries dict
+        .store_dict(expiry_dict)
         .end_cell());
 
     return -1;
 }
 
+() recv_internal(int msg_value, cell in_msg_cell, slice in_msg) impure {
+    ;; get sender address for saving or checking
+    ;; get grams to check the prices
+    ;; add special -2 category
+    
+    slice msg_slice = in_msg_cell.begin_parse();
+    int flags = msg_slice~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+    if (flags & 1) {
+        ;; ignore all bounced messages
+        return ();
+    }
+
+    slice sender_addr = msg_slice~load_msg_addr();
+    int mode = msg_slice~load_uint(8);
+
+    if (mode == 1) {
+        slice data_slice = begin_parse(get_data());
+        int stored_seqno = data_slice~load_uint(32);
+        int public_key = data_slice~load_uint(256);
+        int host_price = data_slice~load_grams();
+        int cell_price = data_slice~load_grams();
+        int bit_price = data_slice~load_grams();
+        
+        int total_price = host_price + bit_price * in_msg.slice_bits() + cell_price;
+        throw_if(101 ,total_price > msg_value); ;; not enough gold
+
+        accept_message();
+
+        int msg_seqno = msg_slice~load_uint(32);
+        throw_unless(35, stored_seqno == msg_seqno);
+
+        cell dns_dict = data_slice~load_ref();
+        cell expiry_dict = data_slice~load_ref();
+
+        update_dns(sender_addr, public_key, stored_seqno + 1, dns_dict, expiry_dict, msg_slice, host_price, cell_price, bit_price);
+        return ();
+    }
+
+    throw_if(404, -1); ;; Unknown message mode
+    return ();
+}
+
+_ process_init(int public_key, int host_price, int cell_price, int bit_price) impure {
+    ;; populating new dict with some trash because empty dict doesn't work well.
+    cell new_dns_dict = new_dict();
+    cell new_cat_dict = new_dict();
+    new_cat_dict~idict_set_builder(16, 0, begin_cell().store_uint(1,1));
+    new_dns_dict~udict_set_builder(256, 0, begin_cell().store_dict(new_cat_dict));
+
+    cell new_dns_expiry_dict = new_dict();
+    new_dns_dict~udict_set_builder(256, 0, begin_cell().store_uint(32, now()));
+
+    set_data(begin_cell()
+        .store_uint(1, 32)
+        .store_uint(public_key, 256)
+        .store_grams(host_price)
+        .store_grams(cell_price)
+        .store_grams(bit_price)
+        .store_dict(new_dns_dict) ;; DNS entries dict
+        .store_dict(new_dns_expiry_dict) ;; special expirations dict. key - host_int, value - expiry date
+        .end_cell());
+
+    return -1;
+}
 
 (int, cell) resolve_single_entry(int str_int, int category, int len, cell dns_dict) {
     (slice categories_slice, int is_found) = dns_dict.udict_get?(256, str_int);
@@ -75,6 +132,9 @@ _ recv_external(slice in_msg) impure {
     slice data_slice = begin_parse(get_data());
     int stored_seqno = data_slice~load_uint(32);
     int public_key = data_slice~load_uint(256);
+    int host_price = data_slice~load_grams();
+    int cell_price = data_slice~load_grams();
+    int bit_price = data_slice~load_grams();
     
     throw_unless(34, check_signature(cell_hash(msg_body), signature, public_key));
     accept_message();
@@ -84,10 +144,11 @@ _ recv_external(slice in_msg) impure {
     if(mode == 7) {
         ;; Initialization of the contract
         throw_if(32, stored_seqno);
-        return process_init(public_key);
+        return process_init(public_key, host_price, cell_price, bit_price);
     }
 
     cell dns_dict = data_slice~load_ref();
+    cell expiry_dict = data_slice~load_ref();
 
     if (mode == 3) {
         ;; Updating stored public_key
@@ -95,18 +156,16 @@ _ recv_external(slice in_msg) impure {
         set_data(begin_cell()
             .store_uint(stored_seqno, 32)
             .store_uint(new_public_key, 256)
-            .store_dict(dns_dict)
+            .store_grams(host_price)
+            .store_grams(cell_price)
+            .store_grams(bit_price)
+            .store_dict(dns_dict) ;; DNS entries dict
+            .store_dict(expiry_dict)
             .end_cell());
         return -1;
     }
 
-    if (mode == 1) {
-        ;; New dns entry
-        int msg_seqno = msg_slice~load_uint(32);
-        throw_unless(35, stored_seqno == msg_seqno);
-
-        return update_dns(public_key, stored_seqno + 1, dns_dict, msg_slice);
-    }
+    ;; ToDo: add update prices
     
     
     throw_if(404, -1); ;; Unknown message mode
@@ -117,6 +176,9 @@ _ recv_external(slice in_msg) impure {
     slice data_slice = get_data().begin_parse();
     int stored_seqno = data_slice~load_uint(32);
     int public_key = data_slice~load_uint(256);
+    int host_price = data_slice~load_grams();
+    int cell_price = data_slice~load_grams();
+    int bit_price = data_slice~load_grams();
     cell dns_dict = data_slice~load_dict();
 
     int bytes_len = 0;
@@ -155,4 +217,11 @@ _ recv_external(slice in_msg) impure {
 int seqno() method_id {
     slice data_slice = get_data().begin_parse();
     return data_slice~load_uint(32);
+}
+
+(int, int, int) prices() method_id {
+    slice data_slice = get_data().begin_parse();
+    data_slice~load_uint(32);
+    data_slice~load_uint(256);
+    return (data_slice~load_grams(), data_slice~load_grams(), data_slice~load_grams());
 }

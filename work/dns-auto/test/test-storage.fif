@@ -110,6 +110,9 @@ constant dns-dict
 <b 
 0 32 u, // seq_no
 0 256 u, // public key
+1 Gram,
+0.001 Gram,
+0.000001 Gram,
 dns-dict dict, b> constant storage
 
 

@@ -1,0 +1,483 @@
+"Asm.fif" include
+// automatically generated from `./lib/stdlib.fc` `./src/dns-resolver.fc` 
+PROGRAM{
+  DECLPROC update_dns
+  DECLPROC recv_internal
+  DECLPROC process_init
+  DECLPROC resolve_single_entry
+  DECLPROC recv_external
+  DECLPROC dnsresolve_internal
+  123660 DECLMETHOD dnsresolve
+  94497 DECLMETHOD dnsresolve_test
+  85143 DECLMETHOD seqno
+  118316 DECLMETHOD prices
+  update_dns PROC:<{
+    s0 s3 XCHG
+    256 LDU
+    16 LDI
+    8 LDI
+    256 LDU
+    DROP
+    NEWDICT
+    8 PUSHPOW2
+    s5 PUSH
+    SWAP
+    s11 PUSH
+    SWAP
+    DICTUGET
+    NULLSWAPIFNOT
+    s0 s14 XCHG
+    REWRITESTDADDR
+    s0 s15 XCHG
+    IF:<{
+      s2 POP
+      LDDICT
+      DROP
+      -2 PUSHINT
+      16 PUSHINT
+      s2 PUSH
+      SWAP
+      DICTIGET
+      NULLSWAPIFNOT
+      71 THROWIFNOT
+      8 LDI
+      256 LDU
+      DROP
+      s1 s3 XCHG
+      s0 s3 XCHG
+      EQUAL
+      s1 s14 XCHG
+      s0 s2 XCHG
+      EQUAL
+      AND
+      74 THROWIFNOT
+    }>ELSE<{
+      NIP
+      NEWC
+      8 STI
+      s1 s13 XCHG
+      256 STU
+      -2 PUSHINT
+      16 PUSHINT
+      s2 s3 XCHG
+      s1 s2 XCHG
+      s1 s14 XCHG
+      DICTISETB
+      s0 s11 XCHG
+    }>
+    NEWC
+    s1 s2 XCHG
+    8 STI
+    256 STU
+    16 PUSHINT
+    s1 s3 XCHG
+    s1 s11 XCHG
+    DICTISETB
+    NEWC
+    STDICT
+    8 PUSHPOW2
+    s1 s2 XCHG
+    s9 PUSH
+    s0 s2 XCHG
+    s1 s7 XCHG
+    s0 s7 XCHG
+    DICTUSETB
+    NOW
+    31536000 PUSHINT
+    ADD
+    32 PUSHINT
+    NEWC
+    s1 s2 XCHG
+    SWAP
+    STUX
+    8 PUSHPOW2
+    s1 s3 XCHG
+    s2 s9 XCHG
+    s1 s5 XCHG
+    DICTUSETB
+    NEWC
+    s1 s5 XCHG
+    32 STU
+    s1 s5 XCHG
+    256 STU
+    SWAP
+    STGRAMS
+    SWAP
+    STGRAMS
+    SWAP
+    s0 s2 XCHG
+    STGRAMS
+    s1 s2 XCHG
+    STDICT
+    STDICT
+    ENDC
+    c4 POP
+    -1 PUSHINT
+  }>
+  recv_internal PROC:<{
+    SWAP
+    CTOS
+    4 LDU
+    1 PUSHINT
+    s1 s2 XCHG
+    AND
+    IFJMP:<{
+      DROP
+      DROP
+      DROP
+    }>
+    LDMSGADDR
+    8 LDU
+    SWAP
+    1 EQINT
+    IFJMP:<{
+      c4 PUSH
+      CTOS
+      32 LDU
+      256 LDU
+      LDGRAMS
+      LDGRAMS
+      LDGRAMS
+      s0 s8 XCHG
+      SBITS
+      OVER
+      SWAP
+      MUL
+      s3 PUSH
+      SWAP
+      ADD
+      s2 PUSH
+      ADD
+      SWAP
+      s0 s9 XCHG
+      GREATER
+      101 THROWIF
+      ACCEPT
+      s0 s4 XCHG
+      32 LDU
+      s4 PUSH
+      SWAP
+      s0 s2 XCHG
+      EQUAL
+      35 THROWIFNOT
+      s0 s6 XCHG
+      LDREF
+      LDREF
+      DROP
+      s0 s4 XCHG
+      INC
+      s6 s8 XCHG
+      s3 s7 XCHG
+      s0 s6 XCHG
+      s1 s5 XCHG
+      update_dns CALLDICT
+      DROP
+    }>
+    DROP
+    DROP
+    DROP
+    DROP
+    404 THROW
+  }>
+  process_init PROC:<{
+    NEWDICT
+    NEWDICT
+    1 PUSHINT
+    NEWC
+    1 STU
+    0 PUSHINT
+    16 PUSHINT
+    s2 s3 XCHG
+    s1 s2 XCHG
+    DICTISETB
+    NEWC
+    STDICT
+    0 PUSHINT
+    8 PUSHPOW2
+    s2 s3 XCHG
+    s1 s2 XCHG
+    DICTUSETB
+    NEWDICT
+    32 PUSHINT
+    NEWC
+    NOW
+    STUX
+    0 PUSHINT
+    8 PUSHPOW2
+    s2 s3 XCHG
+    s1 s2 XCHG
+    s1 s4 XCHG
+    DICTUSETB
+    1 PUSHINT
+    NEWC
+    32 STU
+    s1 s6 XCHG
+    256 STU
+    SWAP
+    s0 s4 XCHG
+    STGRAMS
+    SWAP
+    s0 s2 XCHG
+    STGRAMS
+    SWAP
+    STGRAMS
+    s1 s2 XCHG
+    STDICT
+    STDICT
+    ENDC
+    c4 POP
+    -1 PUSHINT
+  }>
+  resolve_single_entry PROC:<{
+    8 PUSHPOW2
+    s2 s4 XCHG
+    DICTUGET
+    NULLSWAPIFNOT
+    IFNOTJMP:<{
+      DROP
+      DROP
+      DROP
+      0 PUSHINT
+      NEWDICT
+    }>
+    OVER
+    0 EQINT
+    IFJMP:<{
+      NIP
+      SWAP
+      8 ADDCONST
+      SWAP
+      LDDICT
+      DROP
+    }>
+    LDDICT
+    DROP
+    16 PUSHINT
+    DICTIGET
+    NULLSWAPIFNOT
+    IFNOTJMP:<{
+      DROP
+      DROP
+      0 PUSHINT
+      NEWDICT
+    }>
+    SWAP
+    8 ADDCONST
+    NEWC
+    SWAP
+    s0 s2 XCHG
+    STSLICER
+    ENDC
+  }>
+  recv_external PROC:<{
+    9 PUSHPOW2
+    LDSLICEX
+    LDREF
+    DROP
+    c4 PUSH
+    CTOS
+    32 LDU
+    256 LDU
+    LDGRAMS
+    LDGRAMS
+    LDGRAMS
+    s6 PUSH
+    HASHCU
+    SWAP
+    s0 s8 XCHG
+    s5 PUSH
+    CHKSIGNU
+    34 THROWIFNOT
+    ACCEPT
+    s0 s5 XCHG
+    CTOS
+    8 LDU
+    OVER
+    7 EQINT
+    IFJMP:<{
+      DROP
+      DROP
+      s5 POP
+      s0 s2 XCHG
+      32 THROWIF
+      s0 s3 XCHG
+      s1 s2 XCHG
+      SWAP
+      process_init CALLDICT
+    }>
+    s4 POP
+    s0 s6 XCHG
+    LDREF
+    LDREF
+    DROP
+    s0 s7 XCHG
+    3 EQINT
+    IFJMP:<{
+      s0 s3 XCHG
+      256 LDU
+      DROP
+      NEWC
+      s1 s5 XCHG
+      32 STU
+      s1 s4 XCHG
+      256 STU
+      SWAP
+      STGRAMS
+      SWAP
+      s0 s2 XCHG
+      STGRAMS
+      SWAP
+      s0 s2 XCHG
+      STGRAMS
+      STDICT
+      STDICT
+      ENDC
+      c4 POP
+      -1 PUSHINT
+    }>
+    DROP
+    DROP
+    DROP
+    DROP
+    DROP
+    DROP
+    DROP
+    404 THROW
+    404 PUSHINT
+  }>
+  dnsresolve_internal PROC:<{
+    c4 PUSH
+    CTOS
+    32 LDU
+    NIP
+    256 LDU
+    NIP
+    LDGRAMS
+    NIP
+    LDGRAMS
+    NIP
+    LDGRAMS
+    NIP
+    LDDICT
+    DROP
+    0 PUSHINT
+    DUP
+    -1 PUSHINT
+    WHILE:<{
+      s6 PUSH
+      SBITS
+      OVER
+      SWAP
+      AND
+    }>DO<{
+      s0 s6 XCHG
+      8 LDU
+      OVER
+      s6 PUSH
+      EQUAL
+      IF:<{
+        NIP
+        s6 POP
+        0 PUSHINT
+      }>ELSE<{
+        s0 s3 XCHG
+        INC
+        s0 s2 XCHG
+        8 LSHIFT#
+        SWAP
+        ADD
+        s2 s6 XCHG
+        s1 s2 XCHG
+        SWAP
+      }>
+    }>
+    s4 POP
+    s0 s5 XCHG
+    SBITS
+    0 GTINT
+    IF:<{
+      s3 POP
+      -1 PUSHINT
+    }>ELSE<{
+      s0 s3 XCHG
+    }>
+    s0 s2 XCHG
+    55 THROWIF
+    s0 s2 XCHG
+    3 LSHIFT#
+    s1 s2 XCHG
+    SWAP
+    resolve_single_entry CALLDICT
+  }>
+  dnsresolve PROC:<{
+    0 PUSHINT
+    dnsresolve_internal CALLDICT
+  }>
+  dnsresolve_test PROC:<{
+    46 PUSHINT
+    dnsresolve_internal CALLDICT
+  }>
+  seqno PROC:<{
+    c4 PUSH
+    CTOS
+    32 LDU
+    DROP
+  }>
+  prices PROC:<{
+    c4 PUSH
+    CTOS
+    32 LDU
+    NIP
+    256 LDU
+    NIP
+    LDGRAMS
+    LDGRAMS
+    LDGRAMS
+    DROP
+  }>
+}END>c
+constant code
+
+"TonUtil.fif" include
+
+{ ."usage: " @' $0 type ." <workchain-id> <host-price> <cell-price> <bit-price> [<filename-base>]" cr
+  ."Creates a new automatic dns resolver in specified workchain, with private key saved to or loaded from <filename-base>.pk" cr
+  ."('new-auto-dns.pk' by default)" cr 1 halt
+} : usage
+$# dup 4 < swap 5 > or ' usage if
+
+$1 parse-workchain-id =: wc    // set workchain id from command line argument
+$2 $>GR =: host-price
+$3 $>GR =: cell-price
+$4 $>GR =: bit-price
+def? $5 { @' $5 } { "new-auto-dns" } cond constant file-base
+
+."Creating new automatic dns resolver in workchain " wc . cr
+
+<b 0 32 u, // seq_no
+   file-base +".pk" load-generate-keypair
+   constant dns_pk
+   B, 
+   host-price Gram,
+   cell-price Gram,
+   bit-price Gram,
+b> constant data
+<b b{0011} s, code ref, data ref, null dict, b> constant state-init  // create StateInit
+state-init .s
+state-init ."StateInit: " <s csr. cr
+state-init hash wc swap 2dup 2constant dns_addr
+."new automatic dns resolver address = " 2dup .addr cr
+2dup file-base +".addr" save-address-verbose
+."Non-bounceable address (for init): " 2dup 7 .Addr cr
+."Bounceable address (for later access): " 6 .Addr cr
+<b 7 8 u, b> constant msg // mode = 7 - initializing the contract.
+msg
+.s cr
+dup ."signing message: " <s csr. cr
+dup hash dns_pk ed25519_sign_uint rot
+drop
+<b b{1000100} s, dns_addr addr, b{000010} s, state-init <s s, b{0} s, swap B, swap ref, b>
+dup ."External message for initialization is " <s csr. cr
+2 boc+>B dup Bx. cr
+file-base +"-query.boc" tuck B>file
+."(Saved automatic dns creating query to file " type .")" cr
