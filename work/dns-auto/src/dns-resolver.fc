@@ -172,7 +172,7 @@ _ recv_external(slice in_msg) impure {
         int new_bit_price = msg_slice~load_grams();
         set_data(begin_cell()
             .store_uint(stored_seqno, 32)
-            .store_uint(new_public_key, 256)
+            .store_uint(public_key, 256)
             .store_grams(new_host_price)
             .store_grams(new_cell_price)
             .store_grams(new_bit_price)

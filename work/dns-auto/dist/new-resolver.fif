@@ -305,15 +305,16 @@ PROGRAM{
       SWAP
       process_init CALLDICT
     }>
-    s4 POP
-    s0 s6 XCHG
+    s0 s7 XCHG
     LDREF
     LDREF
     DROP
-    s0 s7 XCHG
+    s2 PUSH
     3 EQINT
     IFJMP:<{
-      s0 s3 XCHG
+      s2 POP
+      s4 POP
+      s0 s6 XCHG
       256 LDU
       DROP
       NEWC
@@ -335,8 +336,35 @@ PROGRAM{
       c4 POP
       -1 PUSHINT
     }>
-    DROP
-    DROP
+    s3 POP
+    s3 POP
+    s5 POP
+    s0 s4 XCHG
+    22 EQINT
+    IFJMP:<{
+      s0 s4 XCHG
+      LDGRAMS
+      LDGRAMS
+      LDGRAMS
+      DROP
+      NEWC
+      s1 s5 XCHG
+      32 STU
+      s1 s3 XCHG
+      256 STU
+      SWAP
+      STGRAMS
+      SWAP
+      STGRAMS
+      SWAP
+      STGRAMS
+      s1 s2 XCHG
+      STDICT
+      STDICT
+      ENDC
+      c4 POP
+      -1 PUSHINT
+    }>
     DROP
     DROP
     DROP
