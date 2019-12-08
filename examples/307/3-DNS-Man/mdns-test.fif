@@ -1,0 +1,482 @@
+#!/usr/bin/env fift -s
+
+/*
+  /------------------------------------------------------------------------\
+  | Created for: Telegram (Open Network) Blockchain Contest                |
+  |      Task 3: DNS Resolver (Manually controlled)                        |
+  >------------------------------------------------------------------------<
+  | Script: Code logic test toolkit                                        |
+  >------------------------------------------------------------------------<
+  | Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)    |
+  |         October 2019                                                   |
+  \------------------------------------------------------------------------/
+  
+  Online tests commenced:
+  00 Initialization              - PASS
+  11 VSet:
+     Add to empty domain         - PASS
+     Add to existing domain      - PASS
+     Overwriting existing entry  - PASS
+	 Long name (ref, 88c/712b)   - PASS
+  12 VDel:
+     Deleting non-last entry     - PASS
+     Deleting last entry         - PASS
+     Deleting last entry overall - PASS
+  21 DSet:
+     Replacing existing table    - PASS
+     Setting new table           - PASS
+  22 DDel:
+     Deleting non-last domain    - PASS
+     Deleting last domain        - PASS
+  31 TSet                        - NOT TESTED
+  32 TDel                        - NOT TESTED
+  51 OSet:
+     Change ownership to another key        - PASS
+     Change ownership back with another key - PASS
+  GETTER FUNCTIONS 
+     seqno - PASS
+     dnsresolve:
+       Non-existing domain                  - PASS (0, Null)
+       Non-existing category                - PASS (8m, Null)
+       Existing domain and category         - PASS (8m, Cell(Data)) - Validity hash - PASS
+       Existing domain and zero category    - PASS (8m, Cell(Dict)) - Validity hash - PASS
+       Subdomain (existing\0text\0)         - PASS (8m, Cell(Data of -1 cat.)) - VH - PASS
+       Subdomain (existing\0text\0) no -1   - PASS (8m, Null)
+       Missing \0 at end of subdomain       - PASS (Automatically appended)
+  ZERO SLICING TEST: IN 6E657774657374001100 OUT 64 -> 8
+                   :   ( 0 1 2 3 4 5 6 7)8 9 - PASS
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack tool
+
+// Load code
+PROGRAM{ "mdns-logic.fif" include }END>c constant Code
+
+newkeypair
+	dup constant PublicKey 256 B>u@ constant UPublicKey
+	dup constant PrivateKey 256 B>u@ constant UPrivateKey
+  
+// Build initial data
+<b 
+	0 32 u,           // seqno
+	PublicKey B, // public_key
+	null dict,        // root (empty)
+b> constant InitialData
+
+// Initialize data variable
+variable Data
+variable Message
+variable SMessage
+
+InitialData Data !
+
+// Initialize root of t-data (c7)
+0 tuple 0x076ef1ea , // magic
+0 , 0 , // actions msg_sents
+1570470873 , // unix_time
+1 , 1 , 0 , // block_lt, trans_lt, rand_seed
+0 tuple 9223372036854775807 , dictnew , , // remaining balance
+0 , dictnew , // contract_address, global_config
+1 tuple // wrap to another tuple
+constant c7
+
+85143 constant seqno
+123660 constant dnsresolve
+
+variable CurrentPK
+PrivateKey CurrentPK !
+
+variable RetCode
+
+{ Data @ <s csr. } : DumpData
+{ Data @ <s 32 u@ } : SeqNo
+{ SeqNo 32 u, } : PutSeqNo,
+{ $, 0 8 u, } : \0,
+{ Message @ hashu CurrentPK @ ed25519_sign_uint
+  <b swap B, Message @ <s s, b> SMessage ! } : SignMessage
+{ SignMessage SMessage @ <s swap Code <s Data @ c7 runvmctx
+."Data state change: " cr DumpData Data ! DumpData 
+."Return code: " dup RetCode ! . cr } : RunVM
+{ Code <s Data @ c7 runvmctx drop // data not changed!
+."Return code: " dup RetCode ! . cr } : RunVMPure
+{ swap Message ! RunVM } : MRunVM
+{ recv_internal MRunVM } : VMIntMsg
+{ recv_external MRunVM } : VMExtMsg
+{ <b swap \0, b> <s swap dnsresolve RunVMPure } : DoResolve
+{ <b swap $, b> <s swap dnsresolve RunVMPure } : DoResolveNZ
+{ <s dup sbits 8 / $@ cr
+."Result: " type .", used bits of name: " . cr cr } : ShowResolution
+
+{ RetCode @ 0 = { cr ."TEST FAILED" cr 1 quit } ifnot } : ExpectSuccess
+{ RetCode @ 0 = { cr ."TEST FAILED" cr 1 quit } if } : ExpectFailure
+{ RetCode @ = { cr ."TEST FAILED" cr 1 quit } ifnot } : ExpectCode
+
+."Initial data state: " DumpData
+
+// Prepare first message to the contract
+<b
+	PutSeqNo, // seqno
+	0 6 u,  // op 00 init
+	0 1 u,  // name flag
+b> VMExtMsg 1 . ExpectSuccess
+
+// Test inline name set
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	6 6 u,    // name length
+	"test1" \0, // name
+	<b "TestAddr111" $, b> ref, // value
+b> VMExtMsg 2 . ExpectSuccess
+
+// Test inline name set short
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	4 6 u,    // name length
+	"te1" \0, // name
+	<b "TestAddrSHORT" $, b> ref, // value
+b> VMExtMsg 3 . ExpectSuccess
+
+// Test inline name set long
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	10 6 u,    // name length
+	"testtest1" \0, // name
+	<b "TestAddr111111111" $, b> ref, // value
+b> VMExtMsg 4 . ExpectSuccess
+
+// Test referenced name set
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	1 1 u,    // name flag
+	2 16 i,   // category
+	<b "test2" \0, b> ref, // name
+	<b "TestAddr222" $, b> ref, // value
+b> VMExtMsg 5 . ExpectSuccess
+
+// Test inline name set add another cat
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	2 16 i,   // category
+	6 6 u,    // name length
+	"test1" \0, // name
+	<b "TestAddr123" $, b> ref, // value
+b> VMExtMsg 6 . ExpectSuccess
+
+// Test inline name set add another cat
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	3 16 i,   // category
+	6 6 u,    // name length
+	"test2" \0, // name
+	<b "TestAddr223" $, b> ref, // value
+b> VMExtMsg 7 . ExpectSuccess
+
+// Test delete cat
+<b
+	PutSeqNo, // seqno
+	12 6 u,   // op 12 vdel
+	0 1 u,    // name flag
+	2 16 i,   // category
+	6 6 u,    // name length
+	"test2" \0, // name
+b> VMExtMsg 8 . ExpectSuccess
+
+// Test add next resolver
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	-1 16 i,   // category
+	6 6 u,    // name length
+	"test2" \0, // name
+	<b "Test2Next" $, b> ref, // value
+b> VMExtMsg 9 . ExpectSuccess
+
+// Test invalid seqno
+<b
+	123 32 u, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	-1 16 i,   // category
+	6 6 u,    // name length
+	"test2" \0, // name
+	<b "Test2Next" $, b> ref, // value
+b> VMExtMsg 10 . 33 ExpectCode
+
+// Test seqno function
+seqno RunVMPure cr
+."Result: " . cr cr
+11 . ExpectSuccess
+
+// Test query without \0
+1 "test1" DoResolveNZ ShowResolution 12 . ExpectSuccess
+
+// Test query with \0
+3 "test2" DoResolve ShowResolution 13 . ExpectSuccess
+
+// Test query not existing
+3 "test3" DoResolve .s 2drop 14 . ExpectSuccess
+
+// Test category not existing
+4 "test2" DoResolve .s 2drop 15 . ExpectSuccess
+
+// Test next resolver query
+<b "test2" \0, "sub" \0, b> <s 2
+dnsresolve RunVMPure 
+ShowResolution 16 . ExpectSuccess
+
+// Test category not existing resolver
+<b "test1" \0, "sub" \0, b> <s 4
+dnsresolve RunVMPure .s 2drop
+17 . ExpectSuccess
+
+// Test category 0
+0 "test2" DoResolve 
+cr <s csr. ."used bits of name: " . cr
+18 . ExpectSuccess
+
+// Test replace with dictionary 21 dset
+<b
+	PutSeqNo, // seqno
+	21 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	6 6 u,    // name length
+	"test2" \0, // name
+	dictnew
+		<b "NewTestCat3" $, b> <b swap ref, b> <s 3 rot 16 idict! drop
+		<b "NewTestCat5e" $, b> <b swap ref, b> <s 5 rot 16 idict! drop
+	ref, // value
+b> VMExtMsg 19 . ExpectSuccess
+
+// Test find cat 3
+3 "test2" DoResolve ShowResolution 20 . ExpectSuccess
+
+// Test find cat 5
+5 "test2" DoResolve ShowResolution 21 . ExpectSuccess
+
+// Test delete test2->3
+<b
+	PutSeqNo, // seqno
+	12 6 u,   // op 11 vdel
+	0 1 u,    // name flag
+	3 16 i,   // category
+	6 6 u,    // name length
+	"test2" \0, // name
+b> VMExtMsg 22 . ExpectSuccess
+
+// Test delete test2->5 (should delete test2 overall)
+<b
+	PutSeqNo, // seqno
+	12 6 u,   // op 11 vdel
+	0 1 u,    // name flag
+	5 16 i,   // category
+	6 6 u,    // name length
+	"test2" \0, // name
+b> VMExtMsg 23 . ExpectSuccess
+
+// Save dict for restoration later
+variable Saved
+Data @ <s ref@ Saved !
+
+// Test delete test1
+<b
+	PutSeqNo, // seqno
+	22 6 u,   // op 12 ddel
+	0 1 u,    // name flag
+	6 6 u,    // name length
+	"test1" \0, // name
+b> VMExtMsg 24 . ExpectSuccess
+
+// Test delete te1
+<b
+	PutSeqNo, // seqno
+	22 6 u,   // op 12 ddel
+	0 1 u,    // name flag
+	4 6 u,    // name length
+	"te1" \0, // name
+b> VMExtMsg 25 . ExpectSuccess
+
+// Test delete last record
+<b
+	PutSeqNo, // seqno
+	22 6 u,   // op 12 ddel
+	0 1 u,    // name flag
+	10 6 u,    // name length
+	"testtest1" \0, // name
+b> VMExtMsg 26 . ExpectSuccess
+
+// Test table replacement (restoration)
+<b
+	PutSeqNo, // seqno
+	31 6 u,   // op 31 tset
+	0 1 u,    // name flag
+	Saved @ ref, // saved table
+b> VMExtMsg 27 . ExpectSuccess
+
+// Test lookup after table restore
+1 "testtest1" DoResolve ShowResolution 28 . ExpectSuccess
+
+// Test table nullification
+<b
+	PutSeqNo, // seqno
+	32 6 u,   // op 31 tdel
+	0 1 u,    // name flag
+b> VMExtMsg 29 . ExpectSuccess
+
+// Test ownership switch
+
+newkeypair
+	dup constant PublicKey2 256 B>u@ constant UPublicKey2
+	dup constant PrivateKey2 256 B>u@ constant UPrivateKey2
+	
+<b
+	PutSeqNo, // seqno
+	51 6 u,   // op 51 oset
+	0 1 u,    // name flag
+	PublicKey2 B, // new public key
+b> VMExtMsg 30 . ExpectSuccess
+
+// Try add domain with old key
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	6 6 u,    // name length
+	"neo11" \0, // name
+	<b "The matrix has you" $, b> ref, // value
+b> VMExtMsg 31 . 34 ExpectCode
+
+// Load new key
+PrivateKey2 CurrentPK !
+
+// Try add domain with new key
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	6 6 u,    // name length
+	"neo22" \0, // name
+	<b "The matrix really has you" $, b> ref, // value
+b> VMExtMsg 32 . ExpectSuccess
+
+// /////////////////////////////////////////////////////////// //
+// NEW TESTS, added after augmenting contract with capability  //
+// to store both base domains and subdomains at the same time! //
+// /////////////////////////////////////////////////////////// //
+
+/* Now, this WILL work!!!
+// Try add domain with two zero-chars
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	10 6 u,    // name length
+	"neo22" \0, "bad" \0, // name
+	<b "The matrix really has you" $, b> ref, // value
+b> VMExtMsg 33 . 39 ExpectCode
+*/
+
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	10 6 u,    // name length
+	"neo22" \0, "sub" \0, // name
+	<b "1111111111111" $, b> ref, // value
+b> VMExtMsg 33 . ExpectSuccess
+
+// Add next resolver for next test
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	-1 16 i,   // category
+	6 6 u,    // name length
+	"neo22" \0, // name
+	<b "NEXT" $, b> ref, // value
+b> VMExtMsg 34 . ExpectSuccess
+
+// Test base domain lookup
+<b "neo22" \0, b> <s 1
+dnsresolve RunVMPure 
+ShowResolution 35 . ExpectSuccess
+// 48 bits used: 6 bytes (neo22\0)
+
+// Test existing subdomain lookup
+<b "neo22" \0, "sub" \0, b> <s 1
+dnsresolve RunVMPure 
+ShowResolution 36 . ExpectSuccess
+// 80 bits used: 10 bytes (neo22\0sub\0)
+
+// Test non-existing subdomain lookup
+<b "neo22" \0, "submarine" \0, b> <s 1
+dnsresolve RunVMPure 
+ShowResolution 37 . ExpectSuccess
+// 48 bits used: 6 bytes (neo22\0)
+
+// Test non-existing sub-sub-domain lookup
+<b "neo22" \0, "sub" \0, "marine" \0, b> <s 1
+dnsresolve RunVMPure 
+.s 2drop 38 . ExpectSuccess
+// 80 bits used: 10 bytes (neo22\0sub\0)
+
+// Add "hole" subdomain: neo22 exists, neo22.hole does not, neo22.hole.sub exists
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	15 6 u,    // name length
+	"neo22" \0, "hole" \0, "sub" \0, // name
+	<b "2222222222" $, b> ref, // value
+b> VMExtMsg 39 . ExpectSuccess
+
+// Should resolve exactly, 120 bits of name
+<b "neo22" \0, "hole" \0, "sub" \0, b> <s 1
+dnsresolve RunVMPure 
+ShowResolution 40 . ExpectSuccess
+
+// Should resolve to neo22:-1, 48 bits of name
+<b "neo22" \0, "hole" \0, b> <s 1
+dnsresolve RunVMPure 
+ShowResolution 41 . ExpectSuccess
+
+// Try filling the gap, we have both \1 on left and \3 on right
+<b
+	PutSeqNo, // seqno
+	11 6 u,   // op 11 vset
+	0 1 u,    // name flag
+	1 16 i,   // category
+	11 6 u,    // name length
+	"neo22" \0, "hole" \0, // name
+	<b "33333333" $, b> ref, // value
+b> VMExtMsg 42 . ExpectSuccess
+
+// Should resolve exactly, 88 bits of name
+<b "neo22" \0, "hole" \0, b> <s 1
+dnsresolve RunVMPure 
+ShowResolution 42 1 + . ExpectSuccess
+
+// Perfect!!!
+
+cr cr ."Tests are completed!!!" cr cr cr

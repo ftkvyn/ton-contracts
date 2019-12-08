@@ -1,0 +1,107 @@
+#!/usr/bin/env fift -s
+
+/*
+  /------------------------------------------------------------------------\
+  | Created for: Telegram (Open Network) Blockchain Contest                |
+  |      Task 4: Synchronous Payment Channel                               |
+  >------------------------------------------------------------------------<
+  | Script: Generate a root block (zero state) for payment channel         |
+  >------------------------------------------------------------------------<
+  | Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)    |
+  |         October 2019                                                   |
+  \------------------------------------------------------------------------/
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack tool
+{ 0 1 u, } : 0, { 1 1 u, } : 1, // bits
+
+{ cr ."/--------------------------------------------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <pk-file> [producer] [-r or -R]"
+//  | Usage:  <filename-base> [-r or -R]                                             |  
+  @' $0 $len 40 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Generates a initial zero-state (root block) for synchronous payment channel.   |" cr
+  ."| File named pcs-sta-0-<0/1>s[-pubhash32].boc containing initial state.          |" cr
+  ."| Script will not overwrite files if they exist for your own safety.             |" cr
+  ."| <pk-file> should contain name of your private key file or - if not signing sta |" cr
+  ."| [producer] may be a, b, A, B and controls who can pay in next state (def: A)   |" cr
+  ."| -r activates robot mode (output will be more friendly to robots or some prog.) |" cr
+  ."| -R activates full robot mode (without even writing to files)                   |" cr
+  ."\--------------------------------------------------------------------------------/" cr
+  cr 1 halt
+} : usage
+
+$# 2 >= ' usage ifnot // Verify argument count
+$# 3 <= ' usage ifnot 
+
+$1 =: APKFile
+def? $2 { @' $2 } { "0" } cond =: AProducer
+def? $3 { @' $3 } { "" } cond =: Flags
+
+variable RMode     false RMode  !
+variable FRMode    false FRMode !
+Flags "-r" $= { true RMode ! } if
+Flags "-R" $= { true RMode ! true FRMode ! } if
+
+RMode  @ =: RM
+FRMode @ =: FRM
+
+   0 =: Producer
+null =: Signature
+
+0 =: Producer_
+0 =: Producer_0
+0 =: Producer_A
+0 =: Producer_a
+1 =: Producer_1
+1 =: Producer_B
+1 =: Producer_b
+
+AProducer 
+	"Producer_" swap $+ find { execute }
+	{ ."Invalid producer value specified" cr 1 halt } cond
+=: Producer
+
+APKFile =: PKFile
+
+<b
+	0,              // sff | Signature finalization flag	
+	0 Gram,         // d_i | Disbalance
+	0 64 u,         // i   | State number
+	Producer 1 u,   // o_i | Next block producer
+	0 256 u,        // hi_ | Hash of (S_i-1)
+b> =: StContents
+
+variable BKey
+variable UKey
+
+APKFile "-" $= {
+	APKFile file-exists? { APKFile =: PKFile } {
+		APKFile +".tpriv" file-exists? {
+			APKFile +".tpriv" =: PKFile
+		} {
+			."Private key file " APKFile type ." or " APKFile type .".tpriv not found!"
+			cr 1 halt
+		} cond
+	} cond
+	
+	RM { ."Loading private key from " PKFile type ."..." cr } ifnot
+	PKFile file>B dup Blen dup 64 = {
+		."Error: File " PKFile type ." contains corrupted private key material " 
+		."of length " . ."(64 expected)" cr 4 halt } ifnot     drop
+	32 B| over -rot 256 B>u@ swap <b swap B, b> hash = {
+		."Error: File " PKFile type ." contains corrupted private key material " 
+		."(hash check failed)" cr 5 halt } ifnot
+	dup BKey ! 256 B>u@ UKey !
+	
+	StContents hashu BKey @ ed25519_sign_uint <b swap B, b> =: Signature
+} ifnot
+
+// Generate the state
+<b
+	Signature dict,  // hs1 | Has Sign1 ref (if provided)
+	0,               // hs2 | Has Sign2 ref (not yet)
+	StContents <s s, // state contents
+b> <s csr.
+

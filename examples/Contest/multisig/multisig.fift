@@ -1,0 +1,1026 @@
+"Asm.fif" include
+// automatically generated from `stdlib.fc` `multisig.fc` 
+PROGRAM{
+  74411 DECLMETHOD get_uniq_token
+  80276 DECLMETHOD number_of_keys
+  DECLPROC basic_validity_check
+  DECLPROC check_form_signatures_set
+  DECLPROC process_order
+  DECLPROC pack_order
+  DECLPROC update_stored_orders
+  DECLPROC upgrade_contract
+  DECLPROC collect_outdated_orders
+  DECLPROC recv_external
+  DECLPROC recv_internal
+  85143 DECLMETHOD seqno
+  121049 DECLMETHOD order_seqno
+  100934 DECLMETHOD all_pending_orders
+  103571 DECLMETHOD pending_orders
+  116403 DECLMETHOD parse_common_message
+  94132 DECLMETHOD all_pending_orders_by_key
+  99529 DECLMETHOD all_pending_orders_unsigned_by_key
+  99554 DECLMETHOD all_pending_orders_signed_by_key
+  101874 DECLMETHOD pending_orders_by_key
+  95010 DECLMETHOD pending_orders_unsigned_by_key
+  72467 DECLMETHOD pending_orders_signed_by_key
+  130501 DECLMETHOD show_order
+  127499 DECLMETHOD show_general_info
+  get_uniq_token PROC:<{
+    // 
+    MYADDR	//  _2
+    REWRITESTDADDR	//  _7 _8
+    NIP	//  address
+    192 RSHIFT#	//  token
+  }>
+  number_of_keys PROC:<{
+    // 
+    c4 PUSH	//  _1
+    CTOS	//  data_slice
+    40 LDSLICE	//  _25 _24
+    NIP	//  data_slice
+    LDDICT	//  _27 _26
+    DROP	//  keys
+    0 PUSHINT	//  keys counter=0
+    OVER	//  keys counter=0 keys
+    DICTEMPTY	//  keys counter=0 _14
+    IFNOT:<{	//  keys counter=0
+      -1 PUSHINT	//  keys counter=0 pubkey=-1
+      UNTIL:<{
+        s2 PUSH
+        8 PUSHPOW2	//  keys counter pubkey keys _19=256
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  keys counter _29 _28 _30
+        s2 POP	//  keys counter found_pk pubkey
+        OVER	//  keys counter found_pk pubkey found_pk
+        IF:<{	//  keys counter found_pk pubkey
+          s0 s2 XCHG	//  keys pubkey found_pk counter
+          INC	//  keys pubkey found_pk counter
+        }>ELSE<{
+          s0 s2 XCHG	//  keys pubkey found_pk counter
+        }>
+        SWAP	//  keys pubkey counter found_pk
+        NOT	//  keys pubkey counter _23
+        s1 s2 XCHG	//  keys counter pubkey _23
+      }>	//  keys counter pubkey
+      DROP
+      NIP	//  counter
+    }>ELSE<{
+      NIP	//  counter
+    }>
+  }>
+  basic_validity_check PROC:<{
+    //  msg_slice
+    8 LDU	//  operation msg_slice
+    c4 PUSH	//  operation msg_slice _6
+    CTOS	//  operation msg_slice data_slice
+    32 LDU	//  operation msg_slice _10 data_slice
+    8 LDU	//  operation msg_slice stored_seqno threshold_num data_slice
+    s4 PUSH	//  operation msg_slice stored_seqno threshold_num data_slice operation
+    0 EQINT	//  operation msg_slice stored_seqno threshold_num data_slice _17
+    IFJMP:<{	//  operation msg_slice stored_seqno threshold_num data_slice
+      s2 s4 XCHG
+      4 BLKDROP	//  stored_seqno
+      0 EQINT	//  _20
+      33 THROWIFNOT
+      NEWC
+      ENDC
+      CTOS	//  _22
+      NEWDICT	//  _22 _23
+      NEWDICT	//  _22 _23 _24
+      0 PUSHINT	//  _22 _23 _24 _25=0
+      s0 s0 s0 PUSH3	//  _22 _23 _24 _25=0 _26=0 _27=0 _28=0
+      DUP	//  _22 _23 _24 _25=0 _26=0 _27=0 _28=0 _29=0
+      32 PUSHPOW2DEC	//  _22 _23 _24 _25=0 _26=0 _27=0 _28=0 _29=0 _30=4294967295
+    }>	//  operation msg_slice stored_seqno threshold_num data_slice
+    s0 s3 XCHG	//  operation data_slice stored_seqno threshold_num msg_slice
+    32 LDU	//  operation data_slice stored_seqno threshold_num order_seqno msg_slice
+    -1 PUSHINT	//  operation data_slice stored_seqno threshold_num order_seqno msg_slice valid_until=-1
+    0 PUSHINT	//  operation data_slice stored_seqno threshold_num order_seqno msg_slice valid_until=-1 min_signatures_num=0
+    s7 PUSH	//  operation data_slice stored_seqno threshold_num order_seqno msg_slice valid_until=-1 min_signatures_num=0 operation
+    1 EQINT	//  operation data_slice stored_seqno threshold_num order_seqno msg_slice valid_until=-1 min_signatures_num=0 _40
+    IF:<{	//  operation data_slice stored_seqno threshold_num order_seqno msg_slice valid_until=-1 min_signatures_num=0
+      2DROP	//  operation data_slice stored_seqno threshold_num order_seqno msg_slice
+      32 LDU	//  operation data_slice stored_seqno threshold_num order_seqno valid_until msg_slice
+      8 LDU	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num msg_slice
+      s2 PUSH
+      NOW	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num msg_slice valid_until _48
+      LESS	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num msg_slice _49
+      35 THROWIF
+      s1 s4 PUXC	//  operation data_slice stored_seqno msg_slice order_seqno valid_until min_signatures_num min_signatures_num threshold_num
+      LESS	//  operation data_slice stored_seqno msg_slice order_seqno valid_until min_signatures_num _52
+      41 THROWIF
+      DUP	//  operation data_slice stored_seqno msg_slice order_seqno valid_until min_signatures_num threshold_num
+    }>ELSE<{
+      s1 s0 s4 XCHG3	//  operation data_slice stored_seqno msg_slice order_seqno valid_until min_signatures_num threshold_num
+    }>
+    s0 s4 XCHG	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num msg_slice
+    64 LDU	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token msg_slice
+    OVER
+    get_uniq_token CALLDICT	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token msg_slice uniq_token _59
+    EQUAL	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token msg_slice _60
+    37 THROWIFNOT
+    s8 PUSH	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token msg_slice operation
+    4 LESSINT	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token msg_slice _64
+    36 THROWIFNOT
+    256 LDU	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token _68 msg_slice
+    9 PUSHPOW2	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token _68 msg_slice _72=512
+    LDSLICEX	//  operation data_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature msg_slice
+    s0 s9 XCHG	//  operation msg_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature data_slice
+    LDDICT	//  operation msg_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature _76 data_slice
+    LDDICT	//  operation msg_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature keys_dict stored_orders data_slice
+    0 PUSHINT	//  operation msg_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature keys_dict stored_orders data_slice per_order_seqno_stored=0
+    s13 PUSH	//  operation msg_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature keys_dict stored_orders data_slice per_order_seqno_stored=0 operation
+    2 EQINT	//  operation msg_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature keys_dict stored_orders data_slice per_order_seqno_stored=0 _83
+    IF:<{	//  operation msg_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature keys_dict stored_orders data_slice per_order_seqno_stored=0
+      DROP
+      s7 POP
+      s9 POP	//  operation msg_slice stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict
+      s6 s8 PUSH2
+      32 PUSHINT	//  operation msg_slice stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict order_seqno stored_orders _86=32
+      DICTUGET
+      NULLSWAPIFNOT	//  operation msg_slice stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict order_root_cell found
+      38 THROWIFNOT
+      16 LDU	//  operation msg_slice stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored order_root_cell
+      32 LDU	//  operation msg_slice stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored _191 _190
+      DROP	//  operation msg_slice stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored valid_until
+      s0 s11 XCHG	//  operation valid_until stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored msg_slice
+      16 LDU	//  operation valid_until stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored per_order_seqno_provided msg_slice
+      s2 s1 PUXC	//  operation valid_until stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored msg_slice per_order_seqno_stored per_order_seqno_provided
+      EQUAL	//  operation valid_until stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored msg_slice _101
+      39 THROWIFNOT
+    }>ELSE<{	//  operation msg_slice stored_seqno threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature keys_dict stored_orders data_slice per_order_seqno_stored=0
+      s9 s11 PUXC	//  operation msg_slice per_order_seqno_stored=0 threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature keys_dict stored_orders data_slice order_seqno stored_seqno
+      EQUAL	//  operation msg_slice per_order_seqno_stored=0 threshold_num order_seqno valid_until min_signatures_num uniq_token proof_pub_key proof_signature keys_dict stored_orders data_slice _104
+      33 THROWIFNOT
+      s7 s11 XCHG
+      s10 s7 XCHG2	//  operation valid_until stored_orders threshold_num order_seqno data_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored msg_slice
+    }>
+    s0 s7 XCHG	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored data_slice
+    ENDS
+    s3 s1 PUSH2
+    8 PUSHPOW2	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored proof_pub_key keys_dict _109=256
+    DICTUGET
+    NULLSWAPIFNOT	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored _194 _195
+    NIP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored found
+    40 THROWIFNOT
+    NEWC
+    ENDC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored seed_cell
+    s12 PUSH	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored seed_cell operation
+    1 EQINT	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored seed_cell _116
+    IF:<{	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored seed_cell
+      DROP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored
+      s6 PUSH	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored msg_slice
+      LDDICT	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored _197 _196
+      NIP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored _1
+      LDDICT	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored _199 _198
+      DROP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored order_dict
+      s12 PUSH
+      NEWC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored order_dict operation _123
+      8 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored order_dict _125
+      s9 s(-1) PUXC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored order_dict order_seqno _125
+      32 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored order_dict _127
+      s12 s(-1) PUXC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored order_dict valid_until _127
+      32 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice min_signatures_num uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored order_dict _129
+      s1 s7 XCHG	//  operation valid_until stored_orders threshold_num order_seqno msg_slice order_dict uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored min_signatures_num _129
+      8 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice order_dict uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored _131
+      s5 s(-1) PUXC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice order_dict uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored uniq_token _131
+      64 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice order_dict uniq_token proof_pub_key proof_signature keys_dict per_order_seqno_stored _133
+      s1 s6 XCHG	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict order_dict _133
+      STDICT	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict _134
+      ENDC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict seed_cell
+    }>ELSE<{
+      s0 s6 XCHG2
+      DROP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict seed_cell
+    }>
+    s11 PUSH	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict seed_cell operation
+    2 EQINT	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict seed_cell _137
+    IF:<{	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict seed_cell
+      DROP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict
+      s10 PUSH
+      NEWC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict operation _138
+      8 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict _140
+      s7 s(-1) PUXC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict order_seqno _140
+      32 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict _142
+      s4 s(-1) PUXC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict uniq_token _142
+      64 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice per_order_seqno_stored uniq_token proof_pub_key proof_signature keys_dict _144
+      s1 s5 XCHG	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature per_order_seqno_stored _144
+      16 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature _146
+      ENDC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature seed_cell
+    }>ELSE<{
+      s0 s5 XCHG2
+      DROP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature seed_cell
+    }>
+    s10 PUSH	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature seed_cell operation
+    3 EQINT	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature seed_cell _149
+    IF:<{	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature seed_cell
+      DROP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature
+      s9 PUSH
+      NEWC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature operation _150
+      8 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature _152
+      s6 s(-1) PUXC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature order_seqno _152
+      32 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict uniq_token proof_pub_key proof_signature _154
+      s1 s3 XCHG	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict proof_signature proof_pub_key uniq_token _154
+      64 STU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict proof_signature proof_pub_key _156
+      s4 PUSH	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict proof_signature proof_pub_key _156 msg_slice
+      STSLICER	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict proof_signature proof_pub_key _157
+      ENDC	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict proof_signature proof_pub_key seed_cell
+    }>ELSE<{
+      s0 s3 XCHG2
+      DROP	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict proof_signature proof_pub_key seed_cell
+    }>
+    HASHCU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict proof_signature proof_pub_key seed_hash
+    s0 s2 s1 PUXCPU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict seed_hash proof_pub_key seed_hash proof_signature proof_pub_key
+    CHKSIGNU	//  operation valid_until stored_orders threshold_num order_seqno msg_slice keys_dict seed_hash proof_pub_key _162
+    34 THROWIFNOT
+    s3 s8 XCHG
+    s2 s7 XCHG
+    s4 s5 XCHG
+    s3 s4 XCHG
+    s1 s3 s3 XCHG3	//  msg_slice keys_dict stored_orders order_seqno operation proof_pub_key seed_hash threshold_num valid_until
+  }>
+  check_form_signatures_set PROC:<{
+    //  provided_keys_dict stored_keys_dict obtained_signatures_dict first_key seed_hash
+    NEWC
+    ENDC
+    CTOS	//  provided_keys_dict stored_keys_dict obtained_signatures_dict first_key seed_hash _9
+    s0 s0 s3 XCHG3
+    8 PUSHPOW2	//  provided_keys_dict stored_keys_dict seed_hash _9 first_key obtained_signatures_dict _10=256
+    DICTUADD	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict found
+    NEGATE	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num
+    -1 PUSHINT	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num pubkey=-1
+    s5 PUSH	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num pubkey=-1 provided_keys_dict
+    DICTEMPTY	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num pubkey=-1 _15
+    IFNOT:<{	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num pubkey=-1
+      UNTIL:<{
+        s5 PUSH
+        8 PUSHPOW2	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num pubkey provided_keys_dict _18=256
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num signature_slice pubkey found_pk
+        DUP	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num signature_slice pubkey found_pk found_pk
+        IF:<{	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num signature_slice pubkey found_pk
+          s1 s6 PUSH2
+          8 PUSHPOW2	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num signature_slice pubkey found_pk pubkey stored_keys_dict _22=256
+          DICTUGET
+          NULLSWAPIFNOT	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num signature_slice pubkey found_pk _40 _41
+          NIP	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num signature_slice pubkey found_pk found_stored
+          IF:<{	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num signature_slice pubkey found_pk
+            s0 s2 XCHG
+            9 PUSHPOW2	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num found_pk pubkey signature_slice _25=512
+            LDSLICEX	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num found_pk pubkey _43 _42
+            DROP	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num found_pk pubkey _24
+            s5 s1 s(-1) PU2XC	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num found_pk pubkey seed_hash _24 pubkey
+            CHKSIGNU	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num found_pk pubkey _27
+            IF:<{	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num found_pk pubkey
+              NEWC
+              ENDC
+              CTOS	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num found_pk pubkey _30
+              SWAP
+              8 PUSHPOW2
+              s1 s5 s5 PUXC2	//  provided_keys_dict stored_keys_dict seed_hash pubkey added_sigs_num found_pk _30 pubkey obtained_signatures_dict _31=256
+              DICTUADD	//  provided_keys_dict stored_keys_dict seed_hash pubkey added_sigs_num found_pk obtained_signatures_dict found_sign
+              s1 s3 XCHG	//  provided_keys_dict stored_keys_dict seed_hash pubkey obtained_signatures_dict found_pk added_sigs_num found_sign
+              SUB	//  provided_keys_dict stored_keys_dict seed_hash pubkey obtained_signatures_dict found_pk added_sigs_num
+            }>ELSE<{
+              s3 s1 s3 XCHG3	//  provided_keys_dict stored_keys_dict seed_hash pubkey obtained_signatures_dict found_pk added_sigs_num
+            }>
+          }>ELSE<{
+            s1 s4 XCHG
+            2SWAP
+            DROP	//  provided_keys_dict stored_keys_dict seed_hash pubkey obtained_signatures_dict found_pk added_sigs_num
+          }>
+        }>ELSE<{
+          s1 s4 XCHG
+          2SWAP
+          DROP	//  provided_keys_dict stored_keys_dict seed_hash pubkey obtained_signatures_dict found_pk added_sigs_num
+        }>
+        SWAP	//  provided_keys_dict stored_keys_dict seed_hash pubkey obtained_signatures_dict added_sigs_num found_pk
+        NOT	//  provided_keys_dict stored_keys_dict seed_hash pubkey obtained_signatures_dict added_sigs_num _34
+        s1 s3 s0 XCHG3	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num pubkey _34
+      }>	//  provided_keys_dict stored_keys_dict seed_hash obtained_signatures_dict added_sigs_num pubkey
+      DROP
+      s2 POP
+      s2 POP
+      s2 POP	//  added_sigs_num obtained_signatures_dict
+    }>ELSE<{
+      5 1 REVERSE
+      4 BLKDROP	//  added_sigs_num obtained_signatures_dict
+    }>
+    SWAP	//  obtained_signatures_dict added_sigs_num
+  }>
+  process_order PROC:<{
+    //  messages_dict
+    -1 PUSHINT	//  messages_dict message_index=-1
+    OVER	//  messages_dict message_index=-1 messages_dict
+    DICTEMPTY	//  messages_dict message_index=-1 _3
+    IFNOT:<{	//  messages_dict message_index=-1
+      UNTIL:<{
+        OVER
+        7 PUSHINT	//  messages_dict message_index messages_dict _6=7
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  messages_dict message_root message_index found
+        DUP	//  messages_dict message_root message_index found found
+        IF:<{	//  messages_dict message_root message_index found
+          s0 s2 XCHG	//  messages_dict found message_index message_root
+          8 LDI	//  messages_dict found message_index _10 message_root
+          LDREF	//  messages_dict found message_index _10 _23 _22
+          DROP	//  messages_dict found message_index mode message_body
+          SWAP	//  messages_dict found message_index message_body mode
+          SENDRAWMSG
+        }>ELSE<{
+          s2 POP	//  messages_dict found message_index
+        }>
+        SWAP	//  messages_dict message_index found
+        NOT	//  messages_dict message_index _16
+      }>	//  messages_dict message_index
+      2DROP	// 
+    }>ELSE<{
+      2DROP	// 
+    }>
+  }>
+  pack_order PROC:<{
+    //  per_order_seqno_stored unix_time_bound order_threshold obtained_signatures_num obtained_signatures_dict messages_dict
+    NEWC	//  per_order_seqno_stored unix_time_bound order_threshold obtained_signatures_num obtained_signatures_dict messages_dict _7
+    s1 s6 XCHG	//  messages_dict unix_time_bound order_threshold obtained_signatures_num obtained_signatures_dict per_order_seqno_stored _7
+    16 STU	//  messages_dict unix_time_bound order_threshold obtained_signatures_num obtained_signatures_dict _9
+    s1 s4 XCHG	//  messages_dict obtained_signatures_dict order_threshold obtained_signatures_num unix_time_bound _9
+    32 STU	//  messages_dict obtained_signatures_dict order_threshold obtained_signatures_num _11
+    s1 s2 XCHG	//  messages_dict obtained_signatures_dict obtained_signatures_num order_threshold _11
+    8 STU	//  messages_dict obtained_signatures_dict obtained_signatures_num _13
+    8 STU	//  messages_dict obtained_signatures_dict _15
+    STDICT	//  messages_dict _16
+    STDICT	//  order
+  }>
+  update_stored_orders PROC:<{
+    //  update_seqno? updated_orders
+    c4 PUSH	//  update_seqno? updated_orders _3
+    CTOS	//  update_seqno? updated_orders data_slice
+    32 LDU	//  update_seqno? updated_orders _7 data_slice
+    8 LDU	//  update_seqno? updated_orders stored_seqno threshold_num data_slice
+    s0 s4 XCHG	//  data_slice updated_orders stored_seqno threshold_num update_seqno?
+    IF:<{	//  data_slice updated_orders stored_seqno threshold_num
+      SWAP	//  data_slice updated_orders threshold_num stored_seqno
+      INC	//  data_slice updated_orders threshold_num stored_seqno
+    }>ELSE<{
+      SWAP	//  data_slice updated_orders threshold_num stored_seqno
+    }>
+    s0 s3 XCHG	//  stored_seqno updated_orders threshold_num data_slice
+    LDDICT	//  stored_seqno updated_orders threshold_num _32 _31
+    DROP	//  stored_seqno updated_orders threshold_num keys
+    NEWC	//  stored_seqno updated_orders threshold_num keys _18
+    s1 s4 XCHG	//  keys updated_orders threshold_num stored_seqno _18
+    32 STU	//  keys updated_orders threshold_num _20
+    8 STU	//  keys updated_orders _22
+    s1 s2 XCHG	//  updated_orders keys _22
+    STDICT	//  updated_orders _23
+    STDICT	//  _24
+    ENDC	//  _25
+    c4 POP
+  }>
+  upgrade_contract PROC:<{
+    //  new_init
+    DUP	//  new_init new_init
+    SREMPTY	//  new_init _1
+    IFNOT:<{	//  new_init
+      LDREF	//  code new_init
+      SWAP	//  new_init code
+      SETCODE
+    }>	//  new_init
+    DUP	//  new_init new_init
+    SREMPTY	//  new_init _6
+    IFNOT:<{	//  new_init
+      LDREF	//  _14 _13
+      DROP	//  data
+      c4 POP
+    }>ELSE<{
+      DROP	// 
+    }>
+  }>
+  collect_outdated_orders PROC:<{
+    //  orders
+    0 PUSHINT	//  orders collected=0
+    OVER	//  orders collected=0 orders
+    DICTEMPTY	//  orders collected=0 _3
+    IFNOT:<{	//  orders collected=0
+      -1 PUSHINT	//  orders collected=0 order_index=-1
+      NOW	//  orders collected=0 order_index=-1 t
+      UNTIL:<{
+        s1 s3 XCPU
+        32 PUSHINT	//  orders collected t order_index orders _10=32
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  orders collected t order_root order_index found
+        DUP	//  orders collected t order_root order_index found found
+        IF:<{	//  orders collected t order_root order_index found
+          s0 s2 XCHG	//  orders collected t found order_index order_root
+          16 LDU	//  orders collected t found order_index _31 _30
+          NIP	//  orders collected t found order_index order_root
+          32 LDU	//  orders collected t found order_index _33 _32
+          DROP	//  orders collected t found order_index valid_until
+          s3 s(-1) PUXC	//  orders collected t found order_index t valid_until
+          GREATER	//  orders collected t found order_index _20
+          IF:<{	//  orders collected t found order_index
+            32 PUSHINT	//  orders collected t found order_index _22=32
+            s1 s5 s5 PUXC2	//  order_index collected t found order_index orders _22=32
+            DICTUDELGET
+            NULLSWAPIFNOT	//  order_index collected t found _36 _37 _38
+            2DROP	//  order_index collected t found orders
+            s0 s3 XCHG	//  order_index orders t found collected
+            INC	//  order_index orders t found collected
+          }>ELSE<{
+            s0 s4 XCHG
+            s0 s3 XCHG	//  order_index orders t found collected
+          }>
+        }>ELSE<{
+          s1 s5 XCHG
+          s4 s2 XCHG2
+          DROP	//  order_index orders t found collected
+        }>
+        SWAP	//  order_index orders t collected found
+        NOT	//  order_index orders t collected _26
+        s3 s4 XCHG
+        s3 s3 s0 XCHG3	//  orders collected order_index t _26
+      }>	//  orders collected order_index t
+      2DROP	//  orders collected
+    }>	//  orders collected
+  }>
+  recv_external PROC:<{
+    //  in_msg
+    DUP	//  in_msg in_msg
+    SDEMPTY	//  in_msg _1
+    IF:<{	//  in_msg
+      LDREF	//  _123 _122
+      DROP	//  _2
+      CTOS	//  in_msg
+    }>	//  in_msg
+    basic_validity_check CALLDICT	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until
+    ACCEPT
+    0 PUSHINT	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage?=0
+    s0 s5 PUSH2	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage?=0 update_seqno?=0 operation
+    0 EQINT	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage?=0 update_seqno?=0 _21
+    IF:<{	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage?=0 update_seqno?=0
+      2DROP	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until
+      1 PUSHINT	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage?=1
+      DUP	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage?=1 update_seqno?=1
+    }>	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage? update_seqno?
+    s6 PUSH	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage? update_seqno? operation
+    1 EQINT	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage? update_seqno? _25
+    IF:<{	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until update_storage? update_seqno?
+      2DROP	//  msg_remain keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num valid_until
+      s0 s8 XCHG	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num msg_remain
+      LDDICT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num _28 msg_remain
+      LDDICT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash threshold_num provided_signatures order_dict msg_remain
+      NEWDICT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash min_signature_num provided_signatures order_dict msg_remain obtained_signatures_dict
+      s3 s10 s(-1) XCPUXC
+      s7 s6 PUSH2	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash min_signature_num msg_remain order_dict provided_signatures keys_dict obtained_signatures_dict first_checked_key seed_hash
+      check_form_signatures_set CALLDICT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash min_signature_num msg_remain order_dict updated_signatures_dict added_sigs_num
+      s0 s4 PUSH2	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash min_signature_num msg_remain order_dict updated_signatures_dict added_sigs_num added_sigs_num min_signature_num
+      GEQ	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash min_signature_num msg_remain order_dict updated_signatures_dict added_sigs_num _38
+      IF:<{	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash min_signature_num msg_remain order_dict updated_signatures_dict added_sigs_num
+        2DROP
+        s2 POP	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash order_dict msg_remain
+        SWAP	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash msg_remain order_dict
+        process_order CALLDICT
+        1 PUSHINT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash msg_remain update_storage?=1
+        DUP	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash msg_remain update_storage?=1 update_seqno?=1
+        32 PUSHINT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash msg_remain update_storage?=1 update_seqno?=1 _43=32
+        s7 s8 s8 PUXC2	//  valid_until keys_dict update_seqno?=1 order_seqno operation first_checked_key seed_hash msg_remain update_storage?=1 order_seqno stored_orders _43=32
+        DICTUDELGET
+        NULLSWAPIFNOT	//  valid_until keys_dict update_seqno?=1 order_seqno operation first_checked_key seed_hash msg_remain update_storage?=1 _141 _142 _143
+        2DROP	//  valid_until keys_dict update_seqno?=1 order_seqno operation first_checked_key seed_hash msg_remain update_storage?=1 stored_orders
+      }>ELSE<{	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash min_signature_num msg_remain order_dict updated_signatures_dict added_sigs_num
+        1 PUSHINT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash min_signature_num msg_remain order_dict updated_signatures_dict added_sigs_num _46=1
+        s4 s12 XCPU
+        s0 s4 XCHG
+        s3 s6 XCHG
+        s1 s6 XCHG	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash msg_remain _46=1 valid_until min_signature_num added_sigs_num updated_signatures_dict order_dict
+        pack_order CALLDICT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash msg_remain new_order_root
+        1 PUSHINT	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash msg_remain new_order_root update_storage?=1
+        DUP	//  valid_until keys_dict stored_orders order_seqno operation first_checked_key seed_hash msg_remain new_order_root update_storage?=1 update_seqno?=1
+        s1 s2 XCHG
+        32 PUSHINT
+        s8 s9 s9 PUXC2	//  valid_until keys_dict update_seqno?=1 order_seqno operation first_checked_key seed_hash msg_remain update_storage?=1 new_order_root order_seqno stored_orders _51=32
+        DICTUSETB	//  valid_until keys_dict update_seqno?=1 order_seqno operation first_checked_key seed_hash msg_remain update_storage?=1 stored_orders
+      }>
+    }>ELSE<{
+      s10 s1 s8 XCHG3
+      3 ROLL
+      DROP	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash msg_remain update_storage? stored_orders
+    }>
+    s5 PUSH	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash msg_remain update_storage? stored_orders operation
+    2 EQINT	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash msg_remain update_storage? stored_orders _54
+    IF:<{	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash msg_remain update_storage? stored_orders
+      s0 s2 XCHG	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? msg_remain
+      LDDICT	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain
+      s7 s3 PUSH2
+      32 PUSHINT	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain order_seqno stored_orders _60=32
+      DICTUGET
+      NULLSWAPIFNOT	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain _146 _147
+      DROP	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain order_root
+      16 LDU	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain _66 order_root
+      32 LDU	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain _66 _151 _150
+      NIP	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain _66 order_root
+      8 LDU	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain _66 _72 order_root
+      8 LDU	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain per_order_seqno_stored order_threshold obtained_signatures_num order_root
+      LDDICT	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain per_order_seqno_stored order_threshold obtained_signatures_num obtained_signatures_dict order_root
+      LDDICT	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain per_order_seqno_stored order_threshold obtained_signatures_num obtained_signatures_dict _159 _158
+      DROP	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? provided_signatures msg_remain per_order_seqno_stored order_threshold obtained_signatures_num obtained_signatures_dict messages_dict
+      s6 s14 s6 XCPUXC
+      s11 s10 PUSH2	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num provided_signatures keys_dict obtained_signatures_dict first_checked_key seed_hash
+      check_form_signatures_set CALLDICT	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num updated_signatures_dict added_sigs_num
+      s0 s2 PUSH2	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num updated_signatures_dict added_sigs_num added_sigs_num obtained_signatures_num
+      ADD	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num updated_signatures_dict added_sigs_num _87
+      s4 PUSH	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num updated_signatures_dict added_sigs_num _87 order_threshold
+      GEQ	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num updated_signatures_dict added_sigs_num _88
+      IF:<{	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num updated_signatures_dict added_sigs_num
+        5 BLKDROP	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain
+        NOW	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain _89
+        s1 s11 XCHG	//  msg_remain keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict valid_until _89
+        GREATER	//  msg_remain keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict _90
+        IF:<{	//  msg_remain keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict
+          NIP	//  msg_remain keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders messages_dict
+          process_order CALLDICT
+          1 PUSHINT	//  msg_remain keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage?=1
+          s5 s5 XCHG2
+          32 PUSHINT	//  msg_remain keys_dict update_seqno? update_storage?=1 operation first_checked_key seed_hash order_seqno stored_orders _94=32
+          DICTUDELGET
+          NULLSWAPIFNOT	//  msg_remain keys_dict update_seqno? update_storage?=1 operation first_checked_key seed_hash _164 _165 _166
+          2DROP	//  msg_remain keys_dict update_seqno? update_storage?=1 operation first_checked_key seed_hash stored_orders
+        }>ELSE<{
+          s1 s6 XCHG
+          2DROP	//  msg_remain keys_dict update_seqno? update_storage? operation first_checked_key seed_hash stored_orders
+        }>
+      }>ELSE<{	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders update_storage? messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num updated_signatures_dict added_sigs_num
+        s7 POP	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders added_sigs_num messages_dict msg_remain per_order_seqno_stored order_threshold obtained_signatures_num updated_signatures_dict
+        s0 s3 XCHG	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders added_sigs_num messages_dict msg_remain updated_signatures_dict order_threshold obtained_signatures_num per_order_seqno_stored
+        INC	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders added_sigs_num messages_dict msg_remain updated_signatures_dict order_threshold obtained_signatures_num _98
+        s6 s6 XCHG2	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders _98 messages_dict msg_remain updated_signatures_dict order_threshold added_sigs_num obtained_signatures_num
+        ADD	//  valid_until keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders _98 messages_dict msg_remain updated_signatures_dict order_threshold _99
+        s4 s13 XCHG
+        s0 s0 s3 XCHG3
+        s0 s13 XCHG	//  msg_remain keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders _98 valid_until order_threshold _99 updated_signatures_dict messages_dict
+        pack_order CALLDICT	//  msg_remain keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders updated_order_root
+        1 PUSHINT	//  msg_remain keys_dict update_seqno? order_seqno operation first_checked_key seed_hash stored_orders updated_order_root update_storage?=1
+        s1 s6 s6 XCHG3
+        32 PUSHINT	//  msg_remain keys_dict update_seqno? update_storage?=1 operation first_checked_key seed_hash updated_order_root order_seqno stored_orders _103=32
+        DICTUSETB	//  msg_remain keys_dict update_seqno? update_storage?=1 operation first_checked_key seed_hash stored_orders
+      }>
+    }>ELSE<{
+      s0 s6 s9 XCHG3
+      2DROP	//  msg_remain keys_dict update_seqno? update_storage? operation first_checked_key seed_hash stored_orders
+    }>
+    s0 s3 XCHG	//  msg_remain keys_dict update_seqno? update_storage? stored_orders first_checked_key seed_hash operation
+    3 EQINT	//  msg_remain keys_dict update_seqno? update_storage? stored_orders first_checked_key seed_hash _106
+    IFJMP:<{	//  msg_remain keys_dict update_seqno? update_storage? stored_orders first_checked_key seed_hash
+      s2 POP
+      s2 POP
+      s2 POP	//  msg_remain keys_dict seed_hash first_checked_key
+      s0 s3 XCHG	//  first_checked_key keys_dict seed_hash msg_remain
+      LDDICT	//  first_checked_key keys_dict seed_hash provided_signatures msg_remain
+      NEWDICT	//  first_checked_key keys_dict seed_hash provided_signatures msg_remain obtained_signatures_dict
+      s2 s4 XCHG
+      s0 s5 s3 XCHG3	//  msg_remain provided_signatures keys_dict obtained_signatures_dict first_checked_key seed_hash
+      check_form_signatures_set CALLDICT	//  msg_remain _169 _170
+      NIP	//  msg_remain added_sigs_num
+      number_of_keys CALLDICT	//  msg_remain added_sigs_num _115
+      LESS	//  msg_remain _116
+      IF:<{	//  msg_remain
+        upgrade_contract CALLDICT
+      }>ELSE<{
+        DROP	// 
+      }>
+    }>	//  msg_remain keys_dict update_seqno? update_storage? stored_orders first_checked_key seed_hash
+    2DROP
+    s3 POP
+    s3 POP	//  update_storage? stored_orders update_seqno?
+    SWAP	//  update_storage? update_seqno? stored_orders
+    collect_outdated_orders CALLDICT	//  update_storage? update_seqno? stored_orders collected
+    IF:<{	//  update_storage? update_seqno? stored_orders
+      s2 POP	//  stored_orders update_seqno?
+      1 PUSHINT	//  stored_orders update_seqno? update_storage?=1
+    }>ELSE<{
+      s0 s2 XCHG	//  stored_orders update_seqno? update_storage?
+    }>
+    IF:<{	//  stored_orders update_seqno?
+      SWAP	//  update_seqno? stored_orders
+      update_stored_orders CALLDICT
+    }>ELSE<{
+      2DROP	// 
+    }>
+  }>
+  recv_internal PROC:<{
+    // 
+  }>
+  seqno PROC:<{
+    // 
+    c4 PUSH	//  _0
+    CTOS	//  _1
+    32 PLDU	//  _3
+  }>
+  order_seqno PROC:<{
+    //  order_id
+    c4 PUSH	//  order_id _2
+    CTOS	//  order_id data_slice
+    40 LDSLICE	//  order_id _27 _26
+    NIP	//  order_id data_slice
+    LDDICT	//  order_id _29 _28
+    NIP	//  order_id data_slice
+    LDDICT	//  order_id _31 _30
+    DROP	//  order_id stored_orders
+    32 PUSHINT	//  order_id stored_orders _18=32
+    DICTUGET
+    NULLSWAPIFNOT	//  order_root_cell found
+    38 THROWIFNOT
+    16 LDU	//  _35 _34
+    DROP	//  per_order_seqno_stored
+  }>
+  all_pending_orders PROC:<{
+    // 
+    NEWDICT	//  result
+    c4 PUSH	//  result _3
+    CTOS	//  result data_slice
+    40 LDSLICE	//  result _29 _28
+    NIP	//  result data_slice
+    LDDICT	//  result _31 _30
+    NIP	//  result data_slice
+    LDDICT	//  result _33 _32
+    DROP	//  result stored_orders
+    DUP	//  result stored_orders stored_orders
+    DICTEMPTY	//  result stored_orders _17
+    IFNOT:<{	//  result stored_orders
+      -1 PUSHINT	//  result stored_orders order_index=-1
+      UNTIL:<{
+        OVER
+        32 PUSHINT	//  result stored_orders order_index stored_orders _22=32
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  result stored_orders order_root order_index found
+        DUP	//  result stored_orders order_root order_index found found
+        IF:<{	//  result stored_orders order_root order_index found
+          s1 s2 XCHG
+          32 PUSHINT
+          s3 s5 s5 PUXC2	//  found stored_orders order_index order_root order_index result _25=32
+          DICTUADD	//  found stored_orders order_index _37 _38
+          DROP	//  found stored_orders order_index result
+        }>ELSE<{
+          s1 s4 s4 XCHG3
+          DROP	//  found stored_orders order_index result
+        }>
+        s0 s3 XCHG	//  result stored_orders order_index found
+        NOT	//  result stored_orders order_index _27
+      }>	//  result stored_orders order_index
+      2DROP	//  result
+    }>ELSE<{
+      DROP	//  result
+    }>
+  }>
+  pending_orders PROC:<{
+    // 
+    NIL	//  result
+    c4 PUSH	//  result _3
+    CTOS	//  result data_slice
+    40 LDSLICE	//  result _35 _34
+    NIP	//  result data_slice
+    LDDICT	//  result _37 _36
+    NIP	//  result data_slice
+    LDDICT	//  result _39 _38
+    DROP	//  result stored_orders
+    0 PUSHINT	//  result stored_orders counter=0
+    OVER	//  result stored_orders counter=0 stored_orders
+    DICTEMPTY	//  result stored_orders counter=0 _19
+    IFNOT:<{	//  result stored_orders counter=0
+      -1 PUSHINT	//  result stored_orders counter=0 order_index=-1
+      UNTIL:<{
+        s2 PUSH
+        32 PUSHINT	//  result stored_orders counter order_index stored_orders _24=32
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  result stored_orders counter _41 _40 _42
+        s2 POP	//  result stored_orders counter found order_index
+        OVER	//  result stored_orders counter found order_index found
+        IF:<{	//  result stored_orders counter found order_index
+          s4 s4 XCPU	//  order_index stored_orders counter found result order_index
+          COMMA	//  order_index stored_orders counter found result
+          s0 s2 XCHG	//  order_index stored_orders result found counter
+          INC	//  order_index stored_orders result found counter
+        }>ELSE<{
+          s4 s1 s4 XCHG3	//  order_index stored_orders result found counter
+        }>
+        SWAP	//  order_index stored_orders result counter found
+        NOT	//  order_index stored_orders result counter _30
+        OVER
+        254 PUSHINT	//  order_index stored_orders result counter _30 counter _31=254
+        GREATER	//  order_index stored_orders result counter _30 _32
+        ADD	//  order_index stored_orders result counter _33
+        s1 s4 s0 XCHG3	//  result stored_orders counter order_index _33
+      }>	//  result stored_orders counter order_index
+      3 BLKDROP	//  result
+    }>ELSE<{
+      2DROP	//  result
+    }>
+  }>
+  parse_common_message PROC:<{
+    //  msg
+    1 LDU	//  _65 _64
+    NIP	//  msg
+    1 LDU	//  _67 _66
+    NIP	//  msg
+    1 LDU	//  bounce msg
+    1 LDU	//  bounce _71 _70
+    NIP	//  bounce msg
+    LDMSGADDR	//  bounce _73 _72
+    NIP	//  bounce msg
+    LDMSGADDR	//  bounce dest_s msg
+    SWAP	//  bounce msg dest_s
+    REWRITESTDADDR	//  bounce msg wc destination_addr
+    s0 s2 XCHG	//  bounce destination_addr wc msg
+    4 LDU	//  bounce destination_addr wc gram_l msg
+    SWAP	//  bounce destination_addr wc msg gram_l
+    3 LSHIFT#	//  bounce destination_addr wc msg _33
+    LDUX	//  bounce destination_addr wc nanograms msg
+    LDDICT	//  bounce destination_addr wc nanograms _83 _82
+    NIP	//  bounce destination_addr wc nanograms msg
+    4 LDU	//  bounce destination_addr wc nanograms ihr_fee_l msg
+    SWAP	//  bounce destination_addr wc nanograms msg ihr_fee_l
+    3 LSHIFT#	//  bounce destination_addr wc nanograms msg _45
+    LDUX	//  bounce destination_addr wc nanograms _87 _86
+    NIP	//  bounce destination_addr wc nanograms msg
+    4 LDU	//  bounce destination_addr wc nanograms fwd_fee_l msg
+    SWAP	//  bounce destination_addr wc nanograms msg fwd_fee_l
+    3 LSHIFT#	//  bounce destination_addr wc nanograms msg _54
+    LDUX	//  bounce destination_addr wc nanograms _91 _90
+    NIP	//  bounce destination_addr wc nanograms msg
+    64 LDU	//  bounce destination_addr wc nanograms _93 _92
+    NIP	//  bounce destination_addr wc nanograms msg
+    32 LDU	//  bounce destination_addr wc nanograms _95 _94
+    NIP	//  bounce destination_addr wc nanograms msg
+    s1 s4 s0 XCHG3	//  wc destination_addr nanograms bounce msg
+  }>
+  all_pending_orders_by_key PROC:<{
+    //  pubkey signed?
+    NEWDICT	//  pubkey signed? result
+    c4 PUSH	//  pubkey signed? result _5
+    CTOS	//  pubkey signed? result data_slice
+    40 LDSLICE	//  pubkey signed? result _49 _48
+    NIP	//  pubkey signed? result data_slice
+    LDDICT	//  pubkey signed? result _51 _50
+    NIP	//  pubkey signed? result data_slice
+    LDDICT	//  pubkey signed? result _53 _52
+    DROP	//  pubkey signed? result stored_orders
+    DUP	//  pubkey signed? result stored_orders stored_orders
+    DICTEMPTY	//  pubkey signed? result stored_orders _19
+    IFNOT:<{	//  pubkey signed? result stored_orders
+      -1 PUSHINT	//  pubkey signed? result stored_orders order_index=-1
+      UNTIL:<{
+        OVER
+        32 PUSHINT	//  pubkey signed? result stored_orders order_index stored_orders _24=32
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  pubkey signed? result stored_orders order_root order_index found
+        DUP	//  pubkey signed? result stored_orders order_root order_index found found
+        IF:<{	//  pubkey signed? result stored_orders order_root order_index found
+          s2 PUSH	//  pubkey signed? result stored_orders order_root order_index found order_root
+          64 LDSLICE	//  pubkey signed? result stored_orders order_root order_index found _58 _57
+          NIP	//  pubkey signed? result stored_orders order_root order_index found temp
+          LDDICT	//  pubkey signed? result stored_orders order_root order_index found _60 _59
+          DROP	//  pubkey signed? result stored_orders order_root order_index found obtained_signatures
+          s7 s(-1) PUXC
+          8 PUSHPOW2	//  pubkey signed? result stored_orders order_root order_index found pubkey obtained_signatures _41=256
+          DICTUGET
+          NULLSWAPIFNOT	//  pubkey signed? result stored_orders order_root order_index found _61 _62
+          NIP	//  pubkey signed? result stored_orders order_root order_index found found
+          s6 PUSH	//  pubkey signed? result stored_orders order_root order_index found found signed?
+          EQUAL	//  pubkey signed? result stored_orders order_root order_index found _43
+          IF:<{	//  pubkey signed? result stored_orders order_root order_index found
+            s1 s2 XCHG
+            32 PUSHINT
+            s3 s5 s5 PUXC2	//  pubkey signed? found stored_orders order_index order_root order_index result _45=32
+            DICTUADD	//  pubkey signed? found stored_orders order_index _63 _64
+            DROP	//  pubkey signed? found stored_orders order_index result
+          }>ELSE<{
+            s1 s4 s4 XCHG3
+            DROP	//  pubkey signed? found stored_orders order_index result
+          }>
+        }>ELSE<{
+          s1 s4 s4 XCHG3
+          DROP	//  pubkey signed? found stored_orders order_index result
+        }>
+        s0 s3 XCHG	//  pubkey signed? result stored_orders order_index found
+        NOT	//  pubkey signed? result stored_orders order_index _47
+      }>	//  pubkey signed? result stored_orders order_index
+      s2 s4 XCHG
+      4 BLKDROP	//  result
+    }>ELSE<{
+      s1 s3 XCHG
+      3 BLKDROP	//  result
+    }>
+  }>
+  all_pending_orders_unsigned_by_key PROC:<{
+    //  pubkey
+    0 PUSHINT	//  pubkey _1=0
+    all_pending_orders_by_key CALLDICT	//  _2
+  }>
+  all_pending_orders_signed_by_key PROC:<{
+    //  pubkey
+    1 PUSHINT	//  pubkey _1=1
+    all_pending_orders_by_key CALLDICT	//  _2
+  }>
+  pending_orders_by_key PROC:<{
+    //  pubkey signed?
+    NIL	//  pubkey signed? result
+    0 PUSHINT	//  pubkey signed? result counter=0
+    c4 PUSH	//  pubkey signed? result counter=0 _7
+    CTOS	//  pubkey signed? result counter=0 data_slice
+    40 LDSLICE	//  pubkey signed? result counter=0 _55 _54
+    NIP	//  pubkey signed? result counter=0 data_slice
+    LDDICT	//  pubkey signed? result counter=0 _57 _56
+    NIP	//  pubkey signed? result counter=0 data_slice
+    LDDICT	//  pubkey signed? result counter=0 _59 _58
+    DROP	//  pubkey signed? result counter=0 stored_orders
+    DUP	//  pubkey signed? result counter=0 stored_orders stored_orders
+    DICTEMPTY	//  pubkey signed? result counter=0 stored_orders _21
+    IFNOT:<{	//  pubkey signed? result counter=0 stored_orders
+      -1 PUSHINT	//  pubkey signed? result counter=0 stored_orders order_index=-1
+      UNTIL:<{
+        OVER
+        32 PUSHINT	//  pubkey signed? result counter stored_orders order_index stored_orders _26=32
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  pubkey signed? result counter stored_orders order_root order_index found
+        DUP	//  pubkey signed? result counter stored_orders order_root order_index found found
+        IF:<{	//  pubkey signed? result counter stored_orders order_root order_index found
+          s0 s2 XCHG	//  pubkey signed? result counter stored_orders found order_index order_root
+          64 LDSLICE	//  pubkey signed? result counter stored_orders found order_index _64 _63
+          NIP	//  pubkey signed? result counter stored_orders found order_index temp
+          LDDICT	//  pubkey signed? result counter stored_orders found order_index _66 _65
+          DROP	//  pubkey signed? result counter stored_orders found order_index obtained_signatures
+          s7 s(-1) PUXC
+          8 PUSHPOW2	//  pubkey signed? result counter stored_orders found order_index pubkey obtained_signatures _43=256
+          DICTUGET
+          NULLSWAPIFNOT	//  pubkey signed? result counter stored_orders found order_index _67 _68
+          NIP	//  pubkey signed? result counter stored_orders found order_index found
+          s6 PUSH	//  pubkey signed? result counter stored_orders found order_index found signed?
+          EQUAL	//  pubkey signed? result counter stored_orders found order_index _45
+          IF:<{	//  pubkey signed? result counter stored_orders found order_index
+            s4 s4 XCPU	//  pubkey signed? order_index counter stored_orders found result order_index
+            COMMA	//  pubkey signed? order_index counter stored_orders found result
+            s0 s3 XCHG	//  pubkey signed? order_index result stored_orders found counter
+            INC	//  pubkey signed? order_index result stored_orders found counter
+          }>ELSE<{
+            s0 s4 XCHG
+            s0 s3 XCHG	//  pubkey signed? order_index result stored_orders found counter
+          }>
+        }>ELSE<{
+          s1 s5 XCHG
+          s4 s2 XCHG2
+          DROP	//  pubkey signed? order_index result stored_orders found counter
+        }>
+        SWAP	//  pubkey signed? order_index result stored_orders counter found
+        NOT	//  pubkey signed? order_index result stored_orders counter _50
+        OVER
+        254 PUSHINT	//  pubkey signed? order_index result stored_orders counter _50 counter _51=254
+        GREATER	//  pubkey signed? order_index result stored_orders counter _50 _52
+        ADD	//  pubkey signed? order_index result stored_orders counter _53
+        s3 s4 XCHG
+        s1 s3 XCHG	//  pubkey signed? result counter stored_orders order_index _53
+      }>	//  pubkey signed? result counter stored_orders order_index
+      s3 s5 XCHG
+      5 BLKDROP	//  result
+    }>ELSE<{
+      s2 s4 XCHG
+      4 BLKDROP	//  result
+    }>
+  }>
+  pending_orders_unsigned_by_key PROC:<{
+    //  pubkey
+    0 PUSHINT	//  pubkey _1=0
+    pending_orders_by_key CALLDICT	//  _2
+  }>
+  pending_orders_signed_by_key PROC:<{
+    //  pubkey
+    -1 PUSHINT	//  pubkey _1=-1
+    pending_orders_by_key CALLDICT	//  _2
+  }>
+  show_order PROC:<{
+    //  order_id
+    c4 PUSH	//  order_id _4
+    CTOS	//  order_id data_slice
+    40 LDSLICE	//  order_id _78 _77
+    NIP	//  order_id data_slice
+    LDDICT	//  order_id _80 _79
+    NIP	//  order_id data_slice
+    LDDICT	//  order_id _82 _81
+    DROP	//  order_id stored_orders
+    NIL	//  order_id stored_orders result
+    OVER	//  order_id stored_orders result stored_orders
+    DICTEMPTY	//  order_id stored_orders result _20
+    IFNOT:<{	//  order_id stored_orders result
+      -ROT
+      32 PUSHINT	//  result order_id stored_orders _23=32
+      DICTUGET
+      NULLSWAPIFNOT	//  result order_root found
+      IF:<{	//  result order_root
+        64 LDSLICE	//  result _86 _85
+        NIP	//  result temp
+        LDDICT	//  result _88 _87
+        NIP	//  result temp
+        LDDICT	//  result _90 _89
+        DROP	//  result messages
+        -1 PUSHINT	//  result messages mid=-1
+        UNTIL:<{
+          OVER
+          7 PUSHINT	//  result messages mid messages _45=7
+          DICTUGETNEXT
+          NULLSWAPIFNOT
+          NULLSWAPIFNOT	//  result messages message mid found_m
+          DUP	//  result messages message mid found_m found_m
+          IF:<{	//  result messages message mid found_m
+            NIL	//  result messages message mid found_m subres
+            s0 s3 XCHG	//  result messages subres mid found_m message
+            8 LDU	//  result messages subres mid found_m mode message
+            s4 s4 XCHG2	//  result messages message mid found_m subres mode
+            COMMA	//  result messages message mid found_m subres
+            s0 s3 XCHG	//  result messages subres mid found_m message
+            LDREF	//  result messages subres mid found_m _97 _96
+            DROP	//  result messages subres mid found_m message_body_c
+            CTOS	//  result messages subres mid found_m message_body
+            parse_common_message CALLDICT	//  result messages subres mid found_m _98 _99 _100 _101 _102
+            DROP	//  result messages subres mid found_m wc destination_addr nanograms bounce
+            s6 s3 XCHG2	//  result messages nanograms mid found_m bounce destination_addr subres wc
+            COMMA	//  result messages nanograms mid found_m bounce destination_addr subres
+            SWAP	//  result messages nanograms mid found_m bounce subres destination_addr
+            COMMA	//  result messages nanograms mid found_m bounce subres
+            s0 s4 XCHG2	//  result messages bounce mid found_m subres nanograms
+            COMMA	//  result messages bounce mid found_m subres
+            s0 s3 XCHG2	//  result messages found_m mid subres bounce
+            COMMA	//  result messages found_m mid subres
+            s1 s4 XCHG	//  mid messages found_m result subres
+            COMMA	//  mid messages found_m result
+          }>ELSE<{
+            s4 s2 XCHG2
+            DROP	//  mid messages found_m result
+          }>
+          SWAP	//  mid messages result found_m
+          NOT	//  mid messages result _76
+          s1 s3 XCHG	//  result messages mid _76
+        }>	//  result messages mid
+        2DROP	//  result
+      }>ELSE<{
+        DROP	//  result
+      }>
+    }>ELSE<{
+      s2 POP
+      DROP	//  result
+    }>
+  }>
+  show_general_info PROC:<{
+    // 
+    c4 PUSH	//  _3
+    CTOS	//  data_slice
+    32 LDSLICE	//  _41 _40
+    NIP	//  data_slice
+    8 LDU	//  n data_slice
+    LDDICT	//  n _45 _44
+    DROP	//  n keys
+    NIL	//  n keys result
+    NIL	//  n keys result reskeys
+    0 PUSHINT	//  n keys result reskeys counter=0
+    s3 PUSH	//  n keys result reskeys counter=0 keys
+    DICTEMPTY	//  n keys result reskeys counter=0 _22
+    IFNOT:<{	//  n keys result reskeys counter=0
+      -1 PUSHINT	//  n keys result reskeys counter=0 pubkey=-1
+      UNTIL:<{
+        s4 PUSH
+        8 PUSHPOW2	//  n keys result reskeys counter pubkey keys _27=256
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  n keys result reskeys counter _47 _46 _48
+        s2 POP	//  n keys result reskeys counter found_pk pubkey
+        OVER	//  n keys result reskeys counter found_pk pubkey found_pk
+        IF:<{	//  n keys result reskeys counter found_pk pubkey
+          s3 s3 XCPU	//  n keys result pubkey counter found_pk reskeys pubkey
+          COMMA	//  n keys result pubkey counter found_pk reskeys
+          s0 s2 XCHG	//  n keys result pubkey reskeys found_pk counter
+          INC	//  n keys result pubkey reskeys found_pk counter
+        }>ELSE<{
+          s3 s1 s3 XCHG3	//  n keys result pubkey reskeys found_pk counter
+        }>
+        SWAP	//  n keys result pubkey reskeys counter found_pk
+        NOT	//  n keys result pubkey reskeys counter _33
+        s1 s3 s0 XCHG3	//  n keys result reskeys counter pubkey _33
+      }>	//  n keys result reskeys counter pubkey
+      DROP
+      s3 POP	//  n counter result reskeys
+    }>ELSE<{
+      s3 POP	//  n counter result reskeys
+    }>
+    s0 s3 XCHG	//  reskeys counter result n
+    COMMA	//  reskeys counter result
+    SWAP	//  reskeys result counter
+    COMMA	//  reskeys result
+    SWAP	//  result reskeys
+    COMMA	//  result
+  }>
+}END>c

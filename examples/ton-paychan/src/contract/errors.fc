@@ -1,0 +1,41 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+int UnknownReqOp()                 { return 1001; }
+
+int Join::SuppliedNotEnough1()     { return 1002; }
+int Join::SuppliedNotEnough2()     { return 1003; }
+int Join::UnknownParty()           { return 1004; }
+int Join::InvalidState()           { return 1005; }
+int Join::AddressMismatch()        { return 1007; }
+
+int Close::PayoutImpossible()      { return 1101; }
+int Close::DuplicateRequest()      { return 1102; }
+int Close::InvalidState()          { return 1105; }
+
+int Timeout::WrongParty()          { return 1201; }
+int Timeout::UnknownAddress()      { return 1202; }
+int Timeout::TooEarly()            { return 1203; }
+int Timeout::InvalidState()        { return 1204; }
+
+int Prs::StateClosing()            { return 1301; }
+int Prs::StateOpen()               { return 1302; }
+int Prs::WaitingOne()              { return 1303; }
+
+int RawReq::BadSignature()         { return 1501; }
+int RawReq::AddressMismatch()      { return 1502; }
+
+int Iou::AddressMismatch()         { return 1601; }
+
+() throw_when(int errorCode, int cond) impure {
+  if (cond) {
+    throw(errorCode);
+  }
+}
+
+() throw_unless_(int errorCode, int cond) impure {
+  if (~ cond) {
+    throw(errorCode);
+  }
+}

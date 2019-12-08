@@ -1,0 +1,40 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+;; payout, maybe iou
+(int, cell) parseCloseReq(cell closeReq) {
+  var s = closeReq.begin_parse();
+  var payout = s~load_int(121);
+  if (s.slice_refs_empty?()) {
+    var empty_cell = begin_cell().end_cell();
+    return (payout, empty_cell);
+  } else {
+    var ref_cell =
+      begin_cell()
+      .store_ref(s~load_ref())
+      .end_cell();
+    return (payout, ref_cell);
+  }
+}
+
+
+cell mkCloseReqWithIou(int payout, cell iou) {
+  return
+    begin_cell()
+      .store_int(payout, 121)
+      .store_ref(iou)
+      .end_cell();
+}
+
+cell mkCloseReqWoIou(int payout) {
+  return
+    begin_cell()
+      .store_int(payout, 121)
+      .end_cell();
+}
+
+
+cell emptyCloseReq() impure {
+  return mkCloseReqWoIou(0);
+}

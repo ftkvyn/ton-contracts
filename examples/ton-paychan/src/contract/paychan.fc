@@ -1,0 +1,53 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+() recv_external (slice msg_body) impure {
+  ;; ignore all external messages
+}
+
+;; slice is input in ton/crypto/smartcont/wallet-code.fc
+() recv_internal(int msg_value, cell msg_cell, slice msg_body) impure {
+  var msg_s = msg_cell.begin_parse();
+  var flags = msg_s~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+  if (flags & 1) {
+    ;; ignore all bounced messages
+    return ();
+  }
+
+  var msg_src_addr = msg_s~load_msg_addr();
+  var (globalState, localState) = getState();
+
+  var op = msg_body.preload_uint(32);
+  if (op == ReqOp::SimpleTransfer()) {
+    return ();
+  } elseif (op == ReqOp::Join()) {
+    var (msg_pkn, _) = parseRawReq(msg_body, globalState);
+    var newLocalState =
+      handle_join(
+        msg_src_addr,
+        msg_value,
+        msg_pkn,
+        globalState,
+        localState
+        );
+    putLocalState(newLocalState);
+  } elseif (op == ReqOp::Close()) {
+    var (msg_pkn, closeReq) = parseRawReq(msg_body, globalState);
+    var newLocalState =
+      handle_close(msg_pkn, closeReq, globalState, localState);
+    putLocalState(newLocalState);
+  } elseif (op == ReqOp::Timeout()) {
+    var (msg_pkn, _) = parseRawReq(msg_body, globalState);
+    var newLocalState =
+      handle_timeout(msg_pkn, globalState, localState);
+    putLocalState(newLocalState);
+  } else {
+    throw(UnknownReqOp());
+  }
+}
+
+_ globalState() method_id {
+  var (globalState, localState) = getState();
+  return parseGlobalState(globalState);
+}

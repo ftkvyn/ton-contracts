@@ -1,0 +1,52 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+int slice_eq_asm(slice a, slice b) asm "SDEQ";
+
+int slice_eq(slice a, slice b) {
+  return slice_eq_asm(a, b);
+}
+
+int slice=(slice a, slice b) {
+  return slice_eq(a, b);
+}
+
+;; for now only bits checked for eq
+int pk_eq(int pk1, int pk2) {
+  return pk1 == pk2;
+}
+
+int addr_eq(slice addr1, slice addr2) {
+  return addr1.slice_eq(addr2);
+}
+
+(slice, int) load_pk(slice s) {
+  return s.load_uint(256);
+}
+
+builder store_pk(builder b, int pk) {
+  return b.store_uint(pk, 256);
+}
+
+(slice, int) load_timestamp(slice s) {
+  return s.load_uint(256);
+}
+
+builder store_timestamp(builder b, int timestamp) {
+  return b.store_uint(timestamp, 256);
+}
+
+(slice, int) load_pkn(slice s) {
+  var (s, pkn) = s.load_uint(1);
+  return (s, pkn + 1);
+}
+
+builder store_pkn(builder b, int pkn) {
+  return b.store_uint(pkn - 1, 1);
+}
+
+
+cell unreachableReturn() {
+  return begin_cell().end_cell();
+}

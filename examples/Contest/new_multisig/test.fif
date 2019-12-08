@@ -1,0 +1,626 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+"multisig.fif" include <s constant contract_code
+"multisig_init_storage.fift" include <s constant contract_storage_initializer // (uniq_token, min_signature_num, public_keys_dict) -> cell
+
+"1.pk" load-generate-keypair
+constant wallet1_privk
+256 B>u@ constant wallet1_pubk
+
+"2.pk" load-generate-keypair
+constant wallet2_privk
+256 B>u@ constant wallet2_pubk
+
+"3.pk" load-generate-keypair
+constant wallet3_privk
+256 B>u@ constant wallet3_pubk
+
+"4.pk" load-generate-keypair
+constant wallet4_privk
+256 B>u@ constant wallet4_pubk
+
+0xC7EAFBC106A7AA4BA3D16007C6AC64CAAC1078B4A43577339E246F466405E896 =: contract_address_int
+<b b{100} s, 0 8 u, contract_address_int 256 u, b> <s =: contract_address_full
+
+0 tuple 0x076ef1ea , // magic
+0 , 0 , // actions msg_sents
+1570470873 , // unix_time
+1 , 1 , 0 , // block_lt, trans_lt, rand_seed
+ 0 tuple 9223372036854775807 , dictnew , , // reamining balance
+contract_address_full , dictnew , // contract_address, global_config
+1 tuple // wrap to another tuple
+constant c7
+
+{ dup rot dup rot = { drop drop } { "Error: Got " swap (.) $+ " should be " $+ swap (.) $+ abort } cond } : should_be
+
+
+0 constant bounce
+<b b{01} s, bounce 1 i, b{000100} s, 0 0 addr, 5 Gram, 0 9 64 32 + + 1+ u, 
+  3 10 u,
+b> constant example_message_body
+3 constant message_mode
+<b message_mode 8 u, example_message_body ref, b> <s constant example_message_root
+
+<b 1 8 u, b> <s // value
+wallet1_pubk // key
+dictnew
+256 // size
+udict!
+drop
+
+<b 2 8 u, b> <s
+wallet2_pubk
+rot
+256
+udict!
+drop
+
+<b 3 8 u, b> <s
+wallet3_pubk
+rot
+256
+udict!
+drop
+constant keys
+
+
+contract_address_int 6277101735386680763835789423207666416102355444464034512896 / constant uniq_token
+2 constant min_signature_num
+
+min_signature_num keys contract_storage_initializer runvmdict
+drop // TODO check execution code
+constant contract_storage
+
+-1 constant recv_external
+<b 0 8 u, b> <s constant init_message
+
+init_message recv_external contract_code contract_storage c7 runvmctx
+swap
+."Init message exit code (0 is OK) :" . cr
+dup
+constant initialized_contract_storage 
+<s csr. cr
+.s
+// =============================================================================
+//                    Load order(2from3) with one signature
+// =============================================================================
+1 		constant op_num
+1 		constant seq_no
+0xFFFFFFFF 	constant unix_time_bound
+
+dictnew constant provided_keys_info
+2 =: min_signatures_num
+
+example_message_root
+0
+dictnew
+7
+udict!
+drop constant order_dict
+
+<b b> =: signatures_stairs
+
+<b op_num 8 u, seq_no 32 u, unix_time_bound 32 u, min_signatures_num 8 u, uniq_token 64 u,
+signatures_stairs ref,
+order_dict dict,
+b>  =: mbody
+
+<b op_num 8 u, seq_no 32 u, unix_time_bound 32 u, min_signatures_num 8 u, uniq_token 64 u,
+order_dict dict, =: data_for_signing
+
+
+signatures_stairs hashu 1 >> =: proof_token
+data_for_signing proof_token 255 u, b> hashu wallet1_privk ed25519_sign_uint constant signature1
+<b signature1 B, 
+  <b  wallet1_pubk 256 u, mbody <s s,
+  b> ref,
+b> <s constant store_order_message
+
+
+store_order_message recv_external contract_code initialized_contract_storage c7 runvmctx
+swap dup
+."t1 store_order_message exit code (0 is OK) :" . cr
+0 should_be
+dup
+<s csr. cr
+constant contract_storage_with_partial_seqno2
+.s
+."Should be 1 partial order"
+// =============================================================================
+//                    Add signature to previously 1/2 order
+// =============================================================================
+2 		constant op_num
+2 		constant order_id
+0 		constant per_request_seq_no
+
+
+<b b> =: signatures_stairs
+signatures_stairs hashu 1 >> =: proof_token
+
+<b op_num 8 u, order_id 32 u, uniq_token 64 u, per_request_seq_no 16 u,
+signatures_stairs ref,
+b>  constant mbody
+
+<b op_num 8 u, order_id 32 u, uniq_token 64 u, per_request_seq_no 16 u,
+proof_token 255 u,
+b>  constant data_for_signing
+data_for_signing hashu wallet2_privk ed25519_sign_uint  constant signature2
+
+<b signature2 B,
+ <b wallet2_pubk 256 u, mbody <s s,
+ b> ref,
+b> <s constant sign_partial_order_message
+
+sign_partial_order_message recv_external contract_code contract_storage_with_partial_seqno2 c7 runvmctx
+swap 
+dup
+."t2 sign_partial_order_message exit code (0 is OK) :" . cr
+0 should_be
+dup
+<s csr. cr
+constant contract_storage_seqno2_no_partials
+.s
+."Should be 0 partial orders"
+
+0 halt
+
+// =============================================================================
+//                    Add another signature to previously 1/2 order
+// =============================================================================
+2 		constant op_num
+1 		constant seq_no
+1 		constant per_request_seq_no
+
+
+<b op_num 8 u, seq_no 32 u, uniq_token 64 u,
+dup constant message_builder
+per_request_seq_no 16 u,
+b>  constant data_for_signing
+
+data_for_signing hashu wallet3_privk ed25519_sign_uint  constant signature3
+message_builder wallet3_pubk 256 u, signature3 B,  per_request_seq_no 16 u, provided_keys_info dict, b> <s constant sign_partial_order_message
+
+sign_partial_order_message recv_external contract_code contract_storage_with_partial_seqno2 c7 runvmctx
+swap 
+."t3 sign_partial_order_message exit code (0 is OK) :" . cr
+dup
+<s csr. cr
+drop
+.s
+."Should be 0 partial orders"
+// =============================================================================
+//                    Add already presented signature to 1/2 order
+// =============================================================================
+2 		constant op_num
+1 		constant seq_no
+1 		constant per_request_seq_no
+
+
+<b op_num 8 u, seq_no 32 u, uniq_token 64 u,
+dup constant message_builder
+per_request_seq_no 16 u,
+b>  constant data_for_signing
+
+data_for_signing hashu wallet1_privk ed25519_sign_uint  constant signature2
+message_builder wallet1_pubk 256 u, signature2 B,  per_request_seq_no 16 u, provided_keys_info dict, b> <s constant sign_partial_order_message
+
+sign_partial_order_message recv_external contract_code contract_storage_with_partial_seqno2 c7 runvmctx
+swap dup constant exit_code
+."t4 sign_partial_order_message exit code (43 is OK) :" . cr
+dup
+<s csr. cr
+drop
+.s
+."Should be 1 partial order" cr
+1 exit_code 43 = / // Stop if wrong exit code
+// =============================================================================
+//                    Add signature by wrong key to 1/2 order
+// =============================================================================
+2 		constant op_num
+1 		constant seq_no
+1 		constant per_request_seq_no
+
+
+<b op_num 8 u, seq_no 32 u, uniq_token 64 u,
+dup constant message_builder
+per_request_seq_no 16 u,
+b>  constant data_for_signing
+
+data_for_signing hashu wallet4_privk ed25519_sign_uint  constant signature4
+message_builder wallet4_pubk 256 u, signature4 B,  per_request_seq_no 16 u, provided_keys_info dict, b> <s constant sign_partial_order_message
+
+sign_partial_order_message recv_external contract_code contract_storage_with_partial_seqno2 c7 runvmctx
+swap dup constant exit_code
+."t5 sign_partial_order_message exit code (40 is OK) :" . cr
+dup
+<s csr. cr
+drop
+.s
+."Should be 1 partial order"
+exit_code 40 should_be
+// =============================================================================
+//                    Load order(3from3) with one signature
+// =============================================================================
+1 		constant op_num
+1 		constant seq_no
+0xFFFFFFFF 	constant unix_time_bound
+
+dictnew constant provided_keys_info
+3 =: min_signatures_num
+
+example_message_root
+0
+dictnew
+7
+udict!
+drop constant order_dict
+
+<b op_num 8 u, seq_no 32 u, unix_time_bound 32 u, min_signatures_num 8 u, uniq_token 64 u,
+dup constant message_builder
+order_dict dict, b>  constant data_for_signing
+
+data_for_signing hashu wallet1_privk ed25519_sign_uint constant signature1
+message_builder wallet1_pubk 256 u, signature1 B, provided_keys_info dict, order_dict dict, b>  <s constant store_order_message
+
+
+store_order_message recv_external contract_code initialized_contract_storage c7 runvmctx
+swap dup constant exit_code
+."t6 store_3/3order_message exit code (0 is OK) :" . cr
+dup
+<s csr. cr
+constant contract_storage_with_1of3_partial_seqno2
+.s
+."Should be 1 partial order"
+1 exit_code 0 = / // Stop if wrong exit code
+// =============================================================================
+//                    Add signature to previously 1/3 order
+// =============================================================================
+2 		constant op_num
+2 		constant seq_no
+1		constant order_id
+1 		constant per_request_seq_no
+
+
+<b op_num 8 u,
+order_id 32 u,
+uniq_token 64 u,
+dup constant message_builder
+per_request_seq_no 16 u,
+b>  constant data_for_signing
+
+data_for_signing hashu wallet2_privk ed25519_sign_uint  constant signature2
+message_builder wallet2_pubk 256 u, signature2 B,  per_request_seq_no 16 u, provided_keys_info dict, b> <s constant sign_partial_order_message
+
+sign_partial_order_message recv_external contract_code contract_storage_with_1of3_partial_seqno2 c7 runvmctx
+swap dup constant exit_code
+."t7 sign_partial_order_message 1/3 exit code (0 is OK) :" . cr
+dup
+<s csr. cr
+constant contract_storage_with_2of3_partial_seqno2
+.s
+."Should be 1 partial order"
+1 exit_code 0 = / // Stop if wrong exit code
+// =============================================================================
+//                    Add signature to previously 2/3 order but wrong per order_seqno
+// =============================================================================
+2 		constant op_num
+2 		constant seq_no
+1		constant order_id
+5 		constant per_request_seq_no
+
+
+<b op_num 8 u, order_id 32 u, uniq_token 64 u,
+dup constant message_builder
+per_request_seq_no 16 u,
+b>  constant data_for_signing
+
+data_for_signing hashu wallet3_privk ed25519_sign_uint  constant signature3
+message_builder wallet3_pubk 256 u, signature3 B,  per_request_seq_no 16 u, provided_keys_info dict, b> <s constant sign_partial_order_message
+
+sign_partial_order_message recv_external contract_code contract_storage_with_2of3_partial_seqno2 c7 runvmctx
+swap dup constant exit_code
+."t8 sign_partial_order_message 1/3 wrong seq_no (39 is OK) :" . cr
+dup
+<s csr. cr
+drop
+.s
+."Should be 1 partial orders"
+1 exit_code 39 = / // Stop if wrong exit code
+// =============================================================================
+//                    Add signature to previously 2/3 order
+// =============================================================================
+2 		constant op_num
+2 		constant seq_no
+1		constant order_id
+2 		constant per_request_seq_no
+
+
+<b op_num 8 u, order_id 32 u, uniq_token 64 u,
+dup constant message_builder
+per_request_seq_no 16 u,
+b>  constant data_for_signing
+
+data_for_signing hashu wallet3_privk ed25519_sign_uint  constant signature3
+message_builder wallet3_pubk 256 u, signature3 B,  per_request_seq_no 16 u, provided_keys_info dict, b> <s constant sign_partial_order_message
+
+sign_partial_order_message recv_external contract_code contract_storage_with_2of3_partial_seqno2 c7 runvmctx
+swap dup constant exit_code
+."t9 sign_partial_order_message 2/3 exit code (0 is OK) :" . cr
+<s csr. cr
+."Should be 0 partial orders"
+exit_code 0 should_be
+// =============================================================================
+//                    Load order(3from3) with two signatures (but added many times)
+// =============================================================================
+1 		constant op_num
+2 		constant seq_no
+0xFFFFFFFF 	constant unix_time_bound
+
+3 =: min_signatures_num
+
+example_message_root
+0
+dictnew
+7
+udict!
+drop constant order_dict
+
+<b op_num 8 u, seq_no 32 u, unix_time_bound 32 u, min_signatures_num 8 u, uniq_token 64 u,
+dup constant message_builder
+order_dict dict, b>  constant data_for_signing
+
+data_for_signing hashu wallet1_privk ed25519_sign_uint constant signature1
+data_for_signing hashu wallet2_privk ed25519_sign_uint constant signature2
+
+
+<b signature1 B, b> <s   wallet1_pubk dictnew 256 udict! drop
+<b signature2 B, b> <s   wallet2_pubk rot     256 udict! drop
+<b signature1 B, b> <s   wallet1_pubk rot     256 udict! drop
+constant provided_keys_info
+
+
+message_builder wallet1_pubk 256 u, signature1 B, provided_keys_info dict, order_dict dict, b>  <s constant store_order_message
+
+
+store_order_message recv_external contract_code contract_storage_seqno2_no_partials c7 runvmctx
+swap dup constant exit_code
+."t10 store_3/3order_message exit code (0 is OK) :" . cr
+dup
+<s csr. cr
+constant contract_storage_seqno3_with_2of3_partial
+.s
+."Should be 1 partial order"
+exit_code 0 should_be
+// =============================================================================
+//                    Add signature to previously 2/3 order
+// =============================================================================
+2               constant op_num
+3               constant seq_no
+2		constant order_id
+1               constant per_request_seq_no
+
+
+<b op_num 8 u, order_id 32 u, uniq_token 64 u,
+dup constant message_builder
+per_request_seq_no 16 u,
+b>  constant data_for_signing
+
+data_for_signing hashu wallet3_privk ed25519_sign_uint  constant signature3
+message_builder wallet3_pubk 256 u, signature3 B,  per_request_seq_no 16 u, dictnew dict, b> <s constant sign_partial_order_message
+
+sign_partial_order_message recv_external contract_code contract_storage_seqno3_with_2of3_partial c7 runvmctx
+swap dup constant exit_code
+."t11 sign_partial_order_message 2/3 exit code (0 is OK) :" . cr
+dup
+<s csr. cr
+constant contract_storage_seqno3_no_partials
+.s
+."Should be 0 partial orders"
+exit_code 0 should_be
+
+// =============================================================================
+//                    Garbage collection (valid_until<now())
+// =============================================================================
+1               constant op_num
+2               constant seq_no
+1               constant per_request_seq_no
+
+1570470773 	constant unix_time_bound
+
+dictnew  constant provided_keys_info
+2 =: min_signatures_num
+
+example_message_root
+0
+dictnew
+7
+udict!
+drop constant order_dict
+
+<b op_num 8 u, seq_no 32 u, unix_time_bound 32 u, min_signatures_num 8 u, uniq_token 64 u, 
+dup constant message_builder
+order_dict dict, b>  constant data_for_signing
+
+data_for_signing hashu wallet1_privk ed25519_sign_uint constant signature1
+message_builder wallet1_pubk 256 u, signature1 B, provided_keys_info dict, order_dict dict, b>  <s constant store_order_message
+
+
+store_order_message recv_external contract_code initialized_contract_storage c7 runvmctx
+swap  dup constant exit_code
+."t12 order_with_unvalid_until exit code (35 is OK) :" . cr
+dup
+<s csr. cr
+.s
+."Should be 0 partial order"
+exit_code 35 should_be
+
+// =============================================================================
+//                    Garbage collection (provide final key after the valid_until)
+// =============================================================================
+1               constant op_num
+1               constant seq_no
+1               constant per_request_seq_no
+
+1570470873 100 + 	constant unix_time_bound
+
+dictnew constant provided_keys_info
+2 =: min_signatures_num
+
+example_message_root
+0
+dictnew
+7
+.s
+udict!
+drop constant order_dict
+
+<b op_num 8 u, seq_no 32 u, unix_time_bound 32 u, min_signatures_num 8 u, uniq_token 64 u,
+dup constant message_builder
+order_dict dict, b>  constant data_for_signing
+
+data_for_signing hashu wallet1_privk ed25519_sign_uint constant signature1
+message_builder wallet1_pubk 256 u, signature1 B, provided_keys_info dict, order_dict dict, b>  <s constant store_order_message
+
+
+store_order_message recv_external contract_code initialized_contract_storage c7 runvmctx
+swap  dup constant exit_code
+."t13 garbage_collection_add_one_order exit code (0 is OK) :" . cr
+dup
+<s csr. cr
+constant contract_storage_seqno2_past
+.s
+."Should be 1 partial order"
+exit_code 0 should_be
+
+
+
+2               constant seq_no
+
+0 tuple 0x076ef1ea , // magic
+0 , 0 , // actions msg_sents
+2570470873 , // unix_time
+1 , 1 , 0 , // block_lt, trans_lt, rand_seed
+ 0 tuple 9223372036854775807 , dictnew , , // reamining balance
+contract_address_full , dictnew , // contract_address, global_config
+1 tuple // wrap to another tuple
+constant late_c7
+
+
+2570470873 100 + 	constant unix_time_bound
+
+<b op_num 8 u, seq_no 32 u, unix_time_bound 32 u, min_signatures_num 8 u, uniq_token 64 u,
+dup constant message_builder
+order_dict dict, b>  constant data_for_signing
+
+data_for_signing hashu wallet1_privk ed25519_sign_uint constant signature1
+message_builder wallet1_pubk 256 u, signature1 B, provided_keys_info dict, order_dict dict, b>  <s constant store_order_message
+
+
+store_order_message recv_external contract_code contract_storage_seqno2_past late_c7 runvmctx
+swap  dup constant exit_code
+."t14 garbage_collection_add_another_order exit code (0 is OK) :" . cr
+dup
+<s csr. cr
+constant contract_storage_seqno3
+.s
+."Should be 1 partial order (another one should be collected)"
+exit_code 0 should_be
+
+
+// *****************************************************************************
+//                    Pure methods
+// *****************************************************************************
+  85143 =: seqno
+  74411 =: get_uniq_token
+  80276 =: number_of_keys
+  121049 =: order_seqno
+  100934 =: all_pending_orders
+  103571 =: pending_orders
+  116403 =: parse_common_message
+  94132 =: all_pending_orders_by_key
+  99529 =: all_pending_orders_unsigned_by_key
+  99554 =: all_pending_orders_signed_by_key
+  101874 =: pending_orders_by_key
+  95010 =: pending_orders_unsigned_by_key
+  72467 =: pending_orders_signed_by_key
+  130501 =: show_order
+  127499 =: show_general_info
+
+// =============================================================================
+//                    Seqno
+// =============================================================================
+seqno contract_code contract_storage_seqno3_no_partials c7 runvmctx
+drop drop // drop final storage and exitcode
+dup
+."t15 seqno_method 1: should be 3 " . cr
+constant result
+result 3 should_be
+
+seqno contract_code initialized_contract_storage c7 runvmctx
+drop drop // drop final storage and exitcode
+dup
+."t16 seqno_method 2: should be 2 " . cr
+constant result
+result 1 should_be
+
+// =============================================================================
+//                    Order_seqno
+// =============================================================================
+2 order_seqno contract_code contract_storage_seqno3_with_2of3_partial c7 runvmctx
+drop drop // drop final storage and exitcode
+dup
+."t17 order_seqno_method 1: should be 1 " . cr
+constant result
+result 1 should_be
+
+1 order_seqno contract_code contract_storage_with_2of3_partial_seqno2 c7 runvmctx
+drop drop // drop final storage and exitcode
+dup
+."t18 order_seqno_method 2: should be 2 " . cr
+constant result
+result 2 should_be
+// =============================================================================
+//                    number_of_keys
+// =============================================================================
+number_of_keys contract_code contract_storage_seqno3_with_2of3_partial c7 runvmctx
+drop drop // drop final storage and exitcode
+dup
+."t19 order_seqno_method 3: should be 3 " . cr
+constant result
+1 result 3 = / // Stop if wrong result
+
+// =============================================================================
+//                    all_pending_orders
+// =============================================================================
+all_pending_orders contract_code contract_storage_seqno3_with_2of3_partial c7 runvmctx
+drop drop // drop final storage and exitcode
+dup
+."t20 all_pending_orders " .s cr
+drop
+
+// =============================================================================
+//                    pending_orders
+// =============================================================================
+pending_orders contract_code contract_storage_seqno3_with_2of3_partial c7 runvmctx
+drop drop // drop final storage and exitcode
+."t21 pending_orders " .s cr
+drop
+
+// =============================================================================
+//                    pending_orders_unsigned_by_key
+// =============================================================================
+wallet3_pubk pending_orders_unsigned_by_key contract_code contract_storage_seqno3_with_2of3_partial c7 runvmctx
+drop drop // drop final storage and exitcode
+."t22 pending_orders_unsigned_by_key " .s cr
+drop
+
+// =============================================================================
+//                    pending_orders_signed_by_key
+// =============================================================================
+wallet1_pubk pending_orders_signed_by_key contract_code contract_storage_seqno3_with_2of3_partial c7 runvmctx
+drop drop // drop final storage and exitcode
+."t23 pending_orders_signed_by_key " .s cr
+drop
+

@@ -1,0 +1,136 @@
+#!/usr/bin/env fift -s
+
+/*
+  /------------------------------------------------------------------------\
+  | Created for: Telegram (Open Network) Blockchain Contest                |
+  |      Task 2: DNS Resolver (Automatically registering)                  |
+  >------------------------------------------------------------------------<
+  | Script: Domain prolongation BoC BODY file generation script            |
+  >------------------------------------------------------------------------<
+  | Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)    |
+  |         October 2019                                                   |
+  \------------------------------------------------------------------------/
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack tool
+
+// Parameters: address payment domain cat value ...
+
+
+{ cr ."/---------------------------------------[General information]------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <query-id> <domain> [-r or -R]"
+  @' $0 $len 33 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Prepares a file, that can be sent as a message to contract to PROLONG the specified domain.          |" cr
+  ."| In order to prolong the domain you HAVE TO send the resulting message from a wallet, that is defined |" cr
+  ."|  as an owner of specified domain (-2)! If sent from another addr or there is no owner it won't work! |" cr
+  ."| Extra grams not used for paying for domain, forwarding fees and gas will be returned to sender wallet|" cr
+  ."| !!! This file must be used ONLY with Automatically controlled DNS Resolver contract (adns-create.fif)|" cr
+  ."| !!! Resulting query will be saved to body-adns-prol-<domain>.boc and needs to be encapsulated by your|" cr
+  ."|     wallet scripts or software before being sent into a network! You can't just send resulting file! |" cr
+  .">--------------------------------------[Parameters description]----------------------------------------<" cr
+  ."| !!!     You must not specify < and > or [ and ] characters, only text value of the parameter     !!! |" cr
+  ."| <query-id> defines query id for the message, may remain 0 or 1 for messages from simple wallets      |" cr
+  ."| <domain> has to contain domain (subdomain) name in text form that is to be registered                |" cr
+  ."| [-r or -R] a.k.a. [flags] can contain -r or -R. It is optional and can be omitted.                   |" cr
+  ."|  -r activates robot mode (output will be more friendly to robots or interfacing program)             |" cr
+  ."|  -R activates full robot mode (without writing to files at all, ensure saving or processing output!) |" cr
+  .">---------------------------------------[Use with binary data]-----------------------------------------<" cr
+  ."| Some of the parameters can be written in special form in order to use binary data from existing file |" cr
+  ."|   or to encode hexadecimal value that will be decoded into binary value: <domain>.                   |" cr
+  ."| In order to read binary data from a file parameter must begin with F: and contain full file name.    |" cr
+  ."| If binary data encoded in hexadecimal form is used, parameter must begin with prefix H: or X:.       |" cr
+  ."\------------------------------------------------------------------------------------------------------/" cr  
+  cr 1 halt
+} : usage
+
+$# 2 >= ' usage ifnot // Verify argument count
+$# 3 <= ' usage ifnot 
+
+
+$1 parse-int =: QueryId
+$2 =: ADomain
+def? $3 { @' $3 } { "" } cond =: Flags
+
+variable RMode     false RMode  !
+variable FRMode    false FRMode !
+Flags "-r" $= { true RMode ! } if
+Flags "-R" $= { true RMode ! true FRMode ! } if
+
+RMode  @ =: RM
+FRMode @ =: FRM
+
+// Copied from mdns-setdom.fif of task 3
+
+{ dup 0 -rot -1 swap { 8 u@+ swap dup dup 32 >= swap 127 <= and { drop } { 
+0 = swap dup sbits 0 = rot and { -1 4 exch drop } { nip 0 swap } cond } cond dup sbits 0 = } until drop
+{ dup sbits 8 / rot + $@ type } // Can print as text (far var is -1 if has \0 at end)
+{ nip dup sbits 8 / dup 36 = // Should print as hex, but may be it is an address?
+{ drop 256 u@+ 32 u@ dup 0 = swap dup 1 = rot or { swap 4 ."Addr:" .Addr } { B@ Bx. } cond }
+{ B@ ."0x" Bx. } cond } 
+cond } : PrintSliceMaybeText // Allows \0 at the end
+
+{ dup @ dup $len 2 > {
+	2 $| swap
+	dup "F:" $= swap dup "f:" $= rot or 
+	{ -rot dup file-exists? 
+	{ ."Error: Parameter file " type ." does not exist!" cr 9 halt } ifnot 
+	file>B <b swap B, b> <s swap ! drop
+	} {
+		dup "X:" $= swap dup "H:" $= swap dup "x:" $= swap "h:" $= or or or
+		{ x>B <b swap B, b> <s swap ! }
+		{ drop dup @ $>s swap ! } cond
+	} cond
+} { drop dup @ $>s swap ! } cond } : ProcVarPfx
+
+variable Domain ADomain Domain ! Domain ProcVarPfx
+
+RM { ."Building prolong message for domain " Domain @ PrintSliceMaybeText ."..." cr } ifnot
+
+// Add ending zero char to Domain if missing
+Domain @ dup sbits 8 / dup -rot B@ swap 1- B| 8 B>u@ nip 0 = 
+{ Domain @ sbits 1008 <= { ."Error: Domain name without \0 is too long (max 126 chars)" cr 15 halt } ifnot
+<b Domain @ s, 0 8 u, b> <s Domain ! } ifnot
+
+// Some more checks for lengths, and determine inlinity
+Domain @ dup sbits 1016 <= { ."Error: Domain name is too long (max 127 chars)" cr 13 halt } ifnot
+
+// We have Domain at stack top now, lets check amount of \0 characters
+/* 0 swap { 8 u@+ swap 0 = { swap 1+ swap } if dup sbits 0 = } until drop
+1 = { ."Error: Domain name contains several zero code characters (including ending one)" cr 15 halt } ifnot */
+drop
+
+<b 0x70726f6c 32 u, QueryId 64 u, 
+	<b Domain @ s, b> ref,
+b> =: Msg
+
+"body-adns-prol-" ADomain $+ +".boc" =: BocFile
+RM { BocFile file-exists? { ."Warning! BoC file will be overwritten!" cr } if } ifnot
+
+Msg 2 boc+>B dup Blen =: IMLen =: IM
+
+FRM { IM BocFile B>file
+ RM { ."Query saved to " BocFile type cr } ifnot
+} ifnot
+
+RMode @ { cr 
+	."/-[Success: The message body to prolong domain registration in automatic resolver has been created!]" cr
+	."| Domain name: " Domain @ PrintSliceMaybeText cr
+	.">-> The body have been saved to <path-to-file>/" BocFile type cr
+	."| WARNING: The resulting message body can not be sent to network on it's own! " cr
+	."| You need to first encapsulate the body into your wallet's external message!" cr
+	."| Use your wallet's scripts that support embedding BoC files to create a" cr
+	."|   signed message for your wallet, and send it using, for example, lite-client." cr
+	."| PAY ATTENTION that you need to send the message from the specific wallet, address" cr
+	."|   of which is saved as -2 (owner) category entry in target domain, or it wont work!" cr
+	."| Also make sure that you provide sufficient (price + GR$1) value of the message." cr
+	."\-[ Need to embed <path-to-file>/" BocFile type ." into wallet message ]" cr cr
+} { 
+	."type=prol" cr
+FRM { ."boc_file=" BocFile type cr } ifnot
+	."domain_hex=" Domain @ dup sbits 8 / B@ Bx. cr
+	."domain=" Domain @ PrintSliceMaybeText cr
+	."body=" IM Bx. cr
+	."body_len=" IMLen (.) type cr
+} swap cond

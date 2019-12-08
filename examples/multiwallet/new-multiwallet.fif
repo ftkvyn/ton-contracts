@@ -1,0 +1,69 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"multiwallet-code.fif" include
+
+{ 
+	."<workchain-id> <public-keys-count> <minimum-of-signatures> [<output-filename>]" 	cr
+	."creates a new multi-signature wallet in workchain <workchain-id>" 				cr
+	."with <public-keys-count> public keys" 											cr
+	."<minimum-of-signatures> signatures must be present for processing" 				cr
+	."first private key is saved or loaded from <filename-base>.pk" 					cr
+	."other public keys are loaded from public-keys.fif"								cr
+	1 halt
+} : usage
+$# 3 < ' usage if
+
+$1 parse-workchain-id 	=: workchain_id
+$2 parse-int			=: keys_count
+$3 parse-int			=: sign_count
+def? $4 { @' $4 } { "new-multi-wallet" } cond =: output-file
+
+// validation of input
+sign_count 0 >     	 	 { ."<minimum-of-signatures> must be greater than zero" cr 1 halt } ifnot
+keys_count sign_count >= { ."<public-keys-count> should be more or equal to <minimum-of-signatures>" cr 1 halt } ifnot
+keys_count 100 <= 		 { ."<public-keys-count> must be less than 100" cr 1 halt } ifnot
+
+cr ."Creating new multi-wallet in workchain: " workchain_id . cr cr
+output-file +".pk" load-generate-keypair constant wallet_pk constant public_key
+
+// load public keys
+"public-keys.fif" include
+."Loadind public keys from public-keys.fif" cr
+keys_count tuple-publickeys public_key ,
+tuck count = { ."invalid number of public keys: " keys_count 1- . ."(" keys_count (.) type ."-1) keys needed, received: " count 1- . cr 1 halt } ifnot
+
+// generate public key dictionary
+keys_count untuple
+dictnew 0
+{ rot <b swap B, b> <s over 1+ 3 -roll swap rot 7 udict!+ drop swap } keys_count times drop
+dup 2 boc+>B output-file +"-keys.boc" B>file
+."Saving public keys dictionary to " output-file +"-keys.boc" type ." (needed later)" cr cr
+
+
+// data
+<b -1 32 i, 0 32 u, dictnew dict, swap dict, sign_count 7 u, b>
+dup 2 boc+>B output-file +"-storage.boc" B>file
+
+null // no libraries
+<b b{0011} s, 3 roll ref, rot ref, swap dict, b>  // create StateInit
+// dup ."StateInit: " <s csr. cr
+
+dup hash workchain_id swap 2dup 2constant wallet_addr
+."new multi-signature wallet address = " 2dup .addr cr
+2dup output-file +".addr" save-address-verbose
+."Non-bounceable address (for init): " 2dup 7 .Addr cr
+."Bounceable address (for later access): " 6 .Addr cr cr
+
+ <b 0 32 u, now 86400 + 32 u, b>
+ dup ."signing message: " <s csr. cr
+ 
+ dup hash wallet_pk ed25519_sign_uint <b swap B, 0 7 u, b> <b 1 7 u, swap ref, b>
+  
+ // external message
+ rot <b b{1000100} s, wallet_addr addr, b{000010} s, swap <s s, b{0} s, swap /* dict, <b 0 7 u, b> */ ref, swap <s s, b>
+ // dup ."External message for initialization is " <s csr. cr
+ 
+ 2 boc+>B output-file +"-query.boc" tuck B>file
+ ."(Saved wallet creating query to file " type .")" cr
+

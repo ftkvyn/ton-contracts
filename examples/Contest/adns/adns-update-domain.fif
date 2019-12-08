@@ -1,0 +1,65 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." domain_name save_file num_of_added_dnsrecords num_of_removed_dnsrecords [ category, data ] [ category ]" cr
+  ."Generates message body-boc (may be sent via '-B' option of simple wallet) for domain update " cr
+  ."Add and remove dnsrecords to existing domain. First records form add_records are added (with replacement), then records from removed_records are removed." cr
+  1 halt
+} : usage
+
+$# 0 > { 1 $() dup "--help" $= swap "-h" $= or ' usage if } if
+$# 4 < ' usage if
+
+0 =: offset
+
+$1 =: domain_name
+$2 =: save_file
+$3 parse-int =: add_records_num
+$4 parse-int =: rm_records_num
+
+dictnew
+0
+{
+  // dictnew counter
+  dup dup
+  5 + $() parse-int // dictnew counter counter category
+  swap
+  6 + $() // dictnew counter category data
+  <b swap $, b> <s
+  swap // dictnew counter data category
+  3 roll // counter data category dictnew 
+  16
+  idict! drop // counter dict
+  swap
+  2 +
+} add_records_num times
+swap
+=: dns_records_to_add
+
+dictnew
+swap
+{
+  // dictnew counter
+  dup
+  5 + $() parse-int // dictnew counter category
+  <b b> <s
+  swap // dictnew counter data category
+  3 roll // counter data category dictnew 
+  16
+  idict! drop // counter dict
+  swap
+  1 +
+} rm_records_num times
+drop
+=: dns_records_to_remove
+
+<b dns_records_to_add dict, dns_records_to_remove dict, b> =: records_update
+<b dictnew dict, dictnew dict, b> =: domains_update
+<b 2 32 u, <b domain_name $, b> ref, records_update ref, domains_update ref, b> =: message_body
+
+message_body
+2 boc+>B dup Bx. cr
+$2 +".boc" tuck B>file
+."(Saved to file " type .")" cr
+

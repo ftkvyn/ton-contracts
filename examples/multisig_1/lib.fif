@@ -1,0 +1,145 @@
+{ hole dup 1 { @ execute } does create 1 ' ! does create
+} : vector-set
+vector-set sort :sort
+vector-set merge :merge
+vector-set less :less
+{ null null rot
+	{ dup null? not }
+	{ uncons swap rot cons -rot } while drop
+} : split
+{ dup null? { drop } {
+	over null? { nip } {
+			over car over car less ' swap if
+			uncons rot merge cons
+		} cond
+	} cond
+} :merge
+{ dup null? {
+	dup cdr null? {
+			split sort swap sort merge
+		} ifnot
+	} ifnot
+} :sort
+forget :merge
+forget :sort
+
+{ ' < :less sort } : sort-int
+
+vector-set map :map
+// list e -- list
+{ over null? not 
+	{ dup rot uncons rot map -rot swap execute swap cons } 
+	{ drop } cond
+} :map
+forget :map
+
+vector-set ireduce :ireduce
+// list init e -- x
+// e: cur el -- cur * el
+{ 
+	swap rot
+	{ dup null? not } { uncons 3 -roll 2 pick execute rot } while
+	drop nip
+} :ireduce
+forget :ireduce
+
+// list e -- x
+{ swap uncons -rot swap ireduce } : reduce
+
+vector-set unique-eq-op :unique-eq-op
+vector-set unique :unique
+// requires list to be sorted
+// list -- list
+{ 
+  dup null? { 
+  	uncons unique
+  	dup null? {
+  		uncons
+  		-rot 2dup unique-eq-op
+  		{ drop swap } { rot cons } cond
+  	} ifnot
+  	cons
+  } ifnot
+} :unique
+forget :unique
+
+{ ' = :unique-eq-op unique } : unique-int
+
+vector-set find' :find'
+// value list  -- index or -1
+{
+  dup null? {
+  	drop drop -1
+  } { 
+  	uncons // v h l'
+  	-rot swap rot over swap find' // h v i
+  	dup -1 =
+  	{ 
+      drop = {
+      	0
+      } {
+      	-1
+      } cond
+  	} {
+  	  nip nip 1+
+  	} cond
+  } cond
+} :find'
+forget :find'
+// list value -- index or -1
+{ swap find' } : find
+forget find'
+
+vector-set serialize-sign-list :serialize-sign-list
+// non-empty tuple -- cell 
+// empty tuple serialization is undefined
+{
+  uncons dup null? {
+  	drop s>c
+  } {
+  	serialize-sign-list <b rot s, swap ref, b>	
+  } cond
+} :serialize-sign-list
+
+vector-set parse-sign-list :parse-sign-list
+// cell -- tuple
+{
+  <s dup srefs {
+  	ref@+ parse-sign-list
+  	cons
+  }
+  { null cons } cond
+} :parse-sign-list
+forget :parse-sign-list
+
+vector-set conc-lists :conc-lists
+// l1 l2 -- l1.l2
+{ 
+  swap dup null? {
+  	drop
+  } {
+  	uncons rot conc-lists cons
+  } cond
+} :conc-lists
+forget :conc-lists
+
+vector-set list-tail :list-tail
+// l k -- l[-k:] len
+{ 
+  swap dup null? {
+  	nip 0
+  } {
+  	// k l
+  	uncons rot // h l k
+  	tuck // h k l k 
+  	list-tail // h k t len
+  	rot // h t len k
+  	over over // h t len k len k
+  	= {
+  	  drop rot drop
+  	} {
+  	  drop -rot cons swap 1+
+  	} cond
+  } cond
+} :list-tail
+forget :list-tail

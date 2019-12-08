@@ -1,0 +1,584 @@
+"Asm.fif" include
+// automatically generated from `stdlib.fc` `multiwallet-code.fc` 
+PROGRAM{
+  DECLPROC exception_handler
+  DECLPROC get_oet
+  DECLPROC garbage_collect
+  DECLPROC recv_internal
+  DECLPROC load_pubkey&signature
+  DECLPROC notbuiltin_popcount
+  DECLPROC update_order
+  DECLPROC recv_external
+  67280 DECLMETHOD pubkey_index
+  DECLPROC convert_order_dict
+  67442 DECLMETHOD get_orders
+  126971 DECLMETHOD orders_with_withno_pubkey
+  78225 DECLMETHOD getn
+  90420 DECLMETHOD getk
+  85143 DECLMETHOD seqno
+  exception_handler PROC:<{
+    // 
+    c4 PUSH	//  _1
+    CTOS	//  ds
+    32 LDU	//  _4 ds
+    SWAP	//  ds _4
+    INC	//  ds seqno
+    NEWC	//  ds seqno _9
+    32 STU	//  ds _11
+    SWAP	//  _11 ds
+    STSLICER	//  _12
+    ENDC	//  _13
+    c4 POP
+  }>
+  get_oet PROC:<{
+    //  dict
+    288 PUSHINT	//  dict _6
+    DICTMIN
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  _12 _13 _14
+    s2 POP	//  f oet
+    32 PUSHPOW2DEC	//  f oet oldest_expire_time=4294967295
+    s0 s2 XCHG	//  oldest_expire_time=4294967295 oet f
+    IF:<{	//  oldest_expire_time=4294967295 oet
+      NIP	//  oet
+      32 PLDU	//  oldest_expire_time
+    }>ELSE<{
+      DROP	//  oldest_expire_time
+    }>
+  }>
+  garbage_collect PROC:<{
+    //  dict
+    0 PUSHINT	//  dict _2=0
+    NOW	//  dict _2=0 _3
+    INC	//  dict _2=0 _5
+    NEWC	//  dict _2=0 _5 _6
+    32 STU	//  dict _2=0 _8
+    256 STU	//  dict _10
+    ENDC	//  dict _11
+    CTOS	//  dict bound
+    UNTIL:<{
+      OVER
+      288 PUSHINT	//  dict bound dict _19
+      DICTREMMIN
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  dict bound _28 _30 _29 _31
+      s2 POP	//  dict bound dict' f i
+      s1 s0 XCPU	//  dict bound dict' i f f
+      IF:<{	//  dict bound dict' i f
+        DROP	//  dict bound dict' i
+        s2 PUSH	//  dict bound dict' i bound
+        SDLEXCMP	//  dict bound dict' _23
+        0 LESSINT	//  dict bound dict' f
+      }>ELSE<{
+        NIP	//  dict bound dict' f
+      }>
+      DUP	//  dict bound dict' f f
+      IF:<{	//  dict bound dict' f
+        s3 POP	//  f bound dict
+      }>ELSE<{
+        s3 s3 XCHG2
+        DROP	//  f bound dict
+      }>
+      s0 s2 XCHG	//  dict bound f
+      NOT	//  dict bound _26
+    }>	//  dict bound
+    DROP	//  dict
+    DUP	//  dict dict
+    get_oet CALLDICT	//  dict _27
+  }>
+  recv_internal PROC:<{
+    //  header in_msg
+    SWAP	//  in_msg header
+    CTOS	//  in_msg cs
+    3 PUSHINT	//  in_msg cs _4=3
+    SDSKIPFIRST	//  in_msg cs
+    1 LDU	//  in_msg bounced? cs
+    SWAP	//  in_msg cs bounced?
+    IFNOT:
+    OVER	//  in_msg cs in_msg
+    SBITS	//  in_msg cs sb
+    IF:
+    SWAP	//  cs in_msg
+    32 LDU	//  cs op in_msg
+    OVER	//  cs op in_msg op
+    IF:
+    OVER	//  cs op in_msg op
+    31 RSHIFT#	//  cs op in_msg _20
+    IFNOT:
+    c4 PUSH	//  cs op in_msg _23
+    CTOS	//  cs op in_msg ds
+    s0 s2 XCHG
+    2019 PUSHINT	//  cs ds in_msg op _25=2019
+    EQUAL	//  cs ds in_msg _26
+    s2 PUSH
+    48 PUSHINT	//  cs ds in_msg _26 ds _35
+    SDSKIPFIRST	//  cs ds in_msg _26 _36
+    32 PLDU	//  cs ds in_msg _26 _38
+    NOW	//  cs ds in_msg _26 _38 _39
+    LEQ	//  cs ds in_msg _26 _40
+    AND	//  cs ds in_msg _41
+    IFJMP:<{	//  cs ds in_msg
+      DROP
+      NIP	//  ds
+      ACCEPT
+      DUP
+      47 PUSHINT	//  ds ds _51
+      SDSKIPFIRST	//  ds _52
+      PLDDICT	//  ds _53
+      garbage_collect CALLDICT	//  ds dict oet
+      s0 s2 XCHG	//  oet dict ds
+      46 LDSLICE	//  oet dict bits ds
+      LDDICT	//  oet dict bits _114 _113
+      DROP	//  oet dict bits dict2
+      NEWC	//  oet dict bits dict2 _66
+      ROT	//  oet dict dict2 _66 bits
+      STSLICER	//  oet dict dict2 _67
+      STDICT	//  oet dict _68
+      STDICT	//  oet _69
+      32 STU	//  _71
+      ENDC	//  _72
+      c4 POP
+    }>	//  cs ds in_msg
+    NIP	//  cs in_msg
+    64 LDU	//  cs _116 _115
+    DROP	//  cs query_id
+    SWAP	//  query_id cs
+    LDMSGADDR	//  query_id _118 _117
+    DROP	//  query_id src
+    32 PUSHPOW2DEC	//  query_id src _81=4294967295
+    0 PUSHINT	//  query_id src _81=4294967295 _82=0
+    8 PUSHINT	//  query_id src _81=4294967295 _82=0 _83=8
+    NEWC	//  query_id src _81=4294967295 _82=0 _83=8 _84
+    6 STU	//  query_id src _81=4294967295 _82=0 _86
+    s0 s3 XCHG2	//  query_id _82=0 _81=4294967295 _86 src
+    STSLICER	//  query_id _82=0 _81=4294967295 _87
+    s1 s2 XCHG	//  query_id _81=4294967295 _82=0 _87
+    107 STU	//  query_id _81=4294967295 _97
+    32 STU	//  query_id _99
+    64 STU	//  _101
+    ENDC	//  _102
+    64 PUSHINT	//  _102 _103=64
+    SENDRAWMSG
+  }>
+  load_pubkey&signature PROC:<{
+    //  cs dict
+    SWAP	//  dict cs
+    7 LDU	//  dict pubkey_ind cs
+    9 PUSHPOW2	//  dict pubkey_ind cs _8=512
+    LDSLICEX	//  dict pubkey_ind signature cs
+    7 PUSHINT	//  dict pubkey_ind signature cs _12=7
+    s3 s4 s4 PUXC2	//  cs pubkey_ind signature pubkey_ind dict _12=7
+    DICTUGET
+    NULLSWAPIFNOT	//  cs pubkey_ind signature pubkey_slice f
+    35 THROWIFNOT
+    256 PLDU	//  cs pubkey_ind signature pubkey
+    -ROT	//  cs pubkey pubkey_ind signature
+  }>
+  notbuiltin_popcount PROC:<{
+    //  x
+    0 PUSHINT	//  x res=0
+    WHILE:<{
+      OVER	//  x res x
+    }>DO<{	//  x res
+      INC	//  x res
+      OVER	//  x res x
+      DEC	//  x res _6
+      s1 s2 XCHG	//  res x _6
+      AND	//  res x
+      SWAP	//  x res
+    }>	//  x res
+    NIP	//  res
+  }>
+  update_order PROC:<{
+    //  k n indexes dict order valid_until
+    OVER	//  k n indexes dict order valid_until order
+    HASHSU	//  k n indexes dict order valid_until order_hash
+    NEWC	//  k n indexes dict order valid_until order_hash _9
+    s1 s2 XCHG	//  k n indexes dict order order_hash valid_until _9
+    32 STU	//  k n indexes dict order order_hash _11
+    256 STU	//  k n indexes dict order _13
+    ENDC	//  k n indexes dict order _14
+    CTOS	//  k n indexes dict order key
+    s0 s2 PUSH2
+    288 PUSHINT	//  k n indexes dict order key key dict _20
+    DICTGET
+    NULLSWAPIFNOT	//  k n indexes dict order key stored_order f
+    0 PUSHINT	//  k n indexes dict order key stored_order f mask=0
+    WHILE:<{
+      s6 PUSH	//  k n indexes dict order key stored_order f mask indexes
+      ISNULL	//  k n indexes dict order key stored_order f mask _24
+      NOT	//  k n indexes dict order key stored_order f mask _25
+    }>DO<{	//  k n indexes dict order key stored_order f mask
+      s0 s6 XCHG	//  k n mask dict order key stored_order f indexes
+      UNCONS	//  k n mask dict order key stored_order f ind indexes
+      SWAP	//  k n mask dict order key stored_order f indexes ind
+      POW2	//  k n mask dict order key stored_order f indexes _29
+      s1 s7 XCHG	//  k n indexes dict order key stored_order f mask _29
+      OR	//  k n indexes dict order key stored_order f mask
+    }>	//  k n indexes dict order key stored_order f mask
+    s6 POP	//  k n mask dict order key stored_order f
+    DUP	//  k n mask dict order key stored_order f f
+    IF:<{	//  k n mask dict order key stored_order f
+      DROP	//  k n mask dict order key stored_order
+      FALSE	//  k n mask dict order key stored_order f
+      s1 s6 XCPU	//  k n mask dict order key f stored_order n
+      LDUX	//  k n mask dict order key f stored_mask stored_order
+      s6 s6 XCHG2	//  k n stored_order dict order key f mask stored_mask
+      OR	//  k n stored_order dict order key f mask
+      DUP	//  k n stored_order dict order key f mask mask
+      notbuiltin_popcount CALLDICT	//  k n stored_order dict order key f mask _36
+      s0 s8 XCHG2	//  mask n stored_order dict order key f _36 k
+      GEQ	//  mask n stored_order dict order key f _37
+      IF:<{	//  mask n stored_order dict order key f
+        DROP	//  mask n stored_order dict order key
+        s0 s3 XCHG	//  mask n key dict order stored_order
+        8 LDU	//  mask n key dict order mode stored_order
+        LDREF	//  mask n key dict order mode _69 _68
+        DROP	//  mask n key dict order mode _42
+        SWAP	//  mask n key dict order _42 mode
+        SENDRAWMSG
+        288 PUSHINT	//  mask n key dict order _48
+        s3 s2 s2 PUXC2	//  mask n key order key dict _48
+        DICTDEL	//  mask n key order _70 _71
+        DROP	//  mask n key order dict
+        TRUE	//  mask n key order dict f
+      }>ELSE<{
+        s3 s0 s4 XCHG3
+        DROP	//  mask n key order dict f
+      }>
+    }>ELSE<{
+      s5 s7 XCHG
+      4 2 REVERSE
+      s2 POP
+      DROP	//  mask n key order dict f
+    }>
+    NOT	//  mask n key order dict _51
+    IF:<{	//  mask n key order dict
+      NEWC	//  mask n key order dict _53
+      s5 s0 s4 XCHG3	//  order dict key mask _53 n
+      STUX	//  order dict key _54
+      s0 s3 XCHG2	//  key dict _54 order
+      STSLICER	//  key dict value
+      -ROT
+      288 PUSHINT	//  value key dict _58
+      DICTSETB	//  dict
+    }>ELSE<{
+      s0 s4 XCHG
+      4 BLKDROP	//  dict
+    }>
+  }>
+  recv_external PROC:<{
+    //  in_msg
+    c4 PUSH	//  in_msg _2
+    CTOS	//  in_msg ds
+    32 LDU	//  in_msg seqno ds
+    0 PUSHINT	//  in_msg seqno ds _9=0
+    s3 s(-1) PUXC
+    1 PUSHINT	//  in_msg seqno ds in_msg _9=0 _10=1
+    SSKIPFIRST	//  in_msg seqno ds _11
+    HASHSU	//  in_msg seqno ds msg_hash
+    s0 s3 XCHG	//  msg_hash seqno ds in_msg
+    32 LDU	//  msg_hash seqno ds mseqno in_msg
+    s1 s3 XCPU	//  msg_hash seqno ds in_msg mseqno seqno
+    EQUAL	//  msg_hash seqno ds in_msg _18
+    33 THROWIFNOT
+    32 LDU	//  msg_hash seqno ds valid_until in_msg
+    OVER
+    NOW	//  msg_hash seqno ds valid_until in_msg valid_until _25
+    LEQ	//  msg_hash seqno ds valid_until in_msg _26
+    33 THROWIF
+    s0 s2 XCHG	//  msg_hash seqno in_msg valid_until ds
+    7 LDU	//  msg_hash seqno in_msg valid_until _31 ds
+    7 LDU	//  msg_hash seqno in_msg valid_until _31 _34 ds
+    LDDICT	//  msg_hash seqno in_msg valid_until n k keys_dict ds
+    s0 s5 XCHG	//  msg_hash seqno ds valid_until n k keys_dict in_msg
+    LDREF	//  msg_hash seqno ds valid_until n k keys_dict _40 in_msg
+    SWAP	//  msg_hash seqno ds valid_until n k keys_dict in_msg _40
+    CTOS	//  msg_hash seqno ds valid_until n k keys_dict in_msg cs
+    s2 PUSH	//  msg_hash seqno ds valid_until n k keys_dict in_msg cs keys_dict
+    load_pubkey&signature CALLDICT	//  msg_hash seqno ds valid_until n k keys_dict in_msg cs pubkey pubkey_ind signature
+    s11 s0 s2 PUXC2	//  msg_hash seqno ds valid_until n k keys_dict in_msg cs pubkey_ind msg_hash signature pubkey
+    CHKSIGNU	//  msg_hash seqno ds valid_until n k keys_dict in_msg cs pubkey_ind _48
+    35 THROWIFNOT
+    ACCEPT
+    c0 PUSH CONT:<{ exception_handler CALLDICT }> c0 SETCONTCTR c2 POP
+    s7 PUSH
+    1 PUSHINT	//  msg_hash seqno ds valid_until n k keys_dict in_msg cs pubkey_ind ds _53=1
+    SDSKIPFIRST	//  msg_hash seqno ds valid_until n k keys_dict in_msg cs pubkey_ind _54
+    32 PLDU	//  msg_hash seqno ds valid_until n k keys_dict in_msg cs pubkey_ind oldest_expire_time
+    s0 s8 XCHG	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict in_msg cs pubkey_ind ds
+    LDDICT	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict in_msg cs pubkey_ind _147 _146
+    DROP	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict in_msg cs pubkey_ind orders_dict
+    s0 s3 XCHG	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs pubkey_ind in_msg
+    1 LDI	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs pubkey_ind _60 in_msg
+    SWAP	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs pubkey_ind in_msg _60
+    IFJMP:<{	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs pubkey_ind in_msg
+      3 BLKDROP
+      s4 POP
+      s6 POP	//  keys_dict seqno oldest_expire_time orders_dict n k
+      s3 PUSH
+      NOW	//  keys_dict seqno oldest_expire_time orders_dict n k oldest_expire_time _63
+      LEQ	//  keys_dict seqno oldest_expire_time orders_dict n k _64
+      IF:<{	//  keys_dict seqno oldest_expire_time orders_dict n k
+        s3 POP	//  keys_dict seqno k orders_dict n
+        SWAP	//  keys_dict seqno k n orders_dict
+        garbage_collect CALLDICT	//  keys_dict seqno k n orders_dict oldest_expire_time
+      }>ELSE<{
+        s2 s3 XCHG2	//  keys_dict seqno k n orders_dict oldest_expire_time
+      }>
+      s0 s4 XCHG	//  keys_dict oldest_expire_time k n orders_dict seqno
+      INC	//  keys_dict oldest_expire_time k n orders_dict _67
+      NEWC	//  keys_dict oldest_expire_time k n orders_dict _67 _68
+      32 STU	//  keys_dict oldest_expire_time k n orders_dict _70
+      s1 s2 XCHG	//  keys_dict oldest_expire_time k orders_dict n _70
+      7 STU	//  keys_dict oldest_expire_time k orders_dict _72
+      s1 s2 XCHG	//  keys_dict oldest_expire_time orders_dict k _72
+      7 STU	//  keys_dict oldest_expire_time orders_dict _74
+      s1 s3 XCHG	//  orders_dict oldest_expire_time keys_dict _74
+      STDICT	//  orders_dict oldest_expire_time _75
+      s1 s2 XCHG	//  oldest_expire_time orders_dict _75
+      STDICT	//  oldest_expire_time _76
+      32 STU	//  _78
+      ENDC	//  _79
+      c4 POP
+    }>	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs pubkey_ind in_msg
+    SWAP
+    PUSHNULL	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg pubkey_ind _82
+    CONS	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes
+    1 PUSHINT	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i=1
+    WHILE:<{
+      s3 PUSH	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i cs
+      SREMPTY	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i _86
+      NOT	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i _87
+      s1 s7 PUSH2	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i _87 i k
+      LESS	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i _87 _88
+      AND	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i _89
+    }>DO<{	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i
+      s0 s3 XCHG	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg indexes cs
+      LDREF	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg indexes _153 _152
+      DROP	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg indexes _90
+      CTOS	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg indexes cs
+      s5 PUSH	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg indexes cs keys_dict
+      load_pubkey&signature CALLDICT	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg indexes cs pubkey pubkey_ind signature
+      s14 s0 s2 PUXC2	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg indexes cs pubkey_ind msg_hash signature pubkey
+      CHKSIGNU	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg indexes cs pubkey_ind _95
+      35 THROWIFNOT
+      ROT	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg cs pubkey_ind indexes
+      CONS	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg cs indexes
+      s0 s3 XCHG	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict indexes in_msg cs i
+      INC	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict indexes in_msg cs i
+      s1 s3 XCHG	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i
+    }>	//  msg_hash seqno oldest_expire_time valid_until n k keys_dict orders_dict cs in_msg indexes i
+    s3 POP
+    s10 POP	//  indexes seqno oldest_expire_time valid_until n k keys_dict orders_dict i in_msg
+    s1 s4 XCPU	//  indexes seqno oldest_expire_time valid_until n k keys_dict orders_dict in_msg i k
+    EQUAL	//  indexes seqno oldest_expire_time valid_until n k keys_dict orders_dict in_msg _100
+    IF:<{	//  indexes seqno oldest_expire_time valid_until n k keys_dict orders_dict in_msg
+      s5 POP
+      s7 POP	//  orders_dict seqno oldest_expire_time in_msg n k keys_dict
+      s0 s3 XCHG	//  orders_dict seqno oldest_expire_time keys_dict n k in_msg
+      8 LDU	//  orders_dict seqno oldest_expire_time keys_dict n k mode in_msg
+      LDREF	//  orders_dict seqno oldest_expire_time keys_dict n k mode _161 _160
+      DROP	//  orders_dict seqno oldest_expire_time keys_dict n k mode _105
+      SWAP	//  orders_dict seqno oldest_expire_time keys_dict n k _105 mode
+      SENDRAWMSG
+    }>ELSE<{	//  indexes seqno oldest_expire_time valid_until n k keys_dict orders_dict in_msg
+      s6 POP	//  indexes seqno in_msg valid_until n k keys_dict orders_dict
+      s2 PUSH
+      s4 s0 XCPU
+      s0 s4 XCHG
+      s3 s9 XCHG
+      s7 s6 XCHG2	//  keys_dict seqno n k k n indexes orders_dict in_msg valid_until
+      update_order CALLDICT	//  keys_dict seqno n k orders_dict
+      DUP	//  keys_dict seqno n k orders_dict orders_dict
+      get_oet CALLDICT	//  keys_dict seqno n k orders_dict oldest_expire_time
+      s5 s5 s3 XCHG3
+      SWAP	//  orders_dict seqno oldest_expire_time keys_dict n k
+    }>
+    s3 PUSH
+    NOW	//  orders_dict seqno oldest_expire_time keys_dict n k oldest_expire_time _110
+    LEQ	//  orders_dict seqno oldest_expire_time keys_dict n k _111
+    IF:<{	//  orders_dict seqno oldest_expire_time keys_dict n k
+      s3 POP	//  orders_dict seqno k keys_dict n
+      s0 s4 XCHG	//  n seqno k keys_dict orders_dict
+      garbage_collect CALLDICT	//  n seqno k keys_dict orders_dict oldest_expire_time
+    }>ELSE<{
+      s5 s3 XCHG2	//  n seqno k keys_dict orders_dict oldest_expire_time
+    }>
+    s0 s4 XCHG	//  n oldest_expire_time k keys_dict orders_dict seqno
+    INC	//  n oldest_expire_time k keys_dict orders_dict _114
+    NEWC	//  n oldest_expire_time k keys_dict orders_dict _114 _115
+    32 STU	//  n oldest_expire_time k keys_dict orders_dict _117
+    s1 s5 XCHG	//  orders_dict oldest_expire_time k keys_dict n _117
+    7 STU	//  orders_dict oldest_expire_time k keys_dict _119
+    s1 s2 XCHG	//  orders_dict oldest_expire_time keys_dict k _119
+    7 STU	//  orders_dict oldest_expire_time keys_dict _121
+    STDICT	//  orders_dict oldest_expire_time _122
+    s1 s2 XCHG	//  oldest_expire_time orders_dict _122
+    STDICT	//  oldest_expire_time _123
+    32 STU	//  _125
+    ENDC	//  _126
+    c4 POP
+  }>
+  pubkey_index PROC:<{
+    //  pubkey
+    c4 PUSH	//  pubkey _2
+    CTOS	//  pubkey _3
+    46 PUSHINT	//  pubkey _3 _8
+    SDSKIPFIRST	//  pubkey _9
+    PLDDICT	//  pubkey dict
+    -1 PUSHINT	//  pubkey dict i=-1
+    DUP	//  pubkey dict i=-1 ans=-1
+    UNTIL:<{
+      s1 s2 XCPU
+      7 PUSHINT	//  pubkey dict ans i dict _17=7
+      DICTUGETNEXT
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  pubkey dict ans cs i f
+      DUP	//  pubkey dict ans cs i f f
+      IF:<{	//  pubkey dict ans cs i f
+        s0 s2 XCHG	//  pubkey dict ans f i cs
+        256 PLDI	//  pubkey dict ans f i stored_pubkey
+        s5 PUSH	//  pubkey dict ans f i stored_pubkey pubkey
+        EQUAL	//  pubkey dict ans f i _22
+        IF:<{	//  pubkey dict ans f i
+          NIP
+          NIP	//  pubkey dict i
+          DUP	//  pubkey dict i ans
+          FALSE	//  pubkey dict i ans f
+        }>ELSE<{
+          -ROT	//  pubkey dict i ans f
+        }>
+      }>ELSE<{
+        s3 s0 s3 XCHG3
+        DROP	//  pubkey dict i ans f
+      }>
+      NOT	//  pubkey dict i ans _24
+    }>	//  pubkey dict i ans
+    s0 s3 XCHG
+    3 BLKDROP	//  ans
+  }>
+  convert_order_dict PROC:<{
+    //  dict
+    PUSHNULL	//  dict res
+    NEWC	//  dict res _4
+    288 PUSHINT	//  dict res _4 _7
+    STZEROES	//  dict res _8
+    ENDC	//  dict res _9
+    CTOS	//  dict res i
+    UNTIL:<{
+      s0 s2 PUSH2
+      288 PUSHINT	//  dict res i i dict _16
+      DICTGETNEXT
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  dict res i cs i' f
+      DUP	//  dict res i cs i' f f
+      IF:<{	//  dict res i cs i' f
+        s0 s3 XCHG	//  dict res f cs i' i
+        32 PLDU	//  dict res f cs i' _20
+        NEWC	//  dict res f cs i' _20 _21
+        32 STU	//  dict res f cs i' _23
+        ROT	//  dict res f i' _23 cs
+        STSLICER	//  dict res f i' _24
+        ENDC	//  dict res f i' c
+        s0 s3 XCHG2	//  dict i' f c res
+        CONS	//  dict i f res
+      }>ELSE<{
+        s3 s4 XCHG
+        s3 s1 s3 XCHG3
+        2DROP	//  dict i f res
+      }>
+      SWAP	//  dict i res f
+      NOT	//  dict i res _27
+      s1 s2 XCHG	//  dict res i _27
+    }>	//  dict res i
+    DROP
+    NIP	//  res
+  }>
+  get_orders PROC:<{
+    // 
+    c4 PUSH	//  _0
+    CTOS	//  _1
+    46 PUSHINT	//  _1 _6
+    SDSKIPFIRST	//  _7
+    SKIPDICT	//  _8
+    PLDDICT	//  _9
+    convert_order_dict CALLDICT	//  _10
+  }>
+  orders_with_withno_pubkey PROC:<{
+    //  pubkey_ind e
+    c4 PUSH	//  pubkey_ind e _3
+    CTOS	//  pubkey_ind e _4
+    46 PUSHINT	//  pubkey_ind e _4 _9
+    SDSKIPFIRST	//  pubkey_ind e _10
+    SKIPDICT	//  pubkey_ind e _11
+    PLDDICT	//  pubkey_ind e dict
+    c4 PUSH	//  pubkey_ind e dict _14
+    CTOS	//  pubkey_ind e dict _15
+    32 PUSHINT	//  pubkey_ind e dict _15 _16=32
+    SDSKIPFIRST	//  pubkey_ind e dict _17
+    7 PLDU	//  pubkey_ind e dict n
+    NEWDICT	//  pubkey_ind e dict n res
+    NEWC	//  pubkey_ind e dict n res _23
+    288 PUSHINT	//  pubkey_ind e dict n res _23 _26
+    STZEROES	//  pubkey_ind e dict n res _27
+    ENDC	//  pubkey_ind e dict n res _28
+    CTOS	//  pubkey_ind e dict n res i
+    UNTIL:<{
+      s0 s3 PUSH2
+      288 PUSHINT	//  pubkey_ind e dict n res i i dict _35
+      DICTGETNEXT
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  pubkey_ind e dict n res i cs i' f
+      DUP	//  pubkey_ind e dict n res i cs i' f f
+      IF:<{	//  pubkey_ind e dict n res i cs i' f
+        s2 s5 PUSH2	//  pubkey_ind e dict n res i cs i' f cs n
+        PLDUX	//  pubkey_ind e dict n res i cs i' f _37
+        s9 PUSH	//  pubkey_ind e dict n res i cs i' f _37 pubkey_ind
+        RSHIFT	//  pubkey_ind e dict n res i cs i' f _38
+        1 PUSHINT	//  pubkey_ind e dict n res i cs i' f _38 _39=1
+        AND	//  pubkey_ind e dict n res i cs i' f _40
+        s8 PUSH	//  pubkey_ind e dict n res i cs i' f _40 e
+        XOR	//  pubkey_ind e dict n res i cs i' f _41
+        IF:<{	//  pubkey_ind e dict n res i cs i' f
+          s3 s4 XCHG2
+          288 PUSHINT	//  pubkey_ind e dict n f i' cs i res _44
+          DICTSET	//  pubkey_ind e dict n f i' res
+        }>ELSE<{
+          s4 s3 s4 XCHG3
+          2DROP	//  pubkey_ind e dict n f i' res
+        }>	//  pubkey_ind e dict n f i res
+      }>ELSE<{
+        s4 s1 s4 XCHG3
+        2DROP	//  pubkey_ind e dict n f i res
+      }>
+      s0 s2 XCHG	//  pubkey_ind e dict n res i f
+      NOT	//  pubkey_ind e dict n res i _46
+    }>	//  pubkey_ind e dict n res i
+    s1 s5 XCHG
+    5 BLKDROP	//  res
+    convert_order_dict CALLDICT	//  _47
+  }>
+  getn PROC:<{
+    // 
+    c4 PUSH	//  _0
+    CTOS	//  _1
+    32 PUSHINT	//  _1 _2=32
+    SDSKIPFIRST	//  _3
+    7 PLDU	//  _5
+  }>
+  getk PROC:<{
+    // 
+    c4 PUSH	//  _0
+    CTOS	//  _1
+    39 PUSHINT	//  _1 _4
+    SDSKIPFIRST	//  _5
+    7 PLDU	//  _7
+  }>
+  seqno PROC:<{
+    // 
+    c4 PUSH	//  _0
+    CTOS	//  _1
+    32 PLDU	//  _3
+  }>
+}END>c

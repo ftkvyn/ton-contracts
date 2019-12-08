@@ -1,0 +1,212 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+"multisig.fift" include <s constant contract_code
+"multisig_init_storage.fift" include <s constant contract_storage_initializer // (uniq_token, min_signature_num, public_keys_dict) -> cell
+
+"1.pk" load-generate-keypair
+constant wallet1_privk
+256 B>u@ constant wallet1_pubk
+
+"2.pk" load-generate-keypair
+constant wallet2_privk
+256 B>u@ constant wallet2_pubk
+
+"3.pk" load-generate-keypair
+constant wallet3_privk
+256 B>u@ constant wallet3_pubk
+
+"4.pk" load-generate-keypair
+constant wallet4_privk
+256 B>u@ constant wallet4_pubk
+
+"5.pk" load-generate-keypair
+constant wallet5_privk
+256 B>u@ constant wallet5_pubk
+
+"6.pk" load-generate-keypair
+constant wallet6_privk
+256 B>u@ constant wallet6_pubk
+
+"7.pk" load-generate-keypair
+constant wallet7_privk
+256 B>u@ constant wallet7_pubk
+
+"8.pk" load-generate-keypair
+constant wallet8_privk
+256 B>u@ constant wallet8_pubk
+
+"9.pk" load-generate-keypair
+constant wallet9_privk
+256 B>u@ constant wallet9_pubk
+
+"X.pk" load-generate-keypair
+constant walletX_privk
+256 B>u@ constant walletX_pubk
+
+0xC7EAFBC106A7AA4BA3D16007C6AC64CAAC1078B4A43577339E246F466405E896 =: contract_address_int
+<b b{100} s, 0 8 u, contract_address_int 256 u, b> <s =: contract_address_full
+
+0 tuple 0x076ef1ea , // magic
+0 , 0 , // actions msg_sents
+1570470873 , // unix_time
+1 , 1 , 0 , // block_lt, trans_lt, rand_seed
+ 0 tuple 9223372036854775807 , dictnew , , // reamining balance
+contract_address_full , dictnew , // contract_address, global_config
+1 tuple // wrap to another tuple
+constant c7
+
+{ dup rot dup rot = { drop drop } { "Error: Got " swap (.) $+ " should be " $+ swap (.) $+ abort } cond } : should_be
+
+
+0 constant bounce
+<b b{01} s, bounce 1 i, b{000100} s, 0 0 addr, 5 Gram, 0 9 64 32 + + 1+ u, 
+  3 10 u,
+b> constant example_message_body
+3 constant message_mode
+<b message_mode 8 u, example_message_body ref, b> <s constant example_message_root
+
+<b b> <s // value
+wallet1_pubk // key
+dictnew
+256 // size
+udict!
+drop
+
+<b b> <s
+wallet2_pubk
+rot
+256
+udict!
+drop
+
+<b b> <s
+wallet3_pubk
+rot
+256
+udict!
+drop
+
+<b b> <s
+wallet4_pubk
+rot
+256
+udict!
+drop
+
+<b b> <s
+wallet6_pubk
+rot
+256
+udict!
+drop
+
+<b b> <s
+wallet7_pubk
+rot
+256
+udict!
+drop
+
+<b b> <s
+wallet8_pubk
+rot
+256
+udict!
+drop
+
+<b b> <s
+walletX_pubk
+rot
+256
+udict!
+drop
+
+<b b> <s
+wallet9_pubk
+rot
+256
+udict!
+drop
+
+
+<b b> <s
+wallet5_pubk
+rot
+256
+udict!
+drop
+constant keys
+
+
+contract_address_int 6277101735386680763835789423207666416102355444464034512896 / constant uniq_token
+5 constant min_signature_num
+
+min_signature_num keys contract_storage_initializer runvmdict
+drop // TODO check execution code
+constant contract_storage
+
+-1 constant recv_external
+<b 0 8 u, b> <s constant init_message
+
+init_message recv_external contract_code contract_storage c7 runvmctx
+swap
+."Init message exit code (0 is OK) :" . cr
+dup
+constant initialized_contract_storage 
+<s csr. cr
+.s
+// =============================================================================
+//                    Load order(3from3) with two signatures (but added many times)
+// =============================================================================
+1 		constant op_num
+1 		constant seq_no
+0xFFFFFFFF 	constant unix_time_bound
+
+5 =: min_signatures_num
+
+example_message_root
+0
+dictnew
+7
+udict!
+drop constant order_dict
+
+<b op_num 8 u, seq_no 32 u, unix_time_bound 32 u, min_signatures_num 8 u, uniq_token 64 u,
+dup constant message_builder
+order_dict dict, b>  constant data_for_signing
+
+data_for_signing hashu wallet1_privk ed25519_sign_uint constant signature1
+data_for_signing hashu wallet2_privk ed25519_sign_uint constant signature2
+data_for_signing hashu wallet3_privk ed25519_sign_uint constant signature3
+data_for_signing hashu wallet4_privk ed25519_sign_uint constant signature4
+data_for_signing hashu wallet5_privk ed25519_sign_uint constant signature5
+data_for_signing hashu wallet6_privk ed25519_sign_uint constant signature6
+data_for_signing hashu wallet7_privk ed25519_sign_uint constant signature7
+data_for_signing hashu wallet8_privk ed25519_sign_uint constant signature8
+data_for_signing hashu wallet9_privk ed25519_sign_uint constant signature9
+data_for_signing hashu walletX_privk ed25519_sign_uint constant signatureX
+
+
+<b signature2 B, b> <s   wallet2_pubk dictnew 256 udict! drop
+<b signature3 B, b> <s   wallet3_pubk rot     256 udict! drop
+<b signature4 B, b> <s   wallet4_pubk rot     256 udict! drop
+<b signature5 B, b> <s   wallet5_pubk rot     256 udict! drop
+<b signature6 B, b> <s   wallet6_pubk rot     256 udict! drop
+<b signature7 B, b> <s   wallet7_pubk rot     256 udict! drop
+<b signature8 B, b> <s   wallet8_pubk rot     256 udict! drop
+<b signature9 B, b> <s   wallet9_pubk rot     256 udict! drop
+<b signatureX B, b> <s   walletX_pubk rot     256 udict! drop
+constant provided_keys_info
+
+
+message_builder wallet1_pubk 256 u, signature1 B, provided_keys_info dict, order_dict dict, b>  <s constant store_order_message
+
+
+store_order_message recv_external contract_code initialized_contract_storage c7 runvmctx
+swap dup constant exit_code
+."t10 store_3/3order_message exit code (0 is OK) :" . cr
+<s csr. cr
+."Should be 0 partial orders"
+exit_code 0 should_be

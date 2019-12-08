@@ -1,0 +1,27 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <filename-base> <pk-ind> <seqno>" cr
+  ."Loads private key from <filename-base>.pk and creates a simple external message which asks smc to collect garbage" cr 1 halt
+} : usage
+{ ' usage if } : usageif
+$# 4 <> usageif
+
+$1 constant file-base
+file-base +".addr" load-address 2constant wallet_addr
+file-base +".pk" load-keypair constant privkey drop
+$2 (number) drop constant pubkey-ind
+$3 (number) drop constant seqno
+
+<b seqno 32 u, now 600 + dup . 32 u, -1 1 i, b> constant message
+
+message hashu privkey ed25519_sign_uint <b pubkey-ind 7 u, swap B, b> 
+<b message <s s, swap ref, b> constant body
+
+<b b{1000100} s, wallet_addr addr, b{00000} s, b{1} s, body ref, b> dup constant extmessage
+dup ."External message is " <s csr. cr
+2 boc+>B 
+."Message is valid for 10 minutes" cr
+file-base +"-query.boc" tuck B>file

@@ -1,0 +1,66 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+
+{ 
+	." <request-file> <private-key-file> <filename-base>" cr
+	
+	."adds a signature to the request created by new-request.fif," cr
+	."from the file <request-file>.boc" cr
+	."using a private key loaded from file <private-key-file>.pk" cr cr
+	."also the script requires the file <filename-base>-keys.boc" cr
+	1 halt
+} : usage
+
+$# 3 < ' usage if
+
+$1 =: sreq-base
+$2 =: pkey-base
+$3 =: file-base
+
+file-base +"-keys.boc" file>B B>boc constant public_keys
+{ 256 B>u@ -1 0 public_keys 7 { 256 u@ 4 pick = swap drop { nip dup } if 1+ 0 } dictmap 2drop swap drop } : find_key_in_dict
+
+cr ."Loading a query file from " sreq-base +".boc" type cr cr
+sreq-base +".boc" file>B B>boc
+
+<s	7   u@+  swap constant flags
+	8   i@+  swap constant workchain
+	256 u@+  swap constant addres
+	Gram@+   swap constant grams_count 
+	2   u@+  swap constant flags_2
+
+	ref@+ constant signers_info
+constant body_message
+
+pkey-base +".pk" load-keypair constant wallet_pk constant public_key 
+
+signers_info <s ref@+ constant signers_chain 7 u@ constant signers_count
+
+."Source wallet address = " workchain addres .addr cr workchain addres 6 .Addr cr cr
+
+body_message ref@ <s 2 u@+ nip 1 i@+ nip 6 u@+ nip 8 u@+ 256 u@+ 
+body_message 32 u@+ swap ."Seqno: " . cr 32 u@+ swap ."Expiration time: " . cr cr drop
+
+."Signers:" cr signers_chain 
+{ <s 256 u@+ nip 256 u@+ nip 7 u@+ swap public_keys 7 udict@ drop 256 u@ 256 u>B 
+dup Bx. cr public_key B= 
+{ ."Your signature is already available" cr 1 halt } if 
+ref@? drop } signers_count times cr
+
+-rot 2dup ."Address of the recipient = " .addr cr 7 .Addr cr cr
+Gram@+ swap ."Transfer amount: " .GR ."grams" cr cr
+drop
+
+body_message s>c hashu wallet_pk ed25519_sign_uint 
+
+// add sign
+<b swap B, public_key find_key_in_dict 7 u, signers_chain ref, b>
+<b signers_count 1+ 7 u, swap ref, b>
+
+// update message
+<b swap ref, body_message s, b>
+<b flags 7 u, workchain 8 i, addres 256 u, grams_count Gram, flags_2 2 u, swap <s s, b>
+
+dup ."resulting external message: " <s csr. cr
+2 boc+>B sreq-base +".boc" tuck B>file
+."(Saved to file " type .")" cr

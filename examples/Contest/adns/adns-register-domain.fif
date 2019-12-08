@@ -1,0 +1,67 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." domain_name boc_file_base [-O <owner_address>] num_of_dnsrecords [ category, data ]" cr
+  ."Generates message body-boc (may be sent via '-B' option of simple wallet) for new domain registration " cr
+  ."After domain name new dns records may be set. `-O` option set special -1 category for domain owner" cr
+  1 halt
+} : usage
+
+$# 0 > { 1 $() dup "--help" $= swap "-h" $= or ' usage if } if
+$# 3 < ' usage if
+
+0 =: offset
+
+$1 =: domain_name
+true constant bounce
+$# 5 >= { 3 $() "-O" $= { 4 $() bounce parse-load-address =: bounce 2=: owner } if } if
+
+offset
+def? owner
+{ drop 2  }
+if
+=: offset
+{ offset + } : +o
+
+3 +o $() parse-int =: num_of_dnsrecords
+
+dictnew
+0
+{
+  // dictnew counter
+  dup dup
+  4 +o + $() parse-int // dictnew counter counter category
+  swap
+  5 +o + $() // dictnew counter category data
+  .s
+  <b swap $, b> <s
+  swap // dictnew counter data category
+  3 roll // counter data category dictnew 
+  16
+  idict! drop // counter dict
+  swap
+  2 +
+} num_of_dnsrecords times
+drop
+=: dns_records
+
+def? owner {
+  <b b{100} s, @' owner addr, b> <s
+  -2
+  dns_records
+  16
+  idict!
+  drop
+} 
+{ dns_records }
+cond
+=: dns_records
+
+<b 0 32 u, <b domain_name $, b> ref, dns_records dict, b> =: message_body
+
+message_body
+2 boc+>B dup Bx. cr
+$2 +".boc" tuck B>file
+."(Saved to file " type .")" cr
+

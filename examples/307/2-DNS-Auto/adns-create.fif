@@ -1,0 +1,201 @@
+#!/usr/bin/env fift -s
+
+/*
+  /------------------------------------------------------------------------\
+  | Created for: Telegram (Open Network) Blockchain Contest                |
+  |      Task 2: DNS Resolver (Automatically registering)                  |
+  >------------------------------------------------------------------------<
+  | Script: Smart contract BoC generation tool                             |
+  >------------------------------------------------------------------------<
+  | Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)    |
+  |         October 2019                                                   |
+  \------------------------------------------------------------------------/
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack tool
+
+// Parameters: label workchain-id std-period pay-per-reg pp-cell pp-bit flag
+
+"adns-logic.fif" file-exists? { ."Error: contract logic file adns-logic.fif "
+	."is required to calculate address!" cr "adns-logic.fc" file-exists? {
+	."Because source code exists you should execute" cr 
+	."    func adns-logic.fc -oadnslogic.fif" cr
+	."and then try calling this script again!" cr
+	} if 66 halt } ifnot
+
+// Load code
+PROGRAM{ "adns-logic.fif" include }END>c =: Code
+
+{ cr ."/---------------------------------------[General information]------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <label> <wch-id> <period> <pay-per-reg> <pp-cell> <pp-bit> [-r or -R]"
+  @' $0 $len 24 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Prepares a file to create an automatically controlled TON DNS resolver in the specified workchain.   |" cr
+  ."| You will need to deploy resulting <label>-init.boc file into blockchain using, for ex., lite-client. |" cr
+  ."| Contract address will be saved to <label>.adr file, which is needed to create controlling messages.  |" cr
+  .">--------------------------------------[Parameters description]----------------------------------------<" cr
+  ."| !!!     You must not specify < and > or [ and ] characters, only text value of the parameter     !!! |" cr
+  ."| <label> defines file name base for resulting files and unused data for address diversification       |" cr
+  ."|     You can write - to get random hexadecimal label that will ensure not colliding into existing SC. |" cr
+  ."| <wch-id> specifies which workchain to deploy the contract (0 for basechain, -1 for masterchain)      |" cr
+  ."| <period> is amount of time (in seconds) for how long contracts will be registered before expiring    |" cr
+  ."|    it can be suffixed with y to specify period in years (365d), m for months (31d), w for weeks (7d) |" cr
+  ."|    and finally d for days (86400 seconds). For example: specifying 1y is equal to 31536000.          |" cr
+  ."| <pay-per-reg> defines (in Grams) how much is to be paid for registration or prolongation of a domain |" cr
+  ."| <pp-cell> defines price per each cell in value for each registration, prolongation or data update    |" cr
+  ."| <pp-bit> defines price per each bit in value for each registration, prolongation or data update      |" cr
+  ."| ! ! All prices are defined in Grams! 1 nanogram is 0.000000001 grams in value. Or suffix with n. ! ! |" cr
+  ."| -r activates robot mode (output will be more friendly to robots or interfacing program)              |" cr
+  ."| -R activates full robot mode (without writing to files at all, make sure to save or process output!) |" cr
+  ."| !!! Values of <label>, <period> <pay-per-reg> <pp-cell> <pp-bit> influence the resulting address of  |" cr
+  ."|     the contract! Make up some unique label so as not to collide into some existing contract!        |" cr
+  ."\------------------------------------------------------------------------------------------------------/" cr  
+  cr 1 halt
+} : usage
+
+$# 6 >= ' usage ifnot // Verify argument count
+$# 7 <= ' usage ifnot
+
+$1                    =: Label
+$2 parse-workchain-id =: WC
+$3                    =: Period
+$4                    =: PPR
+$5                    =: PPC
+$6                    =: PPB
+def? $7 { @' $7 } { "" } cond =: Flags
+
+variable RMode     false RMode  !
+variable FRMode    false FRMode !
+Flags "-r" $= { true RMode ! } if
+Flags "-R" $= { true RMode ! true FRMode ! } if
+
+RMode  @ =: RM
+FRMode @ =: FRM
+
+        86400 =: PPref_d
+PPref_d 7   * =: PPref_w
+PPref_d 31  * =: PPref_m
+PPref_d 365 * =: PPref_y
+	
+	
+Label dup "-" $= {
+	drop newkeypair nip B>x 16 $| nip 16 $| drop
+} if =: Label
+Label
+	
+Period 
+// ProcPeriod start
+	dup dup $len 1- $| "PPref_" swap $+ find
+	{ execute swap dup $len 0 = { drop "1" } if
+	(number) dup 1 = { drop } // int
+	{ 2 = { -rot * swap / 1 } // decimal
+	{ ."Expected int or decimal for suffixed period specification!" cr 3 halt } cond // error
+	} cond * nip }
+	{ drop parse-int } cond // no suffix
+// ProcPeriod end
+=: Period
+
+{ dup dup $len 1- $| "n" $= { nip dup (number) 1 <> {
+	."Not a valid nanogram amount: " type cr 2 halt
+} if nip } { drop $>GR } cond } : ProcGram
+
+{ 0 = { ."Warning: Zero gram amount detected!" cr } if } : CheckZero
+
+PPR ProcGram =: PPR    PPC ProcGram =: PPC    PPB ProcGram =: PPB
+
+RM { PPR CheckZero PPC CheckZero PPB CheckZero } ifnot
+
+// Build data
+<b // pfxtree    gcaux    stdper       \/-lhk
+	null dict, null dict, Period 32 u, 
+	PPR Gram, PPC Gram, PPB Gram, 0 32 u,
+	<b Label $, b> <s s,
+b> constant Data
+
+null constant Lib
+
+{ 0 1 u, } : bit0, { 1 1 u, } : bit1, // v<- use undocumented dict,
+// { dup null? { drop bit0, } { ref, bit1, } cond } : optref,
+
+<b
+   b{0011} s, // 0 split_depth:nothing$0, 0 special:nothing$0
+   Code ref,  // 1 code:just$1 ^Cell,
+   Data ref,  // 1 data:just$1 ^Cell
+   Lib dict,  // 0 library:nothing$0 (Maybe ^Cell)
+b> constant StateInit
+
+WC StateInit hash 2constant WalletAddr
+
+<b 
+//  ext_in_msg_info$10
+//  ||src:MsgAddressExt addr_none$00
+//  ||||dest:MsgAddressInt addr_std$10
+//  ||||||anycast:(Maybe Anycast) nothing$0 {X:Type} = Maybe X;
+//  |||||||
+//  \/\/\/V
+  b{1000100} s,
+  WalletAddr addr, // workchain_id:int8 address:uint256 = MsgAddressInt;
+//   import_fee:Grams = CommonMsgInfo; 0000: zero length = zero
+//   || init:(Maybe (Either StateInit ^StateInit))
+//   || just$1 {X:Type} value:X = Maybe X;
+//   || |left$0 {X:Type} {Y:Type} value:X = Either X Y; (Selected StateInit)
+//   || ||
+//  \\//VV
+  b{000010} s,
+  StateInit <s s,
+  b{0} s, // body:(Either X ^X) = Message X; (Selected left$0: X)
+b> constant InitMessage
+
+InitMessage 2 boc+>B dup Blen =: IMLen =: IM
+
+FRM { IM Label +"-init.boc" B>file
+ RM { ."Initialization query saved to " Label +"-init.boc" type cr } ifnot
+} ifnot
+
+FRM { WalletAddr Label +".addr" save-address
+ RM { ."Contract address saved to " Label +".addr" type cr } ifnot	
+} ifnot
+
+RMode @ {
+
+cr ."/---------------------------------------------------------------------------------\" cr
+."| All necessary files to deploy the AUTOMATIC DNS resolver smart contract into the|" cr
+."|     network have been successfully created! However, please be aware, that      |" cr
+.">---[In order to complete creation and use it, you need to follow some steps!]----<" cr
+."| 1. Send some grams to    " WalletAddr 5 .Addr ."       |" cr 
+."|    (initialization address) to pay for the contract initialization.             |" cr
+."|    (Something like 5-10 Grams should be reasonable amount, please account       |" cr
+."|     for storage and gas fees and note that masterchain is much more costly)     |" cr
+."| 2. Make sure that grams have arrived (for example, use lite-client commands     |" cr
+."|    like last and getaccount " WalletAddr 4 .Addr ." )  |" cr
+."| 3. Upload wallet-creating query to the network (for example, once again,        ^" cr
+."|    using lite-client command sendfile <path to file>/" Label type ."-init.boc )" cr
+."| 4. In order to send messages to the contract, use the next address:             v" cr 
+."|    " WalletAddr 4 .Addr ." (not the init one)          |" cr
+."| ! Please note that message forwarding, processing (gas) and response forwarding |" cr
+."|   may require some fees, please provide at least 1Gr more than price calculated!|" cr
+."| 5. To obtain information from the contract, you may use some of the get methods:|" cr
+."| dnsresolve, getexpiration, getstdperiod, getppr, getppc, getppb, calc(reg)price |" cr
+."| Usage of those is described in the manual. You should use provided .fif scripts |" cr
+."| to build BoC messages for contract: adns-register, adns-prolong and adns-change |" cr
+."\---------------------------------------------------------------------------------/" cr 
+."| Registration price: " PPR .GR .", per cell: " PPC .GR .", per bit: " PPB .GR cr
+."\ Standard registration period (seconds): " Period (.) type cr
+cr
+
+} { 
+	WalletAddr
+  ."raw_address=" 2dup .addr cr
+  ."init_address=" 2dup 5 .Addr cr
+  ."send_address=" 4 .Addr cr
+  ."workchain_id=" WC (.) type cr
+  ."label=" Label type cr
+  ."period=" Period (.) type cr
+  ."ppr=" PPR (.) type cr
+  ."ppc=" PPC (.) type cr
+  ."ppb=" PPB (.) type cr
+FRM { ."file_base=" Label type cr } ifnot
+  ."init_query=" IM Bx. cr
+  ."init_query_len=" IMLen (.) type cr
+} swap cond

@@ -1,0 +1,65 @@
+Creating new wallet in workchain 0 
+Loading private key from file test.pk
+#StateInit# 
+StateInit: x{34_}
+ x{FF0020DD2082014C97BA9730ED44D0D70B1FE0A4F260810200D71820D70B1FED44D0D31FD3FFD15112BAF2A122F901541044F910F2A2F80001D31F3120D74A96D307D402FB00DED1A4C8CB1FCBFFC9ED54}
+ x{00000000A8A227EFE57CF2993D958E4700D32D51EE2F224A6FB8DE79E022AEDABD14D113}
+
+new wallet address = 0:4688d39e0900244a54645bff4875731ee99c07bc592117370cfc00692500dde5 
+(Saving address to file test.addr)
+Non-bounceable address (for init): 0QBGiNOeCQAkSlRkW_9IdXMe6ZwHvFkhFzcM_ABpJQDd5Wr-
+Bounceable address (for later access): kQBGiNOeCQAkSlRkW_9IdXMe6ZwHvFkhFzcM_ABpJQDd5Tc7
+signing message: x{00000000}
+
+
+dup  #StateInit# #Message# #Message# 
+hash #StateInit# #Message# #MsgHash# 
+wapk #StateInit# #Message# #MsgHash# #WalletPK# 
+sign #StateInit# #Message# #MsgSign# 
+rot  #Message# #MsgSign# #StateInit# 
+
+
+<b          #Message# #MsgSign# #StateInit# BC{0000} 
+1000100 s,  #Message# #MsgSign# #StateInit# BC{0001...} 
+wal_addr,   #Message# #MsgSign# #StateInit# BC{0043...} 
+000010 s,   #Message# #MsgSign# #StateInit# BC{0045...} 
+swap        #Message# #MsgSign# BC{0045...} #StateInit# 
+<s          #Message# #MsgSign# BC{0045...} CS{Cell{020134} bits: 0..5; refs: 0..2} 
+s,          #Message# #MsgSign# BC{0247...} 
+0           #Message# #MsgSign# BC{0247...} CS{Cell{000140} bits: 0..1; refs: 0..0} 
+s,          #Message# #MsgSign# BC{0247...} 
+swap        #Message# BC{0247...} #MsgSign# 
+B,          #Message# BC{02c7...} 
+swap        BC{02c7...} #Message# 
+<s          BC{02c7...} CS{Cell{000800000000} bits: 0..32; refs: 0..0} 
+s,          BC{02cf88008d11a73c12004894a8c8b7fe90eae63dd3380f78b2422e6e19f800d24a01bbca119e63d263bec1603bf2fa92dd8d66e351c7bb4d417ba6ed02675fc30fd559aa660ebb856d7424d12d806db52340799746649fd4c935a1a9ab3cfd10c8db0ad5a1c000000010} 
+
+{10 00 100} {wallet addr} {000010} {StateInit} {0} {MsgSign} {Message}
+10 ext_in_msg_info$10  
+00 src:MsgAddressExt addr_none$00
+10 dest:MsgAddressInt addr_std$10
+0 anycast:(Maybe Anycast) nothing$0 {X:Type} = Maybe X;
+wallet addr: { -rot 8 i, swap 256 u, } : addr, 
+             workchain_id:int8 address:uint256 = MsgAddressInt;
+0000 import_fee:Grams = CommonMsgInfo; zero
+1 just$1 {X:Type} value:X = Maybe X;
+  init:(Maybe (Either StateInit ^StateInit))
+0 left$0 {X:Type} {Y:Type} value:X = Either X Y; <- StateInit
+StateInit:
+	b{0011} s,
+	0 split_depth:(Maybe (## 5)) nothing$0 {X:Type} = Maybe X;
+	0 special:(Maybe TickTock) nothing$0 {X:Type} = Maybe X;
+	1 code:(Maybe ^Cell) just$1 {X:Type} value:X = Maybe X;
+	1 data:(Maybe ^Cell) just$1 {X:Type} value:X = Maybe X;
+	0/1 (dict,) : library:(Maybe ^Cell) nothing$0 / just$1
+	
+Payload:
+MsgSign
+Message
+
+External message for initialization is x{88008D11A73C12004894A8C8B7FE90EAE63DD3380F78B2422E6E19F800D24A01BBCA119E63D263BEC1603BF2FA92DD8D66E351C7BB4D417BA6ED02675FC30FD559AA660EBB856D7424D12D806DB52340799746649FD4C935A1A9AB3CFD10C8DB0AD5A1C00000001_}
+ x{FF0020DD2082014C97BA9730ED44D0D70B1FE0A4F260810200D71820D70B1FED44D0D31FD3FFD15112BAF2A122F901541044F910F2A2F80001D31F3120D74A96D307D402FB00DED1A4C8CB1FCBFFC9ED54}
+ x{00000000A8A227EFE57CF2993D958E4700D32D51EE2F224A6FB8DE79E022AEDABD14D113}
+
+B5EE9C724104030100000000E50002CF88008D11A73C12004894A8C8B7FE90EAE63DD3380F78B2422E6E19F800D24A01BBCA119E63D263BEC1603BF2FA92DD8D66E351C7BB4D417BA6ED02675FC30FD559AA660EBB856D7424D12D806DB52340799746649FD4C935A1A9AB3CFD10C8DB0AD5A1C000000010010200A2FF0020DD2082014C97BA9730ED44D0D70B1FE0A4F260810200D71820D70B1FED44D0D31FD3FFD15112BAF2A122F901541044F910F2A2F80001D31F3120D74A96D307D402FB00DED1A4C8CB1FCBFFC9ED54004800000000A8A227EFE57CF2993D958E4700D32D51EE2F224A6FB8DE79E022AEDABD14D113FB128003
+(Saved wallet creating query to file test-query.boc)

@@ -1,0 +1,177 @@
+slice udict_get_throw?(cell dict, int key_len, int index) asm(index dict key_len) "DICTUGET 36 THROWIFNOT";
+(cell, ()) ~udict_delete(cell dict, int key_len, int index) asm(index dict key_len) "DICTUDEL DROP";
+int xor(int a, int b) asm "XOR";
+(cell, ()) ~udict_set_ref(cell dict, int key_len, int index, cell value) asm(value index dict key_len) "DICTUSETREF";
+cell udict_get_ref(cell dict, int key_len, int index) asm(index dict key_len) "DICTUGETOPTREF";
+(int, slice, int) udict_get_nexteq?(cell dict, int key_len, int pivot) asm(pivot dict key_len -> 1 0 2) "DICTUGETNEXTEQ" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(int, slice, int) udict_get_preveq?(cell dict, int key_len, int pivot) asm(pivot dict key_len -> 1 0 2) "DICTUGETPREVEQ" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(cell, (slice, int)) ~dict_delete_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTDELGET" "NULLSWAPIFNOT";
+(slice, ()) ~skip_bits(slice s, int len) asm "SDSKIPFIRST";
+
+int bits_count(int number) {
+	var res = 0;
+  	while (number){
+		number = number & ( number - 1 );
+		res += 1;
+  	}
+  	return res;
+}
+
+(cell, (int)) ~get_order_signers(cell dict, int hash) {
+	(slice order, int result) = dict~udict_delete_get?(256, hash);
+	if (result) {
+		return (dict, (order.preload_uint(100)));
+	} else {
+		return (dict, (0));
+	}	
+}
+
+(cell, ()) ~save_order(cell dict, int hash, int signers, slice order) {
+	var data = begin_cell()
+		.store_uint(signers, 100)
+		.store_slice(order);
+	dict~udict_set_builder(256, hash, data);
+	return (dict, ());
+}
+
+
+(cell, (int)) ~garbage_collector(cell orders_dict, int time) impure {
+	(int max_time, _, int f) = orders_dict.udict_get_preveq?(32, time);
+	
+	while (f){
+		(orders_dict, int min_time, _, _) = orders_dict.udict_delete_get_min(32);
+		f = (min_time < max_time);		
+	}
+		
+	(int new_call_time, _, int n) = orders_dict.udict_get_nexteq?(32, 0);
+	if (~ n){
+		new_call_time = (1 << 32) - 1;
+	}
+	
+	return (orders_dict, (new_call_time));
+}
+
+
+int signatures_validation(slice message, cell signatures_info, cell public_keys) {
+	int signers_valid = 0;
+	int message_hash = slice_hash(message);
+	slice signatures_chain = signatures_info.begin_parse();
+	repeat (signatures_chain~load_uint(7)){
+		signatures_chain = signatures_chain.preload_ref().begin_parse();
+		slice signature = signatures_chain~load_bits(512);
+		int signer_id 	= signatures_chain~load_uint(7);	
+		int public_key  = public_keys.udict_get_throw?(7, signer_id).preload_uint(256);
+		if (check_signature(message_hash, signature, public_key)){
+			if (signers_valid == 0){ accept_message(); }
+			signers_valid = signers_valid | ( 1 << signer_id );
+		}
+	}
+	return signers_valid;
+}
+
+() recv_external(slice in_msg) impure {
+	cell signatures_info = in_msg~load_ref();
+	slice message = in_msg; 
+	
+	int message_seqno = in_msg~load_uint(32);
+	slice message_order = in_msg;
+	
+	int message_time = in_msg~load_uint(32);
+	
+	int current_time = now();
+	throw_if(35, message_time <= current_time);
+	
+	slice contract_data = get_data().begin_parse();
+	int contract_time   = contract_data~load_uint(32);
+	if (contract_time > message_time) { contract_time = message_time; }
+	
+	int contract_seqno 	= contract_data~load_uint(32);
+	throw_unless(33, message_seqno == contract_seqno);
+	
+	cell orders_dict = contract_data~load_dict();
+	cell orders_time = orders_dict.udict_get_ref(32, message_time);
+	cell public_keys = contract_data~load_dict(); 
+	int signers_req  = contract_data.preload_uint(7);
+
+	int signers_valid = message.signatures_validation(signatures_info, public_keys);
+	throw_unless(38, signers_valid);
+	
+	int order_hash = slice_hash(message_order);	
+	signers_valid = signers_valid | orders_time~get_order_signers(order_hash);
+
+	int signers_valid_count = signers_valid.bits_count();
+	
+	if (signers_valid_count >= signers_req){
+		if (in_msg.slice_refs()) {
+    		var mode = in_msg~load_uint(8);
+    		send_raw_message(in_msg~load_ref(), mode);
+		}
+	} else {
+		orders_time~save_order(order_hash, signers_valid, in_msg);
+	}
+
+	if (orders_time.cell_null?()){
+		orders_dict~udict_delete(32, message_time);	
+	} else {
+		orders_dict~udict_set_ref(32, message_time, orders_time);
+	}
+	
+	if (contract_time < current_time){
+		contract_time = orders_dict~garbage_collector(current_time);
+	}
+	
+	var new_data = begin_cell()
+		.store_uint(contract_time, 32)
+		.store_uint(contract_seqno + 1, 32)
+		.store_dict(orders_dict)
+		.store_dict(public_keys)
+		.store_uint(signers_req, 7)
+		.end_cell();
+	set_data(new_data);
+}
+
+() recv_internal(slice in_msg) impure {
+  ;; do nothing for internal messages
+}
+
+(tuple, ()) ~pass_dict(tuple list_signed, cell dict, int time, int mask, int inv){
+	var id = 0;
+	do {
+		(id, slice value, var f) = dict.udict_get_next?(256, id);
+		if (f){
+			var signers = value~load_uint(100);
+			if (xor(signers, inv) & mask){
+				var order_info = nil;
+				if (value.slice_refs()){
+					var body = value~load_ref().begin_parse().skip_bits(9);
+					var address = pair(body~load_int(8), body~load_uint(256));
+					var grams_amount = body~load_grams();
+					order_info = pair(address, grams_amount);
+				}
+				var transaction = triple(time, signers, order_info);
+				list_signed = pair(transaction, list_signed);
+			}
+		}
+	} until (~ f);
+	return (list_signed, ());
+}
+
+tuple find_orders_signed(int mask, int inv) {
+	var list_signed = nil;
+	cell orders = get_data().begin_parse().skip_bits(64).preload_dict();
+	int time_sec = 0;
+	do {
+		(time_sec, slice time_dict, var f) = orders.udict_get_next?(32, time_sec);
+		if (f){
+			cell time_dict = time_dict.preload_ref();
+			list_signed~pass_dict(time_dict, time_sec, mask, inv);
+		}
+	} until (~ f);
+	return list_signed;
+}
+
+;; Get methods
+int seqno() method_id {	return get_data().begin_parse().skip_bits(32).preload_uint(32); }
+tuple get_orders_all() method_id { return find_orders_signed(-1, 0); }
+tuple get_orders_signed_by(int signer_id) method_id { return find_orders_signed(1 << signer_id,  0); }
+tuple get_orders_unsigned_by(int signer_id) method_id {	return find_orders_signed(1 << signer_id, -1); }

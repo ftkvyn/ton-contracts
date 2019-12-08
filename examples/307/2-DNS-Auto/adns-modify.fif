@@ -1,0 +1,191 @@
+#!/usr/bin/env fift -s
+
+/*
+  /------------------------------------------------------------------------\
+  | Created for: Telegram (Open Network) Blockchain Contest                |
+  |      Task 2: DNS Resolver (Automatically registering)                  |
+  >------------------------------------------------------------------------<
+  | Script: Domain modification BoC BODY file generation script            |
+  >------------------------------------------------------------------------<
+  | Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)    |
+  |         October 2019                                                   |
+  \------------------------------------------------------------------------/
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack tool
+
+// Parameters: address payment domain cat value ...
+
+
+{ cr ."/---------------------------------------[General information]------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <query-id> <domain> <-r/-R/-> ..<.. <category> <value> ..>.."
+  @' $0 $len 33 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Prepares a file, that can be sent as a message to contract to MODIFY the domain with set contents.   |" cr
+  ."| In order to modify the domain you HAVE TO send the resulting message from a wallet, that is defined  |" cr
+  ."|  as an owner of specified domain (-2)! If sent from another addr or there is no owner it won't work! |" cr
+  ."| Make sure to get acquainted with prices of target domain modification contract, and estimate required|" cr
+  ."| payment with, for example, calcprice function (or getppr/c/b) and then add at least 1 Gram above.    |" cr
+  ."| Extra grams not used for paying for domain, forwarding fees and gas will be returned to sender wallet|" cr
+  ."| !!! This file must be used ONLY with Automatically controlled DNS Resolver contract (adns-create.fif)|" cr
+  ."| !!! Resulting query will be saved to body-adns-mod-<domain>.boc and needs to be encapsulated by your |" cr
+  ."|     wallet scripts or software before being sent into a network! You can't just send resulting file! |" cr
+  .">--------------------------------------[Parameters description]----------------------------------------<" cr
+  ."| !!!     You must not specify < and > or [ and ] characters, only text value of the parameter     !!! |" cr
+  ."| <query-id> defines query id for the message, may remain 0 or 1 for messages from simple wallets      |" cr
+  ."| <domain> has to contain domain (subdomain) name in text form that is to be registered                |" cr
+  ."| <-r/-R/-> a.k.a. <flags> has to contain -r or -R or - !!! It can not be omitted for this script!     |" cr
+  ."|  -r activates robot mode (output will be more friendly to robots or interfacing program)             |" cr
+  ."|  -R activates full robot mode (without writing to files at all, ensure saving or processing output!) |" cr
+  ."|  -  does not activate any special mode (human interaction mode with more info and stylish tables)    |" cr
+  .">---[  PARAMETERS LOOP: Following variable pair can be present as much times as needed in params!  ]---<" cr
+  ."| <category> needs to contain the Category ID value to be set in specified domain (16-bit signed int)  |" cr
+  ."|     Special values: -1 is the next contract address for resolving subdomains, 0 should not be used,  |" cr
+  ."| !!!! You HAVE TO set value in -2 category to some contract's address you control if you want to be   |" cr
+  ."|      able to change or even prolong (yes, that also requires ownership) the registered domain later!!|" cr
+  ."| <value> is to contain the value that will be assigned to domain and category provided above          |" cr
+  ."|      ! In case of category duplication only the last encountered value will actually be used !       |" cr
+  .">---------------------------------------[Use with binary data]-----------------------------------------<" cr
+  ."| Some of the parameters can be written in special form in order to use binary data from existing file |" cr
+  ."|   or to encode hexadecimal value that will be decoded into binary value: <domain> and <value>.       |" cr
+  ."| In order to read binary data from a file parameter must begin with F: and contain full file name.    |" cr
+  ."| If binary data encoded in hexadecimal form is used, parameter must begin with prefix H: or X:.       |" cr
+  ."| <value> can also contain address in well-defined format (wc:hexadr, base64 or base64url)             |" cr
+  ."\------------------------------------------------------------------------------------------------------/" cr  
+  cr 1 halt
+} : usage
+
+$# 5 >= ' usage ifnot // Verify argument count
+// $# 7 <= ' usage ifnot no upper bound this time
+$# 3 - 2 mod 0= { ."Error: Unmatched category-value pair!" cr 21 halt } ifnot
+
+$1 parse-int =: QueryId
+$2      =: ADomain
+$3      =: Flags
+
+// Need to go REALLY DEEP with parameters processing in fift this time around...!!!
+// { char ) word "$" swap $+ 1 { find 0= abort"undefined parameter" execute } } ::_ $(
+
+variable RMode     false RMode  !
+variable FRMode    false FRMode !
+Flags "-r" $= { true RMode ! } if
+Flags "-R" $= { true RMode ! true FRMode ! } if
+
+RMode  @ =: RM
+FRMode @ =: FRM
+
+// Copied from mdns-setdom.fif of task 3
+
+{ dup 0 -rot -1 swap { 8 u@+ swap dup dup 32 >= swap 127 <= and { drop } { 
+0 = swap dup sbits 0 = rot and { -1 4 exch drop } { nip 0 swap } cond } cond dup sbits 0 = } until drop
+{ dup sbits 8 / rot + $@ type } // Can print as text (far var is -1 if has \0 at end)
+{ nip dup sbits 8 / dup 36 = // Should print as hex, but may be it is an address?
+{ drop 256 u@+ 32 u@ dup 0 = swap dup 1 = rot or { swap 4 ."Addr:" .Addr } { B@ Bx. } cond }
+{ B@ ."0x" Bx. } cond } 
+cond } : PrintSliceMaybeText // Allows \0 at the end
+
+{ dup @ dup $len 2 > {
+	2 $| swap
+	dup "F:" $= swap dup "f:" $= rot or 
+	{ -rot dup file-exists? 
+	{ ."Error: Parameter file " type ." does not exist!" cr 9 halt } ifnot 
+	file>B <b swap B, b> <s swap ! drop
+	} {
+		dup "X:" $= swap dup "H:" $= swap dup "x:" $= swap "h:" $= or or or
+		{ x>B <b swap B, b> <s swap ! }
+		{ drop dup @ $>s swap ! } cond
+	} cond
+} { drop dup @ $>s swap ! } cond } : ProcVarPfx
+
+variable Domain ADomain Domain ! Domain ProcVarPfx
+
+RM { ."Building table for domain " Domain @ PrintSliceMaybeText ."..." cr } ifnot
+variable tmp
+variable ho 0 ho !
+$# 3 - 2 / =: PairCnt // that many cats
+// start with $6 $7 : Cat Value
+0 { 
+	dup "$" 4 rot 2* + (.) $+ find 0= abort"wtf" execute // that all to get single cat off the tree...
+	(number) 1 = // Still cant trust the user
+	{ dup -32768 >= over 32767 <= and { ."Error: Category must be a signed 16-bit number, provided "
+		."input is out of bounds!" cr 7 halt } ifnot }
+	{ ."Error: Category must be a signed 16-bit number, provided input is not a number!" cr 8 halt } cond
+	RM not dup 0 = and { ."Warning: Zero category should not be used!" cr } if	
+	swap dup "$" 5 rot 2* + (.) $+ rot swap find 0= abort"wtf" execute // and that's to get it's value from it!
+	dup $>smca {
+		drop <b swap 256 u, swap 32 u, b> <s nip
+	} {
+		tmp dup -rot ! ProcVarPfx tmp @
+	} cond 
+	RM { 2dup swap ."-  " (.) type .": " PrintSliceMaybeText cr } ifnot
+	over -2 = { -1 ho ! } if
+	pair swap 1+
+} PairCnt times
+list variable Pairs Pairs !
+
+RM { ho @ { ."WARNING: Domain has no owner defined! Update and prolong will not be possible!" cr } ifnot } ifnot
+
+// Add ending zero char to Domain if missing
+Domain @ dup sbits 8 / dup -rot B@ swap 1- B| 8 B>u@ nip 0 = 
+{ Domain @ sbits 1008 <= { ."Error: Domain name without \0 is too long (max 126 chars)" cr 15 halt } ifnot
+<b Domain @ s, 0 8 u, b> <s Domain ! } ifnot
+
+// Some more checks for lengths, and determine inlinity
+Domain @ dup sbits 1016 <= { ."Error: Domain name is too long (max 127 chars)" cr 13 halt } ifnot
+
+// Value @ sbits 1016 <= { ."Error: Value is too long (max 127 chars)" cr 14 halt } ifnot
+Pairs @ { uncons swap unpair nip // iterate second element in each pair in Pairs list
+sbits 1016 <= { ."Error: Value is too long (max 127 chars)" cr 14 halt } ifnot } PairCnt times drop
+
+// We have Domain at stack top now, lets check amount of \0 characters
+0 swap { 8 u@+ swap 0 = { swap 1+ swap } if dup sbits 0 = } until drop
+1 = { ."Error: Domain name contains several zero code characters (including ending one)" cr 15 halt } ifnot
+
+// This function is a bit unusual, we need to construct a int16 keyed dict first
+dictnew Pairs @ { uncons swap unpair // this time we need both elements
+<b swap sr, b> <s 3 roll rot swap 16 idict! 0= abort"idict! failed" swap } PairCnt times drop
+=: CatTable
+
+<b 0x75706464 32 u, QueryId 64 u, 
+	<b Domain @ s, b> ref,
+	CatTable ref,
+b> =: Msg
+
+"body-adns-mod-" ADomain $+ +".boc" =: BocFile
+RM { BocFile file-exists? { ."Warning! BoC file will be overwritten!" cr } if } ifnot
+
+Msg 2 boc+>B dup Blen =: IMLen =: IM
+
+FRM { IM BocFile B>file
+ RM { ."Query saved to " BocFile type cr } ifnot
+} ifnot
+
+RMode @ { cr 
+	."/-[Success: The message body to modify domain data in automatic resolver has been created!]" cr
+	."| Domain name: " Domain @ PrintSliceMaybeText cr
+	.">-> New category table follows:" cr
+Pairs @ { uncons swap unpair // once again we need both elements
+."| " swap (.) type .": " PrintSliceMaybeText cr } PairCnt times drop
+	.">-> The body have been saved to <path-to-file>/" BocFile type cr
+	."| WARNING: The resulting message body can not be sent to network on it's own! " cr
+	."| You need to first encapsulate the body into your wallet's external message!" cr
+	."| Use your wallet's scripts that support embedding BoC files to create a" cr
+	."|   signed message for your wallet, and send it using, for example, lite-client." cr
+	."| PAY ATTENTION that you need to send the message from the specific wallet, address" cr
+	."|   of which is saved as -2 (owner) category entry in target domain, or it wont work!" cr
+	."| Also make sure that you provide sufficient (price + GR$1) value of the message." cr
+	."\-[ Need to embed <path-to-file>/" BocFile type ." into wallet message ]" cr cr
+} { 
+	."type=updd" cr
+FRM { ."boc_file=" BocFile type cr } ifnot
+	."domain_hex=" Domain @ dup sbits 8 / B@ Bx. cr
+	."domain=" Domain @ PrintSliceMaybeText cr
+	."body=" IM Bx. cr
+	."body_len=" IMLen (.) type cr
+	."dict_cell_hash=" CatTable <s shash Bx. cr
+	."dict_size=" PairCnt (.) type cr
+1 Pairs @ { ."cat_" swap dup (.) type swap ."=" uncons swap unpair
+swap (.) type cr ."value_" rot dup (.) type -rot ."=" dup PrintSliceMaybeText cr 
+."value_hex_" rot dup (.) type -rot ."=" dup sbits 8 / B@ Bx. cr swap 1+ swap } PairCnt times drop	
+} swap cond

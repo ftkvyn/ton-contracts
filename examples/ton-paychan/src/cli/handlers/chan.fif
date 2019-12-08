@@ -1,0 +1,212 @@
+// SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+//
+// SPDX-License-Identifier: MPL-2.0
+
+library Handlers_new
+
+"Address.fif" include
+"ContractMessages.fif" include
+
+"../CliState.fif" include
+
+Gram 10 / constant extra-fuel-default
+
+{ <b swap ref, -rot addr, b>
+  2 boc+>B
+  "paychan.join"
+  dup ."Saving join request to file `" type ."`" cr B>file
+} : _saveJoinRequest
+// ( wc addr globalState -- )
+
+{ "paychan.join"
+  dup ."Loading join request from file `" type ."`" cr file>B
+  B>boc
+  <s addr@+ ref@+ swap s>
+} : _loadJoinRequest
+// ( -- wc addr globalState )
+
+
+' cmdline_dispatch : cli_chan
+
+{ ."Creating a new payment channel..." cr
+  cmdline_getarg  // name of our sk
+  dup
+  load-key-pair
+  // ( ourKeyName ourSk ourPk )
+
+  cmdline_getarg_gram  // share our (grams)
+  tuck
+  // ( ourKeyName ourSk share ourPk share )
+
+  cmdline_getarg dup  // name of their pk
+  // ( ourKeyName ourSk share ourPk share theirKeyName theirKeyName )
+  6 -roll
+  // ( theirKeyName ourKeyName ourSk share ourPk share theirKeyName )
+
+  load-key-public
+  // ( theirKeyName ourKeyName ourSk ourShare ourPk ourShare theirPk )
+
+  cmdline_getarg_gram  // share their (nanograms)
+  rot swap
+  // ( theirKeyName ourKeyName ourSk ourShare ourPk theirPk ourShare theirShare )
+
+  cmdline_getarg_int  // timeout (seconds)
+  // ( theirKeyName ourKeyName ourSk ourShare ourPk theirPk ourShare theirShare timeout )
+  cmdline_getarg_gram  // fineAmount (nanograms)
+  dup 6 -roll
+  // ( theirKeyName ourKeyName ourSk ourShare fine ourPk theirPk ourShare theirShare timeout fine )
+  cmdline_getarg_gram  // extraFuel (nanograms)
+  6 -roll
+  // ( theirKeyName ourKeyName ourSk ourShare fine extraFuel ourPk theirPk ourShare theirShare timeout fine )
+
+  // XXX: Undocumented extra argument for debugging
+  // nonce
+  { (number) 1 = not abort_usage"Not an integer" } { now } cmdline_getarg'
+  // ( theirKeyName ourKeyName ourSk ourShare fine extraFuel ourPk theirPk ourShare theirShare timeout fine nonce )
+
+  mkGlobalState
+  // ( theirKeyName ourKeyName ourSk ourShare fine extraFuel globalState )
+
+  dup
+  0 contract-code createStateInit // TODO: take workchain as param
+  // ( theirKN ourKN ourSk ourShare fine extraFuel globalState stateInit wc addr )
+  2dup 9 pick -rot
+  // ( theirKN ourKN ourSk ourShare fine extraFuel globalState stateInit wc addr ourSk wc addr )
+  0 -rot // pkn = 0
+  // ( theirKN ourKN ourSk ourShare fine extraFuel globalState stateInit wc addr ourSk 0 wc addr )
+  mkJoinMsgBody
+  // ( theirKN ourKN ourSk ourShare fine extraFuel globalState stateInit wc addr join-body )
+  -rot 2dup
+  // ( theirKN ourKN ourSk ourShare fine extraFuel globalState stateInit join-body wc addr wc addr )
+  9 roll // ourShare
+  9 roll // fine
+  9 roll // extraFuel
+  +
+  +
+  // ( theirKN ourKN ourSk globalState stateInit join-body wc addr wc addr sum )
+
+  6 roll 6 roll
+  // ( theirKN ourKN ourSk globalState wc addr wc addr sum stateInit join-body )
+  createInitMessage
+  // ( theirKN ourKN ourSk globalState wc addr initMsg )
+  boc>B "init-message.boc" tuck B>file
+  ."Init-message written to file `" type ."`" cr
+  // ( theirKN ourKN ourSk globalState wc addr )
+
+  2 pick -rot
+  // ( theirKeyname ourKeyName ourSk globalState globalState wc addr )
+  2dup 5 -roll 5 -roll
+  // ( theirKeyname ourKeyName ourSk wc addr globalState globalState wc addr )
+  rot 0 2 -roll mkEmptyPaymentsState mkCliState
+  // ( theirKeyName ourKeyName ourSk wc addr globalState cliState )
+
+  6 roll 6 roll swap mkCliStateNice
+  // ( ourSk wc addr globalState cliStateNice )
+  saveCliStateNice
+  // ( ourSk wc addr globalState )
+
+  _saveJoinRequest
+  // ( ourSk )
+
+  // cmdline_getarg_int  // extra for fuel (grams)
+} :cmdline cli_chan_new
+
+{ ."Joining a channel..." cr
+  cmdline_getarg dup load-key-pair
+  cmdline_getarg dup load-key-public
+  _loadJoinRequest
+  // ( ourKeyName ourSk ourPk theirKeyname theirPk wc addr globalState )
+
+  dup getGlobalStatePk2 6 roll B=
+    { fail"Our public key does not match the one in the request" } ifnot
+  dup getGlobalStatePk1 4 roll B=
+    { fail"Their public key does not match the one in the request" } ifnot
+  // ( ourKeyName ourSk theirKeyName wc addr globalState )
+  -rot 2dup 2dup
+  8 roll -rot
+  1 2 -roll // pkn = 1
+  mkJoinMsgBody
+  // ( ourKeyName theirKeyName globalState wc addr wc addr stmbody )
+  5 pick getGlobalStateShare2
+  6 pick getGlobalStateFine
+  extra-fuel-default
+  +
+  +
+  swap
+  // ( ourKN theirKN globalState wc addr wc addr share2 stmbody )
+  createMsg
+  // ( ourKN theirKN globalState wc addr msg )
+  boc>B "join-message.boc" tuck B>file
+  ."Saved join message for smartcontract to " type cr
+  2 roll
+  1 3 -roll mkGlobalStateMirror mkEmptyPaymentsState mkCliState
+  // ( ourKN theirKN cliState)
+  -rot mkCliStateNice
+  saveCliStateNice
+} :cmdline cli_chan_join
+
+{ cmdline_getarg  // channel address
+  hex$>addr' { fail"Invalid address" } ifnot
+  loadCliStateNice
+  .cliStateNice
+} :cmdline cli_chan_info
+
+{ cmdline_getarg  // channel address
+  hex$>addr' { fail"Invalid address" } ifnot
+  loadCliStateNice parseCliStateNice drop
+  // ( cliState ourPkName )
+  load-key-pair drop swap
+  // ( ourSk cliState )
+  swap
+  over getCliStatePkn
+  2 pick getCliStateAddr
+
+  4 pick getCliStatePaymentsState
+  // ( cliState ourSk pkn wc addr paymentsState )
+
+  dup getPaymentsStateBalance swap getPaymentsStateIou
+  // ( cliState ourSk pkn wc addr balance (iou true | false))
+  mkCloseMsgBody
+  over getCliStateAddr
+  extra-fuel-default // grams sent with message, sender pays for transfer
+  3 roll
+  createMsg
+  boc>B "close-message.boc" tuck B>file
+ ."Saved close message for smartcontract to " type cr
+} :cmdline cli_chan_close
+
+{ cmdline_getarg  // channel address
+  hex$>addr' { fail"Invalid address" } ifnot
+  loadCliStateNice parseCliStateNice drop
+  // ( cliState ourPkName )
+  load-key-pair drop swap
+  // ( ourSk cliState )
+  swap
+  over getCliStatePkn
+  2 pick getCliStateAddr
+  // ( cliState ourSk pkn wc addr )
+
+  mkTimeoutMsgBody
+  over getCliStateAddr
+  extra-fuel-default // grams sent with message, sender pays for transfer
+  3 roll
+  createMsg
+  boc>B "timeout-message.boc" tuck B>file
+ ."Saved timeout message for smartcontract to " type cr
+} :cmdline cli_chan_timeout
+
+{ cmdline_getarg  // channel address
+  hex$>addr' { fail"Invalid address" } ifnot
+  loadCliStateNice parseCliStateNice drop
+  // ( cliState ourPkName )
+  load-key-pair drop swap
+  // ( ourSk cliState )
+
+  parseCliState swap drop 0 swap
+  // ( ourSk wc addr 0 paymentsState )
+  dup getPaymentsStateWeOwe swap getPaymentsStateTheyOwe
+  mkIou
+
+  ."State sync message will be formatted as a payment with amount = 0." cr
+  saveIou
+} :cmdline cli_chan_sync

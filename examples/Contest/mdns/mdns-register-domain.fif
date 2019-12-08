@@ -1,0 +1,54 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." dnsaddress domain_name privkey_file_base seqno ouptut_file num_of_dnsrecords [ category, data ]" cr
+  "Generate external message for registration of new top-level domain" cr
+  1 halt
+} : usage
+
+$# 0 > { 1 $() dup "--help" $= swap "-h" $= or ' usage if } if
+$# 6 < ' usage if
+
+true =: bounce
+
+$1 bounce parse-load-address =: bounce 2=: dest_addr
+$2 =: domain_name
+$3 =: file_base
+$4 parse-int =: seqno
+$5 =: output
+$6 parse-int =: num_of_dnsrecords
+
+dictnew
+0
+{
+  // dictnew counter
+  dup dup
+  7 + $() parse-int // dictnew counter counter category
+  swap
+  8 + $() // dictnew counter category data
+  .s
+  <b swap $, b> <s
+  swap // dictnew counter data category
+  3 roll // counter data category dictnew 
+  16
+  idict! drop // counter dict
+  swap
+  2 +
+} num_of_dnsrecords times
+drop
+=: dns_records
+
+file_base +".pk" load-generate-keypair
+constant wallet1_privk
+256 B>u@ constant wallet1_pubk
+
+<b seqno 32 u, 1 8 u, <b domain_name $, b> ref, dns_records dict, b> =: message_body
+message_body hashu wallet1_privk ed25519_sign_uint =: signature
+<b signature B, message_body <s s, b> =: full_message 
+
+<b b{1000100} s, dest_addr addr, 0 Gram, b{00} s, full_message ref, b> 
+2 boc+>B dup Bx. cr
+output +".boc" tuck B>file
+."(Saved to file " type .")" cr
+

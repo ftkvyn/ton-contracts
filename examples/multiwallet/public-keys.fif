@@ -1,0 +1,14 @@
+#!/usr/bin/env fift -s
+
+/*
+ *	this file contains a list of public keys
+ *  that are used to create a multi-signature wallet
+ */ 
+
+{ |
+	B{F0A46C3F822D11D9D79364F4AD12CC7B8C7AD21521D9D7B906213967A945AF0F} ,	// new-multi-wallet-1.pk
+	B{B35932D019060CD0B7FD9F99F366206E5441868BC79EBBF52267C50EE4DC4C4A} ,	// new-multi-wallet-2.pk
+	B{09CA116968504DE6462BD3809FD47EC6016F9CC2EFD347AA86CC1452EF1D078B} ,	// new-multi-wallet-3.pk
+} : tuple-publickeys
+
+

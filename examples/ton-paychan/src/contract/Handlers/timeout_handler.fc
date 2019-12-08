@@ -1,0 +1,57 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+cell handle_timeout(
+  int msg_pkn,
+  cell globalState,
+  cell localState) impure {
+
+  var ls = localState.begin_parse();
+  var stateTag = ls.preload_StateTag();
+
+  var (pk1, pk2, share1, share2, timeout, fine, _)
+    = parseGlobalState(globalState);
+
+  if (stateTag == StateTags::WaitingOne()) {
+    var (addr, pkn) = parseStateWaitingOne(ls);
+    var share = globalState.pkn2share(pkn);
+    sendSingleShare(addr, share + fine);
+    return terminateContract(addr);
+  } elseif (stateTag == StateTags::Closing()) {
+    var (prevReqPkn, openState, closeReq, prevTimestamp) =
+      parseStateClosing(ls);
+
+    ;; timeout from other party
+    throw_unless_(Timeout::WrongParty(), msg_pkn == prevReqPkn);
+
+    var (reqPayout, _) = parseCloseReq(closeReq);
+    if ((now() - prevTimestamp) >= timeout) {
+      if (prevReqPkn == 1) {
+        return disputeOccured(
+          closeReq,
+          emptyCloseReq(),
+          0, fine,
+          globalState,
+          openState
+          );
+      } else {
+        return disputeOccured(
+          emptyCloseReq(),
+          closeReq,
+          fine, 0,
+          globalState,
+          openState
+          );
+      }
+    } else {
+      ;; timeout initiated too early
+      throw(Timeout::TooEarly());
+      return unreachableReturn();
+    }
+  } else {
+    ;; transition not possible
+    throw(Timeout::InvalidState());
+    return unreachableReturn();
+  }
+}

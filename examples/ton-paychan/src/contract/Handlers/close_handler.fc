@@ -1,0 +1,185 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+int isPayoutImpossible(int reqShare, int reqPayout, int otherShare) {
+  return (otherShare < reqPayout) | (reqShare < - reqPayout);
+}
+
+() throw_if_payoutImpossible(int reqShare, int reqPayout, int otherShare) impure {
+  throw_when(
+    Close::PayoutImpossible(),
+    isPayoutImpossible(reqShare, reqPayout, otherShare)
+    );
+}
+
+cell createStateClosing(int reqPkn, cell localState, cell closeReq) impure {
+   return mkStateClosing(
+     reqPkn,
+     getOpenState(localState),
+     closeReq,
+     now()
+     );
+}
+
+cell distributeFunds(
+  int balance,
+  int fined1, int fined2,
+  cell openState,
+  cell globalState) impure {
+
+  var (_, _, share1, share2, _, fine, _)
+    = parseGlobalState(globalState);
+
+  var (addr1, addr2) = parseOpenState(openState.begin_parse());
+
+  if ((balance < 0) & (- balance > share1)) {
+    balance = - share1;
+  }
+
+  if ((balance > 0) & (balance > share2)) {
+    balance = share2;
+  }
+
+  performFinalPayout(
+    addr1, share1 + balance + fine - fined1 + fined2,
+    addr2, share2 - balance + fine + fined1 - fined2
+    );
+
+  return terminateContract(addr1);
+}
+
+;; iou, iou_ok
+(int, int) parseMIou(cell miou, int pk) impure {
+  var s = miou.begin_parse();
+
+  if (s.slice_refs_empty?()) {
+    return (0, true);
+  } else {
+    var iouC = s~load_ref();
+    var (iouTotal, iou_ok) = parseIouQ(iouC, pk); ;; problem here
+    return (iouTotal, iou_ok);
+  }
+}
+
+cell disputeOccured(
+  cell closeReq1,
+  cell closeReq2,
+  int fined1, fined2,
+  cell globalState,
+  cell openState) {
+
+  var (pk1, pk2, share1, share2, _, fine, _)
+    = parseGlobalState(globalState);
+
+  var (addr1, addr2) = parseOpenState(openState.begin_parse());
+
+  var (payout1, miou1) = parseCloseReq(closeReq1);
+  var (payout2, miou2) = parseCloseReq(closeReq2);
+
+  var (uome1, iou_ok1) = parseMIou(miou1, pk2);
+  var (uome2, iou_ok2) = parseMIou(miou2, pk1);
+
+  var owes1 = max(uome1 - payout1, uome2);
+  var owes2 = max(uome2 - payout2, uome1);
+
+  if ((~ iou_ok1) & (~ iou_ok2)) {
+    return mkStateOpen(addr1, addr2);
+  } else {
+    if (~ iou_ok1) {
+      fined1 += fine;
+    }
+    if (~ iou_ok2) {
+      fined2 += fine;
+    }
+
+    var finalPayout = owes2 - owes1;
+
+    return distributeFunds(
+      finalPayout,
+      fined1, fined2,
+      openState,
+      globalState
+      );
+  }
+}
+
+cell handle_close(
+  int msg_pkn,
+  cell closeReq,
+  cell globalState,
+  cell localState) impure {
+
+  var ls = localState.begin_parse();
+  var stateTag = ls.preload_StateTag();
+
+  var (payout, mIou) = parseCloseReq(closeReq);
+
+  if (stateTag == StateTags::Open()) {
+    var (_, _, share1, share2, _, fine, _)
+      = parseGlobalState(globalState);
+    ;; Open -> Closing
+    if (msg_pkn == 1) {
+      ;; current msg from party1
+      ;; reqShare = share1;
+      ;; reqPk = pk1;
+      ;; otherShare = share2;
+      throw_if_payoutImpossible(share1, payout, share2);
+      return createStateClosing(1, localState, closeReq);
+    } else {
+      ;; current msg from party2
+      ;; reqShare = share2;
+      ;; reqPk = pk2;
+      ;; otherShare = share1;
+      throw_if_payoutImpossible(share2, payout, share1);
+      return createStateClosing(2, localState, closeReq);
+    }
+  } elseif (stateTag == StateTags::Closing()) {
+    ;; Closing -> ???
+    var (prevReqPkn, openState, prevCloseReq, prevTimestamp) =
+      parseStateClosing(ls);
+
+    throw_unless_(
+      Close::DuplicateRequest(),
+      msg_pkn != prevReqPkn
+      );
+
+    var (prevPayout, _) = parseCloseReq(prevCloseReq);
+    var (addr1, addr2) = parseOpenState(openState.begin_parse());
+
+    if (msg_pkn == 2) {
+      payout = - payout;
+    }
+
+    if (payout == prevPayout) {
+      return distributeFunds(
+        payout,
+        0, 0,
+        openState,
+        globalState
+        );
+    } else {
+      if (msg_pkn == 1) {
+        return disputeOccured(
+          closeReq,
+          prevCloseReq,
+          0, 0,
+          globalState,
+          openState
+          );
+      } else {
+        return disputeOccured(
+          prevCloseReq,
+          closeReq,
+          0, 0,
+          globalState,
+          openState
+          );
+      }
+    }
+  } else {
+    ;; Unknown state transition
+    throw(Close::InvalidState());
+    return unreachableReturn();
+  }
+}

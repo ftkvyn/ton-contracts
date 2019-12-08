@@ -1,0 +1,13 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <filename>" cr 
+  "Loads keypair from <filename>.pk and display the serialization of the public key"
+  1 halt
+} : usage
+$# 1 <> ' usage if
+
+$1 +".pk" load-keypair drop 256 B>u@ pubkey>$ type cr
+

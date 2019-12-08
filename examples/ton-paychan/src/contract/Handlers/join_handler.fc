@@ -1,0 +1,55 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+;; localState'
+cell handle_join(
+  slice msg_src_addr,
+  int msg_value,
+  int msg_pkn,
+  cell globalState,
+  cell localState) {
+
+  var (_, _, share1, share2, _, fine, _)
+    = parseGlobalState(globalState);
+
+  var ls = localState.begin_parse();
+
+  var stateTag = ls.preload_StateTag();
+
+  if (stateTag == StateTags::WaitingBoth()) {
+    ;; WaitingBoth -> WaitingOne s_addr pk
+    var requesterShare = globalState.pkn2share(msg_pkn);
+
+    ;; supplied not enough
+    throw_when(
+      Join::SuppliedNotEnough1(),
+      requesterShare + fine > msg_value
+      );
+
+    raw_reserve(requesterShare + fine, 0);
+
+    return mkStateWaitingOne(msg_src_addr, msg_pkn);
+
+  } elseif (stateTag == StateTags::WaitingOne()) {
+    ;; WaitingOne addr1 pk1 -> Open (OpenState addr1 addr2)
+
+    raw_reserve(share1 + share2 + (2 * fine), 0);
+
+    var (stateAddr, statePkn) = parseStateWaitingOne(ls);
+
+    if ((statePkn == 1) & (msg_pkn == 2)) {
+      return mkStateOpen(stateAddr, msg_src_addr);
+    } elseif ((statePkn == 2) & (msg_pkn == 1)) {
+      return mkStateOpen(msg_src_addr, stateAddr);
+    } else {
+      throw(Join::UnknownParty());
+      return localState;
+    }
+
+  } else {
+    ;; none of appropriate states for this message matches
+    throw(Join::InvalidState());
+    return unreachableReturn();
+  }
+}

@@ -1,0 +1,1160 @@
+// automatically generated from `adns-logic.fc` 
+DECLPROC load_data
+DECLPROC store_data
+DECLPROC send_message
+DECLPROC housekeeping
+DECLPROC _calcprice
+DECLPROC recv_internal
+DECLPROC recv_external
+81618 DECLMETHOD dnsresolvex
+123660 DECLMETHOD dnsresolve
+87450 DECLMETHOD getexpirationx
+110574 DECLMETHOD getexpiration
+67418 DECLMETHOD getstdperiod
+109522 DECLMETHOD getppr
+108994 DECLMETHOD getppc
+113123 DECLMETHOD getppb
+113304 DECLMETHOD calcprice
+85700 DECLMETHOD calcregprice
+load_data PROC:<{
+  c4 PUSH
+  CTOS
+  LDDICT
+  LDDICT
+  32 LDU
+  LDGRAMS
+  LDGRAMS
+  LDGRAMS
+  32 LDU
+  DROP
+}>
+store_data PROC:<{
+  NEWC
+  s1 s7 XCHG
+  STDICT
+  s1 s5 XCHG
+  STDICT
+  s1 s3 XCHG
+  32 STI
+  SWAP
+  STGRAMS
+  SWAP
+  STGRAMS
+  SWAP
+  STGRAMS
+  32 STU
+  ENDC
+  c4 POP
+}>
+send_message PROC:<{
+  0 PUSHINT
+  24 PUSHINT
+  NEWC
+  6 STU
+  s0 s7 XCHG2
+  STSLICER
+  ROT
+  STGRAMS
+  s1 s5 XCHG
+  107 STU
+  s1 s3 XCHG
+  32 STU
+  64 STU
+  OVER
+  -1 GTINT
+  IF:<{
+    32 STU
+  }>ELSE<{
+    NIP
+  }>
+  ENDC
+  SWAP
+  SENDRAWMSG
+}>
+housekeeping PROC:<{
+  NOW
+  s0 s1 PUSH2
+  SUB
+  60 LESSINT
+  IF:<{
+    DROP
+    store_data CALLDICT
+  }>ELSE<{
+    NIP
+    s5 PUSH
+    64 PUSHINT
+    DICTUMINREF
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT
+    IF:<{
+      DUP
+      32 RSHIFT#
+      s0 s3 PUSH2
+      LESS
+      IF:<{
+        s0 s2 XCHG
+        CTOS
+        s0 s9 PUSH2
+        10 PUSHPOW2DEC
+        PFXDICTGETQ
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT
+        NIP
+        s2 POP
+        SWAP
+        IF:<{
+          32 LDU
+          DROP
+          s0 s3 XCHG2
+          EQUAL
+          IF:<{
+            s0 s8 XCHG
+            10 PUSHPOW2DEC
+            PFXDICTDEL
+            IF:<{
+              s7 s6 XCHG2
+              64 PUSHINT
+              DICTUDEL
+              DROP
+            }>ELSE<{
+              s7 s6 XCHG2
+              NIP
+            }>
+          }>ELSE<{
+            NIP
+            s0 s6 XCHG2
+            64 PUSHINT
+            DICTUDEL
+            DROP
+            s5 s6 XCHG
+          }>
+        }>ELSE<{
+          s2 s3 XCHG
+          3 BLKDROP
+          s0 s6 XCHG2
+          64 PUSHINT
+          DICTUDEL
+          DROP
+          s5 s6 XCHG
+        }>
+      }>ELSE<{
+        s3 s9 XCHG
+        s3 s8 XCHG
+        3 BLKDROP
+      }>
+    }>ELSE<{
+      s2 s8 XCHG
+      s2 s7 XCHG
+      2DROP
+    }>
+    s5 s6 XCHG
+    s0 s5 XCHG
+    store_data CALLDICT
+  }>
+}>
+_calcprice PROC:<{
+  s2 PUSH
+  SBITS
+  s1 s(-1) PUXC
+  MUL
+  s2 s(-1) PUXC
+  ADD
+  WHILE:<{
+    s3 PUSH
+    SREFS
+  }>DO<{
+    s0 s3 XCHG
+    LDREF
+    SWAP
+    CTOS
+    2OVER
+    _calcprice CALLDICT
+    s1 s4 XCHG
+    ADD
+  }>
+  s0 s3 XCHG
+  3 BLKDROP
+}>
+recv_internal PROC:<{
+  DUP
+  SBITS
+  32 LESSINT
+  IFJMP:<{
+    3 BLKDROP
+  }>
+  SWAP
+  CTOS
+  4 LDU
+  SWAP
+  1 PUSHINT
+  AND
+  IFJMP:<{
+    3 BLKDROP
+  }>
+  LDMSGADDR
+  DROP
+  DUP
+  REWRITESTDADDR
+  s0 s3 XCHG
+  32 LDU
+  OVER
+  0 EQINT
+  IFJMP:<{
+    6 BLKDROP
+  }>
+  0 PUSHINT
+  OVER
+  SBITS
+  63 GTINT
+  IF:<{
+    DROP
+    64 LDU
+  }>ELSE<{
+    SWAP
+  }>
+  s2 PUSH
+  1919248228 PUSHINT
+  NEQ
+  s3 PUSH
+  1886547820 PUSHINT
+  NEQ
+  AND
+  s3 PUSH
+  1970300004 PUSHINT
+  NEQ
+  AND
+  s3 PUSH
+  1735354211 PUSHINT
+  NEQ
+  AND
+  s3 PUSH
+  31 PUSHPOW2
+  AND
+  0 EQINT
+  AND
+  IFJMP:<{
+    DROP
+    s2 POP
+    s3 POP
+    s3 POP
+    32 PUSHPOW2DEC
+    0 PUSHINT
+    s4 s3 s0 XCHG3
+    64 PUSHINT
+    send_message CALLDICT
+  }>
+  load_data CALLDICT
+  s9 PUSH
+  1735354211 PUSHINT
+  EQUAL
+  IFJMP:<{
+    DROP
+    s6 POP
+    s8 POP
+    s9 POP
+    s9 POP
+    s5 s4 XCHG2
+    s3 s8 XCHG
+    s7 s1 s7 XCHG3
+    0 PUSHINT
+    housekeeping CALLDICT
+    4016791929 PUSHINT
+    0 PUSHINT
+    s4 s3 s0 XCHG3
+    64 PUSHINT
+    send_message CALLDICT
+  }>
+  s0 s7 XCHG
+  LDREF
+  SWAP
+  CTOS
+  DUP
+  8 PUSHINT
+  SDCUTLAST
+  8 LDU
+  DROP
+  0 NEQINT
+  IFJMP:<{
+    9 BLKDROP
+    s2 POP
+    s3 POP
+    s3 POP
+    4000275504 PUSHINT
+    0 PUSHINT
+    s4 s3 s0 XCHG3
+    64 PUSHINT
+    send_message CALLDICT
+  }>
+  -1 PUSHINT
+  0 PUSHINT
+  s2 PUSH
+  WHILE:<{
+    s2 PUSH
+  }>DO<{
+    8 LDU
+    SWAP
+    0 EQINT
+    IF:<{
+      SWAP
+      INC
+    }>ELSE<{
+      SWAP
+    }>
+    OVER
+    SBITS
+    0 EQINT
+    IF:<{
+      s2 POP
+      0 PUSHINT
+    }>ELSE<{
+      s0 s2 XCHG
+    }>
+    -ROT
+  }>
+  DROP
+  NIP
+  NEWC
+  7 STU
+  SWAP
+  STSLICER
+  ENDC
+  CTOS
+  s0 s7 PUSH2
+  10 PUSHPOW2DEC
+  PFXDICTGETQ
+  NULLSWAPIFNOT
+  NULLSWAPIFNOT
+  NIP
+  s2 POP
+  NOW
+  0 PUSHINT
+  s3 PUSH
+  IF:<{
+    DROP
+    SWAP
+    32 LDU
+    s2 s1 PUSH2
+    GREATER
+    IF:<{
+      s3 POP
+      FALSE
+    }>ELSE<{
+      s0 s3 XCHG
+    }>
+  }>ELSE<{
+    3 ROLL
+  }>
+  s14 PUSH
+  1886547820 PUSHINT
+  EQUAL
+  IFJMP:<{
+    s2 POP
+    s4 POP
+    NOT
+    IFJMP:<{
+      10 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4000281702 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    NEWC
+    OVER
+    STSLICER
+    ENDC
+    -2 PUSHINT
+    SWAP
+    16 PUSHINT
+    DICTIGETOPTREF
+    DUP
+    ISNULL
+    IFJMP:<{
+      11 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4000263474 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    CTOS
+    DUP
+    SBITS
+    288 PUSHINT
+    NEQ
+    IFJMP:<{
+      11 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      3798033458 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    256 LDU
+    32 LDU
+    DROP
+    s0 16 s() XCHG
+    NEQ
+    s15 s13 XCHG2
+    NEQ
+    s1 s12 XCHG
+    OR
+    IFJMP:<{
+      8 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4000282478 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    s12 s2 s1 PUSH3
+    _calcprice CALLDICT
+    s4 s(-1) PUXC
+    ADD
+    s14 PUSH
+    1000000000 PUSHINT
+    SUB
+    OVER
+    LESS
+    IFJMP:<{
+      9 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      3883023472 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    s1 s5 PUSH2
+    ADD
+    NEWC
+    32 STU
+    s0 s14 XCHG2
+    STSLICER
+    ENDC
+    CTOS
+    SWAP
+    10 PUSHPOW2DEC
+    s12 s8 s8 PUXC2
+    PFXDICTSET
+    NOT
+    IFJMP:<{
+      8 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4083511922 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    s10 PUSH
+    HASHSU
+    32 PUSHPOW2DEC
+    AND
+    s7 PUSH
+    32 LSHIFT#
+    OVER
+    OR
+    s8 s6 XCPU
+    ADD
+    32 LSHIFT#
+    SWAP
+    OR
+    s7 s6 XCHG2
+    64 PUSHINT
+    DICTUDEL
+    DROP
+    NEWC
+    s0 s11 XCHG2
+    STSLICER
+    ENDC
+    s0 s5 s10 XCHG3
+    64 PUSHINT
+    DICTUSETREF
+    s4 s6 XCHG
+    s4 s3 s5 XCHG3
+    s2 s8 XCHG
+    housekeeping CALLDICT
+    s0 s4 XCHG
+    4016791929 PUSHINT
+    s0 s4 XCHG
+    SUB
+    s1 s4 s0 XCHG3
+    0 PUSHINT
+    send_message CALLDICT
+  }>
+  s0 s5 XCHG
+  LDREF
+  DROP
+  DUP
+  DICTEMPTY
+  IFNOT:<{
+    DUP
+    16 PUSHINT
+    DICTIMIN
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT
+    s2 POP
+    s2 PUSH
+    16 PUSHINT
+    DICTIMAX
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT
+    s2 POP
+    s3 s3 XCHG2
+    AND
+    s0 s2 XCHG
+    LEQ
+    AND
+    31 THROWIFNOT
+  }>
+  s14 PUSH
+  1919248228 PUSHINT
+  EQUAL
+  IFJMP:<{
+    NIP
+    s2 POP
+    s13 POP
+    s14 POP
+    SWAP
+    IFJMP:<{
+      8 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      3781980773 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    s12 PUSH
+    CTOS
+    2OVER
+    _calcprice CALLDICT
+    s4 s(-1) PUXC
+    ADD
+    s14 PUSH
+    1000000000 PUSHINT
+    SUB
+    OVER
+    LESS
+    IFJMP:<{
+      9 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      3883023472 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    s11 s5 PUSH2
+    ADD
+    NEWC
+    32 STU
+    s0 s14 XCHG
+    CTOS
+    s1 s14 XCHG
+    STSLICER
+    ENDC
+    CTOS
+    SWAP
+    10 PUSHPOW2DEC
+    s1 s8 s8 PUXC2
+    PFXDICTSET
+    NOT
+    IFJMP:<{
+      8 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4083511922 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    s10 s4 XCPU
+    ADD
+    32 LSHIFT#
+    s6 PUSH
+    HASHSU
+    32 PUSHPOW2DEC
+    AND
+    OR
+    NEWC
+    s0 s7 XCHG2
+    STSLICER
+    ENDC
+    s0 s6 s5 XCHG3
+    64 PUSHINT
+    DICTUSETREF
+    s6 s8 XCHG
+    s4 s3 s5 XCHG3
+    s1 s2 XCHG
+    housekeeping CALLDICT
+    s0 s4 XCHG
+    4016791929 PUSHINT
+    s0 s4 XCHG
+    SUB
+    s1 s4 s0 XCHG3
+    0 PUSHINT
+    send_message CALLDICT
+  }>
+  s2 POP
+  s13 PUSH
+  1970300004 PUSHINT
+  EQUAL
+  IFJMP:<{
+    s0 s4 XCHG
+    NOT
+    IFJMP:<{
+      11 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4000281702 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    NEWC
+    ROT
+    STSLICER
+    ENDC
+    -2 PUSHINT
+    SWAP
+    16 PUSHINT
+    DICTIGETOPTREF
+    DUP
+    ISNULL
+    IFJMP:<{
+      11 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4000263474 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    CTOS
+    DUP
+    SBITS
+    288 PUSHINT
+    NEQ
+    IFJMP:<{
+      11 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      3798033458 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    256 LDU
+    32 LDU
+    DROP
+    s0 16 s() XCHG
+    NEQ
+    s15 s13 XCHG2
+    NEQ
+    s1 s12 XCHG
+    OR
+    IFJMP:<{
+      8 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4000282478 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    s12 PUSH
+    CTOS
+    2OVER
+    _calcprice CALLDICT
+    s14 PUSH
+    1000000000 PUSHINT
+    SUB
+    OVER
+    LESS
+    IFJMP:<{
+      9 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      3883023472 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    NEWC
+    s1 s2 XCHG
+    32 STU
+    s0 s13 XCHG
+    CTOS
+    s1 s13 XCHG
+    STSLICER
+    ENDC
+    CTOS
+    s0 s10 s6 XCHG3
+    10 PUSHPOW2DEC
+    PFXDICTSET
+    NOT
+    IFJMP:<{
+      6 BLKDROP
+      s2 POP
+      s3 POP
+      s3 POP
+      4083511922 PUSHINT
+      0 PUSHINT
+      s4 s3 s0 XCHG3
+      64 PUSHINT
+      send_message CALLDICT
+    }>
+    s0 s6 XCHG
+    s3 s5 XCHG
+    s4 s3 s0 XCHG3
+    s8 s8 XCHG2
+    housekeeping CALLDICT
+    s0 s4 XCHG
+    4016791929 PUSHINT
+    s0 s4 XCHG
+    SUB
+    s1 s4 s0 XCHG3
+    0 PUSHINT
+    send_message CALLDICT
+  }>
+  12 BLKDROP
+  6 BLKDROP
+}>
+recv_external PROC:<{
+  DROP
+  load_data CALLDICT
+  0 EQINT
+  IF:<{
+    ACCEPT
+    NOW
+    store_data CALLDICT
+  }>ELSE<{
+    6 BLKDROP
+  }>
+}>
+dnsresolvex PROC:<{
+  NULL
+  s3 PUSH
+  SBITS
+  3 MODPOW2#
+  0 NEQINT
+  30 THROWIF
+  s3 PUSH
+  SBITS
+  0 EQINT
+  IFJMP:<{
+    s0 s3 XCHG
+    3 BLKDROP
+    0 PUSHINT
+    SWAP
+  }>
+  s3 PUSH
+  8 PUSHINT
+  SDCUTLAST
+  8 LDU
+  DROP
+  DUP
+  0 EQINT
+  s5 PUSH
+  SBITS
+  8 EQINT
+  AND
+  IFJMP:<{
+    s1 s4 XCHG
+    4 BLKDROP
+    0 PUSHINT
+    SWAP
+  }>
+  s4 s(-1) PUXC
+  0 NEQINT
+  IF:<{
+    DROP
+    0 PUSHINT
+    NEWC
+    s0 s5 XCHG2
+    STSLICER
+    s1 s4 XCHG
+    8 STU
+    ENDC
+    CTOS
+  }>ELSE<{
+    s0 s4 XCHG2
+    DROP
+  }>
+  c4 PUSH
+  CTOS
+  LDDICT
+  DROP
+  0 PUSHINT
+  -1 PUSHINT
+  s3 PUSH
+  WHILE:<{
+    OVER
+  }>DO<{
+    8 LDU
+    SWAP
+    0 EQINT
+    IF:<{
+      s0 s2 XCHG
+      INC
+    }>ELSE<{
+      s0 s2 XCHG
+    }>
+    s2 PUSH
+    SBITS
+    0 EQINT
+    IF:<{
+      NIP
+      0 PUSHINT
+    }>ELSE<{
+      SWAP
+    }>
+    ROT
+  }>
+  2DROP
+  WHILE:<{
+    DUP
+    0 GTINT
+  }>DO<{
+    DUP
+    NEWC
+    7 STU
+    s3 PUSH
+    STSLICER
+    ENDC
+    CTOS
+    s2 PUSH
+    10 PUSHPOW2DEC
+    PFXDICTGETQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT
+    DUP
+    IF:<{
+      s2 PUSH
+      32 PLDU
+      s8 s(-1) PUXC
+      GREATER
+      IF:<{
+        DROP
+        FALSE
+      }>
+    }>
+    DUP
+    IF:<{
+      s4 POP
+      1 PUSHINT
+    }>ELSE<{
+      s0 s4 XCHG
+    }>
+    DEC
+    s0 s3 XCHG
+    101 PUSHINT
+    SETGLOBVAR
+    SWAP
+    102 PUSHINT
+    SETGLOBVAR
+    103 PUSHINT
+    SETGLOBVAR
+    SWAP
+    104 PUSHINT
+    SETGLOBVAR
+  }>
+  3 BLKDROP
+  101 PUSHINT
+  GETGLOBVAR
+  102 PUSHINT
+  GETGLOBVAR
+  103 PUSHINT
+  GETGLOBVAR
+  104 PUSHINT
+  GETGLOBVAR
+  NOT
+  IFJMP:<{
+    5 BLKDROP
+    0 PUSHINT
+    SWAP
+  }>
+  SWAP
+  32 LDU
+  s4 s4 XCHG2
+  GREATER
+  IFJMP:<{
+    4 BLKDROP
+    0 PUSHINT
+    SWAP
+  }>
+  s4 POP
+  s0 s3 XCHG
+  SEMPTY
+  NOT
+  IF:<{
+    NIP
+    -1 PUSHINT
+  }>ELSE<{
+    SWAP
+  }>
+  s0 s2 XCHG
+  SBITS
+  -7 ADDCONST
+  NEWC
+  ROT
+  STSLICER
+  ENDC
+  s2 PUSH
+  0 EQINT
+  IFJMP:<{
+    s2 POP
+    SWAP
+  }>
+  s1 s2 XCHG
+  16 PUSHINT
+  DICTIGETOPTREF
+}>
+dnsresolve PROC:<{
+  0 PUSHINT
+  c7 PUSH
+  DUP
+  QTLEN
+  0 GTINT
+  IF:<{
+    FIRST
+    DUP
+    QTLEN
+    3 GTINT
+    IF:<{
+      NIP
+      3 PUSHINT
+      INDEXVAR
+    }>ELSE<{
+      DROP
+    }>
+  }>ELSE<{
+    DROP
+  }>
+  dnsresolvex CALLDICT
+}>
+getexpirationx PROC:<{
+  OVER
+  SBITS
+  3 MODPOW2#
+  0 NEQINT
+  30 THROWIF
+  OVER
+  SBITS
+  0 EQINT
+  IFJMP:<{
+    2DROP
+    0 PUSHINT
+  }>
+  OVER
+  8 PUSHINT
+  SDCUTLAST
+  8 LDU
+  DROP
+  DUP
+  0 EQINT
+  s3 PUSH
+  SBITS
+  8 EQINT
+  AND
+  IFJMP:<{
+    3 BLKDROP
+    0 PUSHINT
+  }>
+  s2 s(-1) PUXC
+  0 NEQINT
+  IF:<{
+    DROP
+    0 PUSHINT
+    NEWC
+    s0 s3 XCHG2
+    STSLICER
+    s1 s2 XCHG
+    8 STU
+    ENDC
+    CTOS
+  }>ELSE<{
+    ROT
+    DROP
+  }>
+  c4 PUSH
+  CTOS
+  LDDICT
+  DROP
+  0 PUSHINT
+  -1 PUSHINT
+  s3 PUSH
+  WHILE:<{
+    OVER
+  }>DO<{
+    8 LDU
+    SWAP
+    0 EQINT
+    IF:<{
+      s0 s2 XCHG
+      INC
+    }>ELSE<{
+      s0 s2 XCHG
+    }>
+    s2 PUSH
+    SBITS
+    0 EQINT
+    IF:<{
+      NIP
+      0 PUSHINT
+    }>ELSE<{
+      SWAP
+    }>
+    ROT
+  }>
+  2DROP
+  WHILE:<{
+    DUP
+    0 GTINT
+  }>DO<{
+    DUP
+    NEWC
+    7 STU
+    s3 PUSH
+    STSLICER
+    ENDC
+    CTOS
+    s2 PUSH
+    10 PUSHPOW2DEC
+    PFXDICTGETQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT
+    DUP
+    IF:<{
+      s2 PUSH
+      32 PLDU
+      s8 s(-1) PUXC
+      GREATER
+      IF:<{
+        DROP
+        FALSE
+      }>
+    }>
+    DUP
+    IF:<{
+      s4 POP
+      1 PUSHINT
+    }>ELSE<{
+      s0 s4 XCHG
+    }>
+    DEC
+    s0 s3 XCHG
+    101 PUSHINT
+    SETGLOBVAR
+    SWAP
+    102 PUSHINT
+    SETGLOBVAR
+    103 PUSHINT
+    SETGLOBVAR
+    SWAP
+    104 PUSHINT
+    SETGLOBVAR
+  }>
+  4 BLKDROP
+  102 PUSHINT
+  GETGLOBVAR
+  104 PUSHINT
+  GETGLOBVAR
+  NOT
+  IFJMP:<{
+    DROP
+    0 PUSHINT
+  }>
+  32 LDU
+  DROP
+}>
+getexpiration PROC:<{
+  0 PUSHINT
+  c7 PUSH
+  DUP
+  QTLEN
+  0 GTINT
+  IF:<{
+    FIRST
+    DUP
+    QTLEN
+    3 GTINT
+    IF:<{
+      NIP
+      3 PUSHINT
+      INDEXVAR
+    }>ELSE<{
+      DROP
+    }>
+  }>ELSE<{
+    DROP
+  }>
+  getexpirationx CALLDICT
+}>
+getstdperiod PROC:<{
+  load_data CALLDICT
+  s4 s6 XCHG
+  6 BLKDROP
+}>
+getppr PROC:<{
+  load_data CALLDICT
+  s3 s6 XCHG
+  6 BLKDROP
+}>
+getppc PROC:<{
+  load_data CALLDICT
+  s2 s6 XCHG
+  6 BLKDROP
+}>
+getppb PROC:<{
+  load_data CALLDICT
+  s1 s6 XCHG
+  6 BLKDROP
+}>
+calcprice PROC:<{
+  getppc CALLDICT
+  getppb CALLDICT
+  _calcprice CALLDICT
+}>
+calcregprice PROC:<{
+  getppr CALLDICT
+  getppc CALLDICT
+  getppb CALLDICT
+  s2 s3 XCHG
+  _calcprice CALLDICT
+  ADD
+}>

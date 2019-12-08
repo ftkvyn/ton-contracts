@@ -1,0 +1,54 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." domain_name sub_domain_name save_file num_of_dnsrecords [ category, data ]" cr
+  ."Generates message body-boc (may be sent via '-B' option of simple wallet) for sub domain registration " cr
+  1 halt
+} : usage
+
+$# 0 > { 1 $() dup "--help" $= swap "-h" $= or ' usage if } if
+$# 4 < ' usage if
+
+0 =: offset
+
+$1 =: domain_name
+$2 =: subdomain_name
+$3 =: save_file
+$4 parse-int =: records_num
+
+dictnew
+0
+{
+  // dictnew counter
+  dup dup
+  5 + $() parse-int // dictnew counter counter category
+  swap
+  6 + $() // dictnew counter category data
+  <b swap $, b> <s
+  swap // dictnew counter data category
+  3 roll // counter data category dictnew 
+  16
+  idict! drop // counter dict
+  swap
+  2 +
+} records_num times
+swap
+=: dns_records
+
+<b dns_records dict, b> <s
+1
+dictnew
+16
+idict! drop
+=: domains_to_add
+
+<b dictnew dict, dictnew dict, b> =: records_update
+<b domains_to_add dict, dictnew dict, b> =: domains_update
+<b 2 32 u, <b domain_name $, b> ref, records_update ref, domains_update ref, b> =: message_body
+
+message_body
+2 boc+>B dup Bx. cr
+$2 +".boc" tuck B>file
+."(Saved to file " type .")" cr
+

@@ -1,0 +1,545 @@
+(tuple) empty_tuple() asm "NIL";
+(tuple, ()) ~append_s(tuple t1, slice t2) asm(t1 t2) "COMMA";
+(cell) empty_cell () asm "NEWC" "ENDC";
+(cell) null_cell () asm "NULL";
+(slice) empty_slice () asm "NEWC" "ENDC" "CTOS";
+(slice, slice, slice, int ) find_prefix? (cell D, slice s, int n) asm( s D n -> 1 0 2 3) "PFXDICTGETQ" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(cell, (int)) ~put_prefix? (cell D, slice index, slice value, int n) asm( value index D n) "PFXDICTSET";
+(cell, (int)) ~remove_prefix?(cell dict, int key_len, slice index) asm(index dict key_len) "PFXDICTDEL";
+int check_slice_equality(slice s1, slice s2) asm(s1 s2) "SDEQ";
+
+cell s2c (slice s) asm "NEWC" "STSLICE" "ENDC";
+int 2** ( int x ) asm "PUSHPOW2";
+int or ( int x, int y ) asm "OR";
+int and ( int x, int y ) asm "AND";
+
+
+(slice, int, int) imin (cell D, int index_len) asm "DICTIMIN" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(slice, int, int) umin (cell D, int index_len) asm "DICTUMIN" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(cell, ()) ~udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
+(cell, (int)) ~idict_add?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTIADD";
+(cell, (slice, int)) ~idict_setget?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTISETGET" "NULLSWAPIFNOT";
+(cell, (int)) ~idict_del?(cell dict, int key_len, int index) asm(index dict key_len) "DICTIDEL";
+
+;; (slice, (int)) ~remove_from_begining?(slice t1, slice t2) asm(s1 s2) "SDBEGINSXQ";
+
+int calc_price_per_year(slice domain) method_id {
+  int len = domain.slice_bits() / 8;
+  int basic_price = 500000000; ;; 0.5Gram
+  if( len > 10 ) {
+    return basic_price;
+  } else {
+    return basic_price * 100 * ( 11 - len);  ;;2**(11 - len);
+  }  
+}
+
+;; Price for registration of empty domain (period ~= 1 year)
+(int, int) get_price_for_new_domain(slice new_domain) method_id  {
+  return (calc_price_per_year(new_domain),  365 * 24 * 3600 );
+}
+
+;; Price per each new value and each new subdomain per year
+(int, int, int ) get_price_for_storage() method_id {
+  return (50000000, 100000000, 365 * 24 * 3600);
+}
+
+
+
+;; now it is only prohibited for domain to conatin \0
+int suitable_domain_name(slice domain) method_id {
+  int res = -1;
+  ifnot(domain.slice_bits() % 8 == 0) {
+    res = 0;
+  } else {
+    do {
+      int current_byte = domain~load_uint(8);
+      if (current_byte == 0 ) { 
+        res = 0;
+      }
+    } until ( (domain.slice_data_empty?()).or( ~ res ) )
+  }
+ return res;
+}
+
+slice add_ending_delimiter (slice query) method_id {
+  throw_if(32, query.slice_bits() > 1016 - 8 ); ;; Too long domain name
+  return begin_cell().store_slice(query).store_int(0, 8).end_cell().begin_parse();
+}
+
+int calc_cells(cell dnsrecord) {
+  int counter = 0;
+  if (dnsrecord.dict_empty?()) {
+    return 0;
+  } else {
+    (var value, int record_index, int res) = dnsrecord.imin(16);          
+    ifnot(res) {
+      return 0; ;; Probably impossible case
+    } else {
+      counter += 1;
+      do {
+           (record_index, slice record, int found_i) = dnsrecord.idict_get_next?(16, record_index);
+           counter += 1;
+      } until ( ~ found_i );
+      counter -= 1; ;; Last addition should be reverted since found_i = false
+      return counter;
+    }
+  }
+}
+
+(int, int, cell, cell) load_data () {
+  var cs = get_data().begin_parse();
+  (int seqno, int owner_pubkey, cell domain_table, cell expiration_table) = 
+  (cs~load_uint(32), cs~load_uint(256), cs~load_dict(), cs~load_dict());
+  return (seqno, owner_pubkey, domain_table, expiration_table); 
+}
+
+() save_data (int seqno, int pubkey, cell dnsrecords, cell expiration_table) impure {
+  cell storage = begin_cell().store_int(seqno, 32)
+                             .store_uint(pubkey, 256)
+                             .store_dict(dnsrecords)
+                             .store_dict(expiration_table)
+                 .end_cell();
+  set_data(storage);
+}
+
+
+(int, int, int, int) registration_cost(slice domain_name, cell dnsrecords, cell domain_table) {
+  int res = -1;
+  int cost = 0;
+  int period = 0;
+  int cells_num = 0;
+  ifnot (suitable_domain_name(domain_name)) {
+    res = 0;
+  } else {
+    (slice subdomain, slice prefix, slice remaining, int res) = domain_table.find_prefix?(domain_name, 1016);
+    if (res) {
+      res = 0;
+    } else {
+      cells_num = calc_cells(dnsrecords);
+      (int per_cell, int per_domain, period) = get_price_for_storage();
+      cost = calc_price_per_year(domain_name) + cells_num * per_cell;
+    }
+  }
+  return (res, cost, period, cells_num);  
+}
+
+;; expiration table is table where indexes are (time<<32 + some_32int)
+;; it allows us effectively collect garbage while have up to 2**32 domains
+;; which expirate at given second
+(int, cell) add_expiration_date (cell expiration_table, int expiration_time, slice domain_name) {
+  int expiration_index = expiration_time << 32;
+  ifnot(expiration_table.dict_empty?()) {
+    do {
+      expiration_index += 1;
+      expiration_index~touch();
+      (slice value, int found) = expiration_table.udict_get?(64, expiration_index);
+    } until ( ~ found );
+  }
+  expiration_table~udict_set(64, expiration_index, domain_name);
+  return (expiration_index, expiration_table);
+}
+
+(int, cell) change_expiration_date (cell expiration_table, int old_exp_index, int expiration_time, slice domain_name) {
+  ifnot(expiration_table.dict_empty?()) {
+    expiration_table~udict_delete_get?(64, old_exp_index);
+  }
+  return add_expiration_date(expiration_table, expiration_time, domain_name);
+}
+
+(cell, cell, int) garbage_collection (cell domains, cell expiration_table) {
+  int t = now();
+  int grace_period = 31 * 24 * 3600;
+  int updated? = 0;
+  int treshold = max(( t - grace_period ) << 32, 0);
+  (slice domain_name, int expiration_index, int found_i) = expiration_table.umin(64);
+  ifnot (found_i) {
+    return (domains, expiration_table, 0);
+  } else {
+    if(expiration_index < treshold) {
+      updated? = -1;
+      ;; remove domain
+      ;; remove expiration
+      do {
+        domains~remove_prefix?(1016, domain_name);
+        expiration_table~udict_delete_get?(64, expiration_index);
+        (expiration_index, domain_name, found_i) = expiration_table.udict_get_next?(64, expiration_index);  
+      } until ( (~ found_i).or(expiration_index >= treshold ) );
+    }
+  }
+  return (domains, expiration_table, updated?);
+}
+
+(cell, cell) register_domain(slice domain_name, 
+                             cell new_dnsrecords,
+                             int msg_value, int cost, int period, int cells_num,
+                             cell domain_table,
+                             cell expiration_table) {
+  int n = now();
+  domain_name = add_ending_delimiter(domain_name);
+  (int expiration_index, expiration_table) = add_expiration_date(expiration_table,
+                                                                 n + msg_value * period / cost,
+                                                                 domain_name);
+  cell subdomain = begin_cell().store_dict(new_dnsrecords)
+                               .store_dict( new_dict() ) ;; subdomains
+                               .store_uint( cells_num, 32)
+                               .store_uint( 0, 32) ;; subdomains_num
+                               .store_uint( msg_value, 80) 
+                               .store_uint( n , 32)
+                               .store_uint( expiration_index , 64)
+                   .end_cell();
+  domain_table~put_prefix?(domain_name, subdomain.begin_parse(), 1016);
+  return (domain_table, expiration_table);
+}
+
+(cell, cell) prolongate_domain(slice domain_name, 
+                               int msg_value,
+                               cell domain_table,
+                               cell expiration_table) {
+  int n = now();
+  domain_name = add_ending_delimiter(domain_name);
+  (slice subdomain, slice prefix, slice remaining, int res) = domain_table.find_prefix?(domain_name, 1016);
+  throw_unless(55, res);
+  ;; We okay if this is subdomain, and prolongate main domain
+  (cell dns_record, 
+  cell domains, 
+  int total_cells, 
+  int total_domains, 
+  int remaining_balance, 
+  int last_check,
+  int expiration_index) = (subdomain~load_dict(),
+                           subdomain~load_dict(),
+                           subdomain~load_int(32),
+                           subdomain~load_int(32),
+                           subdomain~load_int(80),
+                           subdomain~load_int(32),
+                           subdomain~load_int(64));
+  (int per_cell, int per_domain, int period) = get_price_for_storage();
+  int cost_per_period = per_cell * total_cells + per_domain * total_domains + calc_price_per_year(prefix);
+  int remaining_balance = remaining_balance - (n - last_check) * cost_per_period / period + msg_value;
+  int expiration_time = remaining_balance * period / cost_per_period + n;   
+  (int new_expiration_index, expiration_table) = change_expiration_date(expiration_table, expiration_index, expiration_time, domain_name);
+
+  cell subdomain = begin_cell().store_dict(dns_record)
+                               .store_dict( domains ) ;; subdomains
+                               .store_uint( total_cells, 32)
+                               .store_uint( total_domains, 32) ;; subdomains_num
+                               .store_uint( remaining_balance, 80) 
+                               .store_uint( n , 32)
+                               .store_uint( new_expiration_index , 64)
+                   .end_cell();
+  domain_table~put_prefix?(prefix, subdomain.begin_parse(), 1016);
+  return (domain_table, expiration_table);
+}
+
+;; success, domains_table, total_cells_num_change, total_domains_num_change
+(int, cell, int, int) update_domain(slice domain_name, 
+                                          cell domains,
+                                          cell dnsrecord_add,
+                                          cell dnsrecord_remove,
+                                          cell domains_add,
+                                          cell domains_remove) {
+  (slice subdomain_data, slice prefix, slice remaining, int res) = domains.find_prefix?(domain_name, 1016);
+  ifnot(res) {
+    return (0, domains, 0, 0);
+  }
+  int should_update? = 0;
+  (cell subdomain_dns_record, 
+   cell subdomain_domains, 
+   int subdomain_total_cells, 
+   int subdomain_total_domains) = (subdomain_data~load_dict(),
+                                   subdomain_data~load_dict(),
+                                   subdomain_data~load_int(32),
+                                   subdomain_data~load_int(32));
+  int total_cells_num_change = 0;
+  int total_domains_num_change = 0;
+  if( remaining.slice_data_empty?() ) { 
+    should_update? = -1;
+    ifnot (dnsrecord_add.dict_empty?()) {
+      (var record, int record_index, int found_i) = dnsrecord_add.imin(16);
+      do {
+          (slice replaced_value, int added?) = subdomain_dns_record~idict_setget?(16, record_index, record);
+          ;; added? = 0 - there was no value, we added new. ; ~added? <=> -1;  -= ~added? <=> +1
+          ;; added? = -1 - there was value, we replaced old one. ; ~added? <=> 0;
+          total_cells_num_change -= ~ added?;
+          (record_index, record, found_i) = dnsrecord_add.idict_get_next?(16, record_index);      
+      } until ( ~ found_i );
+    }
+    ifnot (dnsrecord_remove.dict_empty?()) {
+      (var record, int record_index, int found_i) = dnsrecord_remove.imin(16);        
+      do {
+        int deleted? = subdomain_dns_record~idict_del?(16, record_index);
+        total_cells_num_change += deleted?;
+        (record_index, record, found_i) = dnsrecord_remove.idict_get_next?(16, record_index);
+      } until ( ~ found_i );
+    }
+    ifnot (domains_add.dict_empty?()) {
+      (var record, int record_index, int found_dar) = domains_add.imin(16);
+      do {
+        cell added_domain_dns_record = record~load_dict();
+        slice added_domain_name = record;
+        (slice _subdomain, slice _prefix, slice _remaining, int found_pfx) = subdomain_domains.find_prefix?(added_domain_name, 1016);
+        ifnot (found_pfx) {
+          total_domains_num_change += 1;
+          int new_cells = calc_cells(added_domain_dns_record);
+          total_cells_num_change += new_cells;
+          cell added_domain = begin_cell().store_dict(added_domain_dns_record)
+                                          .store_dict( new_dict() ) ;; subdomains
+                                          .store_uint( new_cells, 32)
+                                          .store_uint( 0, 32) ;; subdomains_num
+                             .end_cell();     
+          subdomain_domains~put_prefix?(added_domain_name, added_domain.begin_parse(), 1016);    
+        } 
+        (record_index, record, found_dar) = domains_add.idict_get_next?(16, record_index); 
+      } until ( ~ found_dar );
+    }
+    ifnot (domains_remove.dict_empty?()) {
+      (var subdomain_name, int record_index, int found_drr) = domains_remove.imin(16);      
+      do {
+        (slice removed_domain, slice prefix, slice remaining, int found_rd?) = subdomain_domains.find_prefix?(subdomain_name, 1016);
+        if (found_rd?) {
+          slice unused = removed_domain~load_bits(2); ;; Two dictionaries dnsrecords and subdomains
+          (int rm_cell_num, int rm_subdomain_num) = (removed_domain~load_uint(32), removed_domain~load_uint(32));
+          total_domains_num_change -= rm_subdomain_num + 1; ;; +1 because we delete subdomain itself
+          total_cells_num_change -= rm_cell_num;
+          subdomain_domains~remove_prefix?(1016, subdomain_name);    
+        } 
+        (record_index, subdomain_name, found_drr) = domains_remove.idict_get_next?(16, record_index);
+      } until ( ~ found_drr );
+    }
+  } else { ;; update of subdomain requsted
+    (should_update?, subdomain_domains, total_cells_num_change, total_domains_num_change) =
+      update_domain(remaining, 
+                    subdomain_domains,
+                    dnsrecord_add,
+                    dnsrecord_remove,
+                    domains_add,
+                    domains_remove);
+  }
+  if ( should_update? ) {
+    cell updated_subdomain_data = begin_cell()
+                                       .store_dict(subdomain_dns_record)
+                                       .store_dict(subdomain_domains)
+                                       .store_uint(subdomain_total_cells + total_cells_num_change, 32)
+                                       .store_uint(subdomain_total_domains + total_domains_num_change, 32)
+                                       .store_slice(subdomain_data) ;; residue
+                          .end_cell();
+    domains~put_prefix?(domain_name, updated_subdomain_data.begin_parse(), 1016);
+  }
+  return (-1, domains, total_cells_num_change, total_domains_num_change);
+}
+
+(cell, cell) update_top_level_domain(slice domain_name, 
+                                     cell domains,
+                                     cell dnsrecord_add,
+                                     cell dnsrecord_remove,
+                                     cell domains_add,
+                                     cell domains_remove,
+                                     int msg_value,
+                                     cell expiration_table) {
+  domain_name = add_ending_delimiter(domain_name);
+  (int should_update?, domains, int total_cells_num_change, int total_domains_num_change) =
+    update_domain(domain_name, 
+                  domains,
+                  dnsrecord_add,
+                  dnsrecord_remove,
+                  domains_add,
+                  domains_remove);
+  if(should_update?) {
+    (slice subdomain_data, slice prefix, slice remaining, int res) = domains.find_prefix?(domain_name, 1016);
+    (cell subdomain_dns_record, 
+     cell subdomain_domains, 
+     int subdomain_total_cells, 
+     int subdomain_total_domains,
+     int remaining_balance,
+     int last_check,
+     int expiration_index) = (subdomain_data~load_dict(),
+                              subdomain_data~load_dict(),
+                              subdomain_data~load_int(32),
+                              subdomain_data~load_int(32),
+                              subdomain_data~load_int(80),
+                              subdomain_data~load_int(32),
+                              subdomain_data~load_int(64));
+    int n = now();
+    (int per_cell, int per_domain, int period) = get_price_for_storage();
+    int cost_per_period = per_cell * subdomain_total_cells + per_domain * subdomain_total_domains + calc_price_per_year(prefix);
+    int remaining_balance = remaining_balance - (n - last_check) * cost_per_period / period + msg_value;
+    int expiration_time = remaining_balance * period / cost_per_period + n;   
+    (int new_expiration_index, expiration_table) = change_expiration_date(expiration_table, expiration_index, expiration_time, domain_name);
+
+    cell subdomain = begin_cell().store_dict( subdomain_dns_record)
+                                 .store_dict( subdomain_domains ) ;; subdomains
+                                 .store_uint( subdomain_total_cells, 32)
+                                 .store_uint( subdomain_total_domains, 32) ;; subdomains_num
+                                 .store_uint( remaining_balance, 80) 
+                                 .store_uint( n , 32)
+                                 .store_uint( new_expiration_index , 64)
+                     .end_cell();
+    domains~put_prefix?(prefix, subdomain.begin_parse(), 1016);
+  }
+  return (domains, expiration_table);
+}
+
+() authorize (slice s_addr, cell domain_table, slice domain_name) impure {
+  domain_name = add_ending_delimiter(domain_name);
+  (slice subdomain, slice prefix, slice remaining, int found_domain) = domain_table.find_prefix?(domain_name, 1016);
+  throw_unless(51, found_domain);
+  (cell dnsrecord, domain_table) = (subdomain~load_dict(),
+                                    subdomain~load_dict() );
+  throw_if(52, dnsrecord.dict_empty?());
+  (slice owner, int found_owner ) = dnsrecord.idict_get?(16, -2);
+  throw_unless(53, found_owner);
+  throw_unless(54, check_slice_equality(owner, s_addr));
+}
+
+(int, cell) dnsresolve (slice query, int category) method_id {
+  if ( query.slice_data_empty?() ) {
+    return (0, null_cell() );
+  }
+  query = add_ending_delimiter(query);
+  (var seqno, var pubkey, cell domain_table, cell expiration_table) = load_data();
+  int found_prefix_len = 0;
+  int ready = 0;
+  (int res_code, cell res_cell) = ( 0, null_cell() );
+  do {
+    (slice subdomain, slice prefix, slice remaining, int res) = domain_table.find_prefix?(query, 1016);
+    ifnot (res) {
+      ready = -1;
+    } else { 
+      found_prefix_len += prefix.slice_bits();
+      (cell dnsrecord, domain_table) = (subdomain~load_dict(),
+                                        subdomain~load_dict() );
+      if( remaining.slice_data_empty?() ) {
+        if( dnsrecord.dict_empty?() ) {
+          ready = -1;
+        } else {
+          if (category == 0) {
+            ready = -1;
+            (res_code, res_cell) = ( found_prefix_len, dnsrecord);
+          } else {
+            (slice record, int result ) = dnsrecord.idict_get?(16, category);
+            ready = -1;
+            if(result) {
+              (res_code, res_cell) = ( found_prefix_len, s2c(record));
+            } else {
+              (res_code, res_cell) = ( found_prefix_len, null_cell() );
+            }
+          }
+        }    
+      } else {
+        query = remaining;
+        (slice child_resolver, int crf?) = dnsrecord.idict_get?(16, -1);
+        if ( crf? ) {
+          ready = -1;
+          (res_code, res_cell) = (found_prefix_len, s2c(child_resolver) );
+        }
+      }
+    } 
+  } until ( ready );
+  return (res_code, res_cell);
+}
+
+;; Returns time to expiration, number of used cells, number of registered sub domains, remaining_balance
+;; For first level domains only.
+(int, int, int, int) get_expiration_info (slice query, int unix_timestamp) method_id {
+
+  (var seqno, var pubkey, cell domain_table, cell expiration_table) = load_data();
+  query = add_ending_delimiter(query);
+  (slice subdomain, slice prefix, slice remaining, int res) = domain_table.find_prefix?(query, 1016);
+  ifnot(remaining.slice_data_empty?()) {
+    return (0,0,0,0);
+  } else {
+    (cell dns_record, 
+     cell domains, 
+     int total_cells, 
+     int total_domains, 
+     int remaining_balance, 
+     int last_check) = (subdomain~load_dict(),
+                        subdomain~load_dict(),
+                        subdomain~load_int(32),
+                        subdomain~load_int(32),
+                        subdomain~load_int(80),
+                        subdomain~load_int(32));
+     (int per_cell, int per_domain, int period) = get_price_for_storage();
+     int cost_per_period = per_cell * total_cells + per_domain * total_domains + calc_price_per_year(prefix);
+     int time_to_expiration = period * remaining_balance / cost_per_period + last_check - unix_timestamp;
+     int remaining_balance = remaining_balance - (unix_timestamp - last_check) * cost_per_period / period;
+     return (time_to_expiration, total_cells, total_domains, remaining_balance);
+  }
+}
+
+() recv_internal (int msg_value, cell in_msg_cell, slice in_msg) {
+  var cs = in_msg_cell.begin_parse();
+  var flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+  if (flags & 1) {
+    ;; ignore all bounced messages
+    return ();
+  }
+  var s_addr = cs~load_msg_addr();
+  if (in_msg.slice_empty?()) {
+    ;; keep money as donation
+    return ();
+  }
+  int op = in_msg~load_uint(32);
+  (var seqno, var pubkey, cell domain_table, cell expiration_table) = load_data();
+  int update? = 0;
+
+  if (op == 0) { ;; Domain registration    
+    slice domain_name = in_msg~load_ref().begin_parse();
+    cell new_dnsrecords = in_msg~load_dict();
+    (int res, int cost, int period, int cells_num) = registration_cost(domain_name, new_dnsrecords, domain_table);
+    if (res) {
+      (domain_table, expiration_table) = register_domain(domain_name, 
+                                                         new_dnsrecords, 
+                                                         msg_value, 
+                                                         cost, 
+                                                         period, 
+                                                         cells_num, 
+                                                         domain_table, 
+                                                         expiration_table);
+      update? = -1;
+    }
+  }  
+  if (op == 1) { ;; Add money
+      slice domain_name = in_msg~load_ref().begin_parse();
+      (domain_table, expiration_table) = prolongate_domain(domain_name, msg_value, domain_table, expiration_table);
+      update? = -1;      
+  }  
+  if (op == 2) { ;; Update_domain
+    slice domain_name = in_msg~load_ref().begin_parse();    
+    authorize(s_addr, domain_table, domain_name);
+    slice dnsrecord_updates = in_msg~load_ref().begin_parse();
+    slice domain_updates = in_msg~load_ref().begin_parse();
+    (cell dnsrecord_add, cell dnsrecord_remove) = (dnsrecord_updates~load_dict(), dnsrecord_updates~load_dict());
+    (cell domains_add, cell domains_remove) = (domain_updates~load_dict(), domain_updates~load_dict());
+    (domain_table, expiration_table) = update_top_level_domain(domain_name,
+                                                               domain_table, 
+                                                               dnsrecord_add, 
+                                                               dnsrecord_remove, 
+                                                               domains_add, 
+                                                               domains_remove, 
+                                                               msg_value, 
+                                                               expiration_table);
+    update? = -1;
+  }
+  (domain_table, expiration_table, int e_updated?) = garbage_collection(domain_table, expiration_table); 
+  if (e_updated?) {
+     update? = -1;
+  }
+  if (update?) {
+    save_data(seqno, pubkey, domain_table, expiration_table);
+  }
+}
+
+() recv_external (slice in_msg) impure {
+  throw_if(48, in_msg.slice_bits() < 8);
+  (var seqno, var pubkey, cell domain_table, cell expiration_table) = load_data();  
+  int op = in_msg~load_uint(8);
+  if( (op == 0) * (seqno == 0) ) {
+    accept_message();
+    save_data(1, pubkey, domain_table, expiration_table);
+    return ();
+  }
+  int provided_seqno = in_msg~load_uint(32);
+  throw_unless(49, provided_seqno == seqno); 
+  ;; accept_message();
+}

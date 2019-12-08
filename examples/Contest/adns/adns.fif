@@ -1,0 +1,1062 @@
+"Asm.fif" include
+// automatically generated from `stdlib.fc` `dns.fc` 
+PROGRAM{
+  93377 DECLMETHOD calc_price_per_year
+  69801 DECLMETHOD get_price_for_new_domain
+  118241 DECLMETHOD get_price_for_storage
+  87707 DECLMETHOD suitable_domain_name
+  111495 DECLMETHOD add_ending_delimiter
+  DECLPROC calc_cells
+  DECLPROC load_data
+  DECLPROC save_data
+  DECLPROC registration_cost
+  DECLPROC add_expiration_date
+  DECLPROC change_expiration_date
+  DECLPROC garbage_collection
+  DECLPROC register_domain
+  DECLPROC prolongate_domain
+  DECLPROC update_domain
+  DECLPROC update_top_level_domain
+  DECLPROC authorize
+  123660 DECLMETHOD dnsresolve
+  120129 DECLMETHOD get_expiration_info
+  DECLPROC recv_internal
+  DECLPROC recv_external
+  calc_price_per_year PROC:<{
+    //  domain
+    SBITS	//  _2
+    3 RSHIFT#	//  len
+    500000000 PUSHINT	//  len basic_price=500000000
+    OVER	//  len basic_price=500000000 len
+    10 GTINT	//  len basic_price=500000000 _8
+    IFJMP:<{	//  len basic_price=500000000
+      NIP	//  basic_price=500000000
+    }>	//  len basic_price=500000000
+    DROP	//  len
+    50000000000 PUSHINT	//  len _10
+    11 PUSHINT	//  len _10 _11=11
+    ROT	//  _10 _11=11 len
+    SUB	//  _10 _12
+    MUL	//  _13
+  }>
+  get_price_for_new_domain PROC:<{
+    //  new_domain
+    calc_price_per_year CALLDICT	//  _1
+    31536000 PUSHINT	//  _1 _6
+  }>
+  get_price_for_storage PROC:<{
+    // 
+    50000000 PUSHINT	//  _0=50000000
+    100000000 PUSHINT	//  _0=50000000 _1=100000000
+    31536000 PUSHINT	//  _0=50000000 _1=100000000 _6
+  }>
+  suitable_domain_name PROC:<{
+    //  domain
+    -1 PUSHINT	//  domain res=-1
+    OVER	//  domain res=-1 domain
+    SBITS	//  domain res=-1 _3
+    3 MODPOW2#	//  domain res=-1 _5
+    0 EQINT	//  domain res=-1 _7
+    IF:<{	//  domain res=-1
+      UNTIL:<{
+        SWAP	//  res domain
+        8 LDU	//  res current_byte domain
+        SWAP	//  res domain current_byte
+        0 EQINT	//  res domain _14
+        IF:<{	//  res domain
+          NIP	//  domain
+          0 PUSHINT	//  domain res=0
+        }>ELSE<{
+          SWAP	//  domain res
+        }>
+        OVER	//  domain res domain
+        SDEMPTY	//  domain res _16
+        OVER	//  domain res _16 res
+        NOT	//  domain res _16 _17
+        OR	//  domain res _18
+      }>	//  domain res
+      NIP	//  res
+    }>ELSE<{	//  domain res=-1
+      2DROP	// 
+      0 PUSHINT	//  res=0
+    }>
+  }>
+  add_ending_delimiter PROC:<{
+    //  query
+    DUP	//  query query
+    SBITS	//  query _2
+    1008 PUSHINT	//  query _2 _5
+    GREATER	//  query _6
+    32 THROWIF
+    0 PUSHINT	//  query _8=0
+    NEWC	//  query _8=0 _9
+    ROT	//  _8=0 _9 query
+    STSLICER	//  _8=0 _10
+    8 STI	//  _12
+    ENDC	//  _13
+    CTOS	//  _14
+  }>
+  calc_cells PROC:<{
+    //  dnsrecord
+    DUP	//  dnsrecord dnsrecord
+    DICTEMPTY	//  dnsrecord _3
+    IFJMP:<{	//  dnsrecord
+      DROP	// 
+      0 PUSHINT	//  _4=0
+    }>	//  dnsrecord
+    DUP
+    16 PUSHINT	//  dnsrecord dnsrecord _8=16
+    DICTIMIN
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  dnsrecord _22 _23 _24
+    s2 POP	//  dnsrecord res record_index
+    SWAP	//  dnsrecord record_index res
+    IFJMP:<{	//  dnsrecord record_index
+      1 PUSHINT	//  dnsrecord record_index counter
+      UNTIL:<{
+        s1 s2 XCPU
+        16 PUSHINT	//  dnsrecord counter record_index dnsrecord _15=16
+        DICTIGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  dnsrecord counter _26 _25 _27
+        s2 POP	//  dnsrecord counter found_i record_index
+        s0 s2 XCHG	//  dnsrecord record_index found_i counter
+        INC	//  dnsrecord record_index found_i counter
+        SWAP	//  dnsrecord record_index counter found_i
+        NOT	//  dnsrecord record_index counter _19
+      }>	//  dnsrecord record_index counter
+      NIP
+      NIP	//  counter
+      DEC	//  counter
+    }>	//  dnsrecord record_index
+    2DROP	// 
+    0 PUSHINT	//  _10=0
+  }>
+  load_data PROC:<{
+    // 
+    c4 PUSH	//  _1
+    CTOS	//  cs
+    32 LDU	//  _7 cs
+    256 LDU	//  _7 _10 cs
+    LDDICT	//  _7 _10 _13 cs
+    LDDICT	//  _7 _10 _13 _24 _23
+    DROP	//  seqno owner_pubkey domain_table expiration_table
+  }>
+  save_data PROC:<{
+    //  seqno pubkey dnsrecords expiration_table
+    NEWC	//  seqno pubkey dnsrecords expiration_table _5
+    s1 s4 XCHG	//  expiration_table pubkey dnsrecords seqno _5
+    32 STI	//  expiration_table pubkey dnsrecords _7
+    s1 s2 XCHG	//  expiration_table dnsrecords pubkey _7
+    256 STU	//  expiration_table dnsrecords _9
+    STDICT	//  expiration_table _10
+    STDICT	//  _11
+    ENDC	//  storage
+    c4 POP
+  }>
+  registration_cost PROC:<{
+    //  domain_name dnsrecords domain_table
+    -1 PUSHINT	//  domain_name dnsrecords domain_table res=-1
+    0 PUSHINT	//  domain_name dnsrecords domain_table res=-1 cost=0
+    s0 s0 s4 PUSH3	//  domain_name dnsrecords domain_table res=-1 cost=0 period=0 cells_num=0 domain_name
+    suitable_domain_name CALLDICT	//  domain_name dnsrecords domain_table res=-1 cost=0 period=0 cells_num=0 _11
+    IF:<{	//  domain_name dnsrecords domain_table res=-1 cost=0 period=0 cells_num=0
+      1016 PUSHINT	//  domain_name dnsrecords domain_table res=-1 cost=0 period=0 cells_num=0 _17=1016
+      s7 s5 s5 PUXC2	//  domain_name dnsrecords cells_num=0 res=-1 cost=0 period=0 domain_name domain_table _17=1016
+      PFXDICTGETQ
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  domain_name dnsrecords cells_num=0 res=-1 cost=0 period=0 _28 _27 _29 _30
+      s0 s3 XCHG
+      3 BLKDROP	//  domain_name dnsrecords cells_num=0 res=-1 cost=0 period=0 res
+      IF:<{	//  domain_name dnsrecords cells_num=0 res=-1 cost=0 period=0
+        s4 POP
+        s4 POP	//  cost=0 period=0 cells_num=0 res=-1
+      }>ELSE<{	//  domain_name dnsrecords cells_num=0 res=-1 cost=0 period=0
+        s2 s3 XCHG
+        3 BLKDROP	//  domain_name dnsrecords res=-1
+        SWAP	//  domain_name res=-1 dnsrecords
+        calc_cells CALLDICT	//  domain_name res=-1 cells_num
+        get_price_for_storage CALLDICT	//  domain_name res=-1 cells_num _31 _32 _33
+        NIP	//  domain_name res=-1 cells_num per_cell period
+        s0 s4 XCHG	//  period res=-1 cells_num per_cell domain_name
+        calc_price_per_year CALLDICT	//  period res=-1 cells_num per_cell _24
+        s2 s1 PUXC	//  period res=-1 cells_num _24 cells_num per_cell
+        MUL	//  period res=-1 cells_num _24 _25
+        ADD	//  period res=-1 cells_num cost
+        s3 s1 s3 XCHG3	//  cost period cells_num res=-1
+      }>
+    }>ELSE<{	//  domain_name dnsrecords domain_table res=-1 cost=0 period=0 cells_num=0
+      s3 POP
+      s3 POP
+      s3 POP
+      s3 POP	//  cells_num=0 cost=0 period=0
+      s0 s2 s1 XC2PU	//  cost period cells_num res
+    }>
+    3 -ROLL	//  res cost period cells_num
+  }>
+  add_expiration_date PROC:<{
+    //  expiration_table expiration_time domain_name
+    DUMPSTK
+    SWAP	//  expiration_table domain_name expiration_time
+    32 LSHIFT#	//  expiration_table domain_name expiration_index
+    s2 PUSH	//  expiration_table domain_name expiration_index expiration_table
+    DICTEMPTY	//  expiration_table domain_name expiration_index _7
+    IFNOT:<{	//  expiration_table domain_name expiration_index
+      UNTIL:<{
+        INC	//  expiration_table domain_name expiration_index
+        DUMPSTK
+        s0 s2 PUSH2
+        64 PUSHINT	//  expiration_table domain_name expiration_index expiration_index expiration_table _15=64
+        DICTUGET
+        NULLSWAPIFNOT	//  expiration_table domain_name expiration_index _21 _22
+        NIP	//  expiration_table domain_name expiration_index found
+        NOT	//  expiration_table domain_name expiration_index _17
+      }>	//  expiration_table domain_name expiration_index
+    }>	//  expiration_table domain_name expiration_index
+    64 PUSHINT	//  expiration_table domain_name expiration_index _19=64
+    s1 s3 s3 PUXC2	//  expiration_index domain_name expiration_index expiration_table _19=64
+    DICTUSET	//  expiration_index expiration_table
+  }>
+  change_expiration_date PROC:<{
+    //  expiration_table old_exp_index expiration_time domain_name
+    s3 PUSH	//  expiration_table old_exp_index expiration_time domain_name expiration_table
+    DICTEMPTY	//  expiration_table old_exp_index expiration_time domain_name _4
+    IFNOT:<{	//  expiration_table old_exp_index expiration_time domain_name
+      s2 s3 XCHG2
+      64 PUSHINT	//  domain_name expiration_time old_exp_index expiration_table _6=64
+      DICTUDELGET
+      NULLSWAPIFNOT	//  domain_name expiration_time _11 _12 _13
+      2DROP	//  domain_name expiration_time expiration_table
+    }>ELSE<{
+      s1 s3 s3 XCHG3
+      DROP	//  domain_name expiration_time expiration_table
+    }>
+    s0 s2 XCHG	//  expiration_table expiration_time domain_name
+    add_expiration_date CALLDICT	//  _14 _15
+  }>
+  garbage_collection PROC:<{
+    //  domains expiration_table
+    NOW	//  domains expiration_table t
+    2678400 PUSHINT	//  domains expiration_table t grace_period
+    SWAP
+    0 PUSHINT
+    s0 s2 XCHG	//  domains expiration_table updated?=0 t grace_period
+    SUB	//  domains expiration_table updated?=0 _13
+    32 LSHIFT#	//  domains expiration_table updated?=0 _15
+    OVER	//  domains expiration_table updated?=0 _15 _16=0
+    MAX	//  domains expiration_table updated?=0 treshold
+    s2 PUSH
+    64 PUSHINT	//  domains expiration_table updated?=0 treshold expiration_table _21=64
+    DICTUMIN
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  domains expiration_table updated?=0 treshold domain_name expiration_index found_i
+    IFNOTJMP:<{	//  domains expiration_table updated?=0 treshold domain_name expiration_index
+      4 BLKDROP	//  domains expiration_table
+      0 PUSHINT	//  domains expiration_table _23=0
+    }>	//  domains expiration_table updated?=0 treshold domain_name expiration_index
+    s0 s2 PUSH2	//  domains expiration_table updated?=0 treshold domain_name expiration_index expiration_index treshold
+    LESS	//  domains expiration_table updated?=0 treshold domain_name expiration_index _24
+    IF:<{	//  domains expiration_table updated?=0 treshold domain_name expiration_index
+      s3 POP	//  domains expiration_table expiration_index treshold domain_name
+      -1 PUSHINT	//  domains expiration_table expiration_index treshold domain_name updated?=-1
+      UNTIL:<{
+        s0 s5 XCHG
+        1016 PUSHINT	//  updated? expiration_table expiration_index treshold domain_name domains _27=1016
+        PFXDICTDEL	//  updated? expiration_table expiration_index treshold _40 _41
+        DROP	//  updated? expiration_table expiration_index treshold domains
+        64 PUSHINT	//  updated? expiration_table expiration_index treshold domains _30=64
+        s3 s4 s4 PUXC2	//  updated? domains expiration_index treshold expiration_index expiration_table _30=64
+        DICTUDELGET
+        NULLSWAPIFNOT	//  updated? domains expiration_index treshold _44 _45 _46
+        2DROP	//  updated? domains expiration_index treshold expiration_table
+        s2 s2 XCPU
+        64 PUSHINT	//  updated? domains expiration_table treshold expiration_index expiration_table _32=64
+        DICTUGETNEXT
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  updated? domains expiration_table treshold domain_name expiration_index found_i
+        NOT	//  updated? domains expiration_table treshold domain_name expiration_index _34
+        s1 s3 PUSH2	//  updated? domains expiration_table treshold domain_name expiration_index _34 expiration_index treshold
+        GEQ	//  updated? domains expiration_table treshold domain_name expiration_index _34 _35
+        OR	//  updated? domains expiration_table treshold domain_name expiration_index _36
+        s5 s6 XCHG
+        s4 s5 XCHG
+        s1 s4 XCHG	//  domains expiration_table expiration_index treshold domain_name updated? _36
+      }>	//  domains expiration_table expiration_index treshold domain_name updated?
+      s0 s3 XCHG
+      3 BLKDROP	//  domains expiration_table updated?
+    }>ELSE<{
+      3 BLKDROP	//  domains expiration_table updated?
+    }>
+  }>
+  register_domain PROC:<{
+    //  domain_name new_dnsrecords msg_value cost period cells_num domain_table expiration_table
+    NOW	//  domain_name new_dnsrecords msg_value cost period cells_num domain_table expiration_table n
+    s0 s8 XCHG	//  n new_dnsrecords msg_value cost period cells_num domain_table expiration_table domain_name
+    add_ending_delimiter CALLDICT	//  n new_dnsrecords msg_value cost period cells_num domain_table expiration_table domain_name
+    s6 s4 PUXC	//  n new_dnsrecords msg_value cost domain_name cells_num domain_table expiration_table msg_value period
+    MUL	//  n new_dnsrecords msg_value cost domain_name cells_num domain_table expiration_table _12
+    s0 s5 XCHG2	//  n new_dnsrecords msg_value expiration_table domain_name cells_num domain_table _12 cost
+    DIV	//  n new_dnsrecords msg_value expiration_table domain_name cells_num domain_table _13
+    s7 s(-1) PUXC	//  n new_dnsrecords msg_value expiration_table domain_name cells_num domain_table n _13
+    ADD	//  n new_dnsrecords msg_value expiration_table domain_name cells_num domain_table _14
+    s4 s0 s3 XC2PU	//  n new_dnsrecords msg_value domain_table domain_name cells_num expiration_table _14 domain_name
+    add_expiration_date CALLDICT	//  n new_dnsrecords msg_value domain_table domain_name cells_num expiration_index expiration_table
+    0 PUSHINT	//  n new_dnsrecords msg_value domain_table domain_name cells_num expiration_index expiration_table _17=0
+    NEWDICT	//  n new_dnsrecords msg_value domain_table domain_name cells_num expiration_index expiration_table _17=0 _18
+    NEWC	//  n new_dnsrecords msg_value domain_table domain_name cells_num expiration_index expiration_table _17=0 _18 _19
+    s1 s9 XCHG	//  n _18 msg_value domain_table domain_name cells_num expiration_index expiration_table _17=0 new_dnsrecords _19
+    STDICT	//  n _18 msg_value domain_table domain_name cells_num expiration_index expiration_table _17=0 _20
+    s1 s8 XCHG	//  n _17=0 msg_value domain_table domain_name cells_num expiration_index expiration_table _18 _20
+    STDICT	//  n _17=0 msg_value domain_table domain_name cells_num expiration_index expiration_table _21
+    s1 s3 XCHG	//  n _17=0 msg_value domain_table domain_name expiration_table expiration_index cells_num _21
+    32 STU	//  n _17=0 msg_value domain_table domain_name expiration_table expiration_index _23
+    s1 s6 XCHG	//  n expiration_index msg_value domain_table domain_name expiration_table _17=0 _23
+    32 STU	//  n expiration_index msg_value domain_table domain_name expiration_table _25
+    s1 s4 XCHG	//  n expiration_index expiration_table domain_table domain_name msg_value _25
+    80 STU	//  n expiration_index expiration_table domain_table domain_name _27
+    s1 s5 XCHG	//  domain_name expiration_index expiration_table domain_table n _27
+    32 STU	//  domain_name expiration_index expiration_table domain_table _29
+    s1 s3 XCHG	//  domain_name domain_table expiration_table expiration_index _29
+    64 STU	//  domain_name domain_table expiration_table _31
+    ENDC	//  domain_name domain_table expiration_table subdomain
+    CTOS	//  domain_name domain_table expiration_table _34
+    2SWAP
+    1016 PUSHINT	//  expiration_table _34 domain_name domain_table _35=1016
+    PFXDICTSET	//  expiration_table _39 _40
+    DROP	//  expiration_table domain_table
+    SWAP	//  domain_table expiration_table
+  }>
+  prolongate_domain PROC:<{
+    //  domain_name msg_value domain_table expiration_table
+    NOW	//  domain_name msg_value domain_table expiration_table n
+    s0 s4 XCHG	//  n msg_value domain_table expiration_table domain_name
+    add_ending_delimiter CALLDICT	//  n msg_value domain_table expiration_table domain_name
+    s0 s2 PUSH2
+    1016 PUSHINT	//  n msg_value domain_table expiration_table domain_name domain_name domain_table _11=1016
+    PFXDICTGETQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  n msg_value domain_table expiration_table domain_name _83 _82 _84 _85
+    NIP	//  n msg_value domain_table expiration_table domain_name prefix subdomain res
+    55 THROWIFNOT
+    LDDICT	//  n msg_value domain_table expiration_table domain_name prefix _22 subdomain
+    LDDICT	//  n msg_value domain_table expiration_table domain_name prefix _22 _24 subdomain
+    32 LDI	//  n msg_value domain_table expiration_table domain_name prefix _22 _24 _26 subdomain
+    32 LDI	//  n msg_value domain_table expiration_table domain_name prefix _22 _24 _26 _29 subdomain
+    80 LDI	//  n msg_value domain_table expiration_table domain_name prefix _22 _24 _26 _29 _32 subdomain
+    32 LDI	//  n msg_value domain_table expiration_table domain_name prefix _22 _24 _26 _29 _32 _35 subdomain
+    64 LDI	//  n msg_value domain_table expiration_table domain_name prefix _22 _24 _26 _29 _32 _35 _99 _98
+    DROP	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index
+    get_price_for_storage CALLDICT	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index per_cell per_domain period
+    s2 s7 XCPU	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index period per_domain per_cell total_cells
+    MUL	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index period per_domain _46
+    s1 s6 XCPU	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index period _46 per_domain total_domains
+    MUL	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index period _46 _47
+    ADD	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index period _48
+    s9 PUSH	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index period _48 prefix
+    calc_price_per_year CALLDICT	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index period _48 _49
+    ADD	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance last_check expiration_index period cost_per_period
+    s14 s3 PUXC	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance cost_per_period expiration_index period n last_check
+    SUB	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance cost_per_period expiration_index period _52
+    s3 PUSH	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance cost_per_period expiration_index period _52 cost_per_period
+    MUL	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance cost_per_period expiration_index period _53
+    OVER	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance cost_per_period expiration_index period _53 period
+    DIV	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance cost_per_period expiration_index period _54
+    s1 s4 XCHG	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains period cost_per_period expiration_index remaining_balance _54
+    SUB	//  n msg_value domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains period cost_per_period expiration_index _55
+    s0 s12 XCHG2	//  n expiration_index domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains period cost_per_period _55 msg_value
+    ADD	//  n expiration_index domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains period cost_per_period remaining_balance
+    s0 s2 PUXC	//  n expiration_index domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance cost_per_period remaining_balance period
+    MUL	//  n expiration_index domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance cost_per_period _58
+    SWAP	//  n expiration_index domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance _58 cost_per_period
+    DIV	//  n expiration_index domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance _59
+    s11 PUSH	//  n expiration_index domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance _59 n
+    ADD	//  n expiration_index domain_table expiration_table domain_name prefix dns_record domains total_cells total_domains remaining_balance expiration_time
+    s3 s8 XCHG
+    s10 s0 s7 XCHG3	//  n total_domains domain_table total_cells remaining_balance prefix dns_record domains expiration_table expiration_index expiration_time domain_name
+    change_expiration_date CALLDICT	//  n total_domains domain_table total_cells remaining_balance prefix dns_record domains new_expiration_index expiration_table
+    NEWC	//  n total_domains domain_table total_cells remaining_balance prefix dns_record domains new_expiration_index expiration_table _64
+    s1 s4 XCHG	//  n total_domains domain_table total_cells remaining_balance prefix expiration_table domains new_expiration_index dns_record _64
+    STDICT	//  n total_domains domain_table total_cells remaining_balance prefix expiration_table domains new_expiration_index _65
+    s1 s2 XCHG	//  n total_domains domain_table total_cells remaining_balance prefix expiration_table new_expiration_index domains _65
+    STDICT	//  n total_domains domain_table total_cells remaining_balance prefix expiration_table new_expiration_index _66
+    s1 s5 XCHG	//  n total_domains domain_table new_expiration_index remaining_balance prefix expiration_table total_cells _66
+    32 STU	//  n total_domains domain_table new_expiration_index remaining_balance prefix expiration_table _68
+    s1 s6 XCHG	//  n expiration_table domain_table new_expiration_index remaining_balance prefix total_domains _68
+    32 STU	//  n expiration_table domain_table new_expiration_index remaining_balance prefix _70
+    s1 s2 XCHG	//  n expiration_table domain_table new_expiration_index prefix remaining_balance _70
+    80 STU	//  n expiration_table domain_table new_expiration_index prefix _72
+    s1 s5 XCHG	//  prefix expiration_table domain_table new_expiration_index n _72
+    32 STU	//  prefix expiration_table domain_table new_expiration_index _74
+    64 STU	//  prefix expiration_table domain_table _76
+    ENDC	//  prefix expiration_table domain_table subdomain
+    CTOS	//  prefix expiration_table domain_table _79
+    s0 s3 s3 XCHG3
+    1016 PUSHINT	//  expiration_table _79 prefix domain_table _80=1016
+    PFXDICTSET	//  expiration_table _105 _106
+    DROP	//  expiration_table domain_table
+    SWAP	//  domain_table expiration_table
+  }>
+  update_domain PROC:<{
+    //  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove
+    s5 s4 PUSH2
+    1016 PUSHINT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove domain_name domains _10=1016
+    PFXDICTGETQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove _159 _158 _160 _161
+    s3 POP	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove res subdomain_data remaining
+    s0 s2 XCHG	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_data res
+    IFNOTJMP:<{	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_data
+      s6 s7 XCHG
+      7 BLKDROP	//  domains
+      0 PUSHINT	//  domains _12=0
+      s1 s1 s1 XCPU2	//  _12=0 domains _13=0 _14=0
+    }>	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_data
+    LDDICT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining _21 subdomain_data
+    LDDICT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining _21 _23 subdomain_data
+    32 LDI	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining _21 _23 _25 subdomain_data
+    32 LDI	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data
+    0 PUSHINT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0
+    s0 s6 PUSH2	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 total_domains_num_change=0 remaining
+    SDEMPTY	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 total_domains_num_change=0 _35
+    IF:<{	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 total_domains_num_change=0
+      s7 POP	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change=0 subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0
+      -1 PUSHINT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change=0 subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 should_update?=-1
+      s11 PUSH	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change=0 subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 should_update?=-1 dnsrecord_add
+      DICTEMPTY	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change=0 subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 should_update?=-1 _37
+      IFNOT:<{	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change=0 subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 should_update?=-1
+        s11 PUSH
+        16 PUSHINT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change=0 subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 should_update?=-1 dnsrecord_add _41=16
+        DICTIMIN
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change=0 subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 should_update?=-1 _170 _171 _172
+        DROP	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change=0 subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 should_update?=-1 record record_index
+        UNTIL:<{
+          16 PUSHINT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change should_update? record record_index _46=16
+          s1 s9 s9 PUXC2	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change should_update? record record_index subdomain_dns_record _46=16
+          DICTISETGET
+          NULLSWAPIFNOT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change should_update? _175 _176 _177
+          NIP	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change should_update? subdomain_dns_record added?
+          NOT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change should_update? subdomain_dns_record _48
+          s1 s3 XCHG	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record should_update? total_cells_num_change _48
+          SUB	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record should_update? total_cells_num_change
+          s7 s12 XCPU
+          16 PUSHINT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change total_cells_num_change subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record should_update? record_index dnsrecord_add _50=16
+          DICTIGETNEXT
+          NULLSWAPIFNOT
+          NULLSWAPIFNOT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change total_cells_num_change subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record should_update? record record_index found_i
+          NOT	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change total_cells_num_change subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record should_update? record record_index _52
+          s4 s9 XCHG	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change should_update? record record_index _52
+        }>	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change should_update? record record_index
+        2DROP
+        s11 POP	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change
+      }>ELSE<{
+        s11 POP	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change
+      }>
+      s9 PUSH	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change dnsrecord_remove
+      DICTEMPTY	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change _53
+      IFNOT:<{	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change
+        s9 PUSH
+        16 PUSHINT	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change dnsrecord_remove _57=16
+        DICTIMIN
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change _181 _182 _183
+        DROP
+        NIP	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change record_index
+        UNTIL:<{
+          16 PUSHINT	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change record_index _61=16
+          s1 s7 s7 PUXC2	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change record_index subdomain_dns_record _61=16
+          DICTIDEL	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change subdomain_dns_record deleted?
+          s1 s2 XCHG	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record total_cells_num_change deleted?
+          ADD	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change record_index subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record total_cells_num_change
+          s6 s10 XCPU
+          16 PUSHINT	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change total_cells_num_change subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record record_index dnsrecord_remove _64=16
+          DICTIGETNEXT
+          NULLSWAPIFNOT
+          NULLSWAPIFNOT	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change total_cells_num_change subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record _187 _186 _188
+          s2 POP	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change total_cells_num_change subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record found_i record_index
+          SWAP	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change total_cells_num_change subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record record_index found_i
+          NOT	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change total_cells_num_change subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data subdomain_dns_record record_index _66
+          s2 s7 XCHG	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change record_index _66
+        }>	//  domain_name domains should_update? dnsrecord_remove domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change record_index
+        DROP
+        s9 POP	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data
+      }>ELSE<{
+        s9 POP	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data
+      }>
+      s7 PUSH	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data domains_add
+      DICTEMPTY	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data _67
+      IFNOT:<{	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data
+        s7 PUSH
+        16 PUSHINT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data domains_add _71=16
+        DICTIMIN
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data _189 _190 _191
+        DROP	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record record_index
+        UNTIL:<{
+          SWAP	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index record
+          LDDICT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record added_domain_name
+          s0 s6 PUSH2
+          1016 PUSHINT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record added_domain_name added_domain_name subdomain_domains _81=1016
+          PFXDICTGETQ
+          NULLSWAPIFNOT
+          NULLSWAPIFNOT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record added_domain_name _195 _194 _196 _197
+          s0 s3 XCHG
+          3 BLKDROP	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record added_domain_name found_pfx
+          IFNOT:<{	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record added_domain_name
+            s0 s8 XCHG	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change
+            INC	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change
+            OVER	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change added_domain_dns_record
+            calc_cells CALLDICT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change new_cells
+            s12 s12 XCPU	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change total_cells_num_change new_cells
+            ADD	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change total_cells_num_change
+            0 PUSHINT	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change total_cells_num_change _89=0
+            NEWDICT	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change total_cells_num_change _89=0 _90
+            NEWC	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index added_domain_dns_record total_domains_num_change total_cells_num_change _89=0 _90 _91
+            s1 s5 XCHG	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index _90 total_domains_num_change total_cells_num_change _89=0 added_domain_dns_record _91
+            STDICT	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index _90 total_domains_num_change total_cells_num_change _89=0 _92
+            s1 s4 XCHG	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index _89=0 total_domains_num_change total_cells_num_change _90 _92
+            STDICT	//  domain_name domains should_update? new_cells domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index _89=0 total_domains_num_change total_cells_num_change _93
+            s1 s13 XCHG	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index _89=0 total_domains_num_change new_cells _93
+            32 STU	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index _89=0 total_domains_num_change _95
+            s1 s2 XCHG	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index total_domains_num_change _89=0 _95
+            32 STU	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index total_domains_num_change _97
+            ENDC	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index total_domains_num_change added_domain
+            CTOS	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove added_domain_name subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index total_domains_num_change _100
+            s0 s8 s6 XCHG3
+            1016 PUSHINT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record record_index subdomain_total_cells subdomain_total_domains subdomain_data _100 added_domain_name subdomain_domains _101=1016
+            PFXDICTSET	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record record_index subdomain_total_cells subdomain_total_domains subdomain_data _198 _199
+            DROP	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record record_index subdomain_total_cells subdomain_total_domains subdomain_data subdomain_domains
+          }>ELSE<{
+            s2 s6 XCHG
+            2DROP	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record record_index subdomain_total_cells subdomain_total_domains subdomain_data subdomain_domains
+          }>
+          s4 s8 XCPU
+          16 PUSHINT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record_index domains_add _103=16
+          DICTIGETNEXT
+          NULLSWAPIFNOT
+          NULLSWAPIFNOT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record record_index found_dar
+          NOT	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record record_index _105
+        }>	//  domain_name domains should_update? total_cells_num_change domains_add domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data record record_index
+        2DROP
+        s7 POP	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains
+      }>ELSE<{
+        s7 POP	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains
+      }>
+      s5 PUSH	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains domains_remove
+      DICTEMPTY	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains _106
+      IFNOT:<{	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains
+        s5 PUSH
+        16 PUSHINT	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains domains_remove _110=16
+        DICTIMIN
+        NULLSWAPIFNOT
+        NULLSWAPIFNOT	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains _203 _204 _205
+        DROP	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index
+        UNTIL:<{
+          s1 s4 PUSH2
+          1016 PUSHINT	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index subdomain_name subdomain_domains _116=1016
+          PFXDICTGETQ
+          NULLSWAPIFNOT
+          NULLSWAPIFNOT	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index _207 _206 _208 _209
+          NIP
+          s2 POP	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index found_rd? removed_domain
+          SWAP	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index removed_domain found_rd?
+          IF:<{	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index removed_domain
+            2 LDSLICE	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index _211 _210
+            NIP	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index removed_domain
+            32 LDU	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index _124 removed_domain
+            32 LDU	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index _124 _215 _214
+            DROP	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index rm_cell_num rm_subdomain_num
+            INC	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index rm_cell_num _131
+            s1 s8 XCHG	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove rm_cell_num subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index total_domains_num_change _131
+            SUB	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove rm_cell_num subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index total_domains_num_change
+            s10 s7 XCHG2	//  domain_name domains should_update? record_index subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name total_cells_num_change rm_cell_num
+            SUB	//  domain_name domains should_update? record_index subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name total_cells_num_change
+            s0 s4 XCHG
+            1016 PUSHINT	//  domain_name domains should_update? record_index subdomain_data domains_remove total_domains_num_change subdomain_dns_record total_cells_num_change subdomain_total_cells subdomain_total_domains subdomain_name subdomain_domains _135=1016
+            PFXDICTDEL	//  domain_name domains should_update? record_index subdomain_data domains_remove total_domains_num_change subdomain_dns_record total_cells_num_change subdomain_total_cells subdomain_total_domains _216 _217
+            DROP	//  domain_name domains should_update? record_index subdomain_data domains_remove total_domains_num_change subdomain_dns_record total_cells_num_change subdomain_total_cells subdomain_total_domains subdomain_domains
+          }>ELSE<{
+            s1 s10 XCHG
+            s5 s5 s0 XCHG3
+            2DROP	//  domain_name domains should_update? record_index subdomain_data domains_remove total_domains_num_change subdomain_dns_record total_cells_num_change subdomain_total_cells subdomain_total_domains subdomain_domains
+          }>
+          s8 s6 XCPU
+          16 PUSHINT	//  domain_name domains should_update? subdomain_domains subdomain_data domains_remove total_domains_num_change subdomain_dns_record total_cells_num_change subdomain_total_cells subdomain_total_domains record_index domains_remove _137=16
+          DICTIGETNEXT
+          NULLSWAPIFNOT
+          NULLSWAPIFNOT	//  domain_name domains should_update? subdomain_domains subdomain_data domains_remove total_domains_num_change subdomain_dns_record total_cells_num_change subdomain_total_cells subdomain_total_domains subdomain_name record_index found_drr
+          NOT	//  domain_name domains should_update? subdomain_domains subdomain_data domains_remove total_domains_num_change subdomain_dns_record total_cells_num_change subdomain_total_cells subdomain_total_domains subdomain_name record_index _139
+          s5 s10 XCHG	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index _139
+        }>	//  domain_name domains should_update? total_cells_num_change subdomain_data domains_remove total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_name record_index
+        2DROP
+        s5 POP	//  domain_name domains should_update? total_cells_num_change subdomain_data subdomain_total_domains total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells
+      }>ELSE<{
+        s5 POP	//  domain_name domains should_update? total_cells_num_change subdomain_data subdomain_total_domains total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells
+      }>
+    }>ELSE<{	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data total_cells_num_change=0 total_domains_num_change=0
+      2DROP	//  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove remaining subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains subdomain_data
+      s3 s4 XCHG
+      s3 s9 XCHG
+      s8 s7 s6 XCHG3	//  domain_name domains subdomain_dns_record subdomain_total_cells subdomain_total_domains subdomain_data remaining subdomain_domains dnsrecord_add dnsrecord_remove domains_add domains_remove
+      update_domain CALLDICT	//  domain_name domains subdomain_dns_record subdomain_total_cells subdomain_total_domains subdomain_data should_update? subdomain_domains total_cells_num_change total_domains_num_change
+      s3 s7 XCHG
+      s1 s6 XCHG
+      s4 s5 XCHG
+      3 -ROLL	//  domain_name domains should_update? total_cells_num_change subdomain_data subdomain_total_domains total_domains_num_change subdomain_dns_record subdomain_domains subdomain_total_cells
+    }>
+    s0 s7 XCHG	//  domain_name domains subdomain_total_cells total_cells_num_change subdomain_data subdomain_total_domains total_domains_num_change subdomain_dns_record subdomain_domains should_update?
+    IF:<{	//  domain_name domains subdomain_total_cells total_cells_num_change subdomain_data subdomain_total_domains total_domains_num_change subdomain_dns_record subdomain_domains
+      s3 s2 XCPU	//  domain_name domains subdomain_total_cells total_cells_num_change subdomain_data subdomain_domains total_domains_num_change subdomain_dns_record subdomain_total_domains total_domains_num_change
+      ADD	//  domain_name domains subdomain_total_cells total_cells_num_change subdomain_data subdomain_domains total_domains_num_change subdomain_dns_record _142
+      s6 s5 XCPU	//  domain_name domains _142 total_cells_num_change subdomain_data subdomain_domains total_domains_num_change subdomain_dns_record subdomain_total_cells total_cells_num_change
+      ADD	//  domain_name domains _142 total_cells_num_change subdomain_data subdomain_domains total_domains_num_change subdomain_dns_record _143
+      NEWC	//  domain_name domains _142 total_cells_num_change subdomain_data subdomain_domains total_domains_num_change subdomain_dns_record _143 _144
+      s1 s2 XCHG	//  domain_name domains _142 total_cells_num_change subdomain_data subdomain_domains total_domains_num_change _143 subdomain_dns_record _144
+      STDICT	//  domain_name domains _142 total_cells_num_change subdomain_data subdomain_domains total_domains_num_change _143 _145
+      s1 s3 XCHG	//  domain_name domains _142 total_cells_num_change subdomain_data _143 total_domains_num_change subdomain_domains _145
+      STDICT	//  domain_name domains _142 total_cells_num_change subdomain_data _143 total_domains_num_change _146
+      s1 s2 XCHG	//  domain_name domains _142 total_cells_num_change subdomain_data total_domains_num_change _143 _146
+      32 STU	//  domain_name domains _142 total_cells_num_change subdomain_data total_domains_num_change _148
+      s1 s4 XCHG	//  domain_name domains total_domains_num_change total_cells_num_change subdomain_data _142 _148
+      32 STU	//  domain_name domains total_domains_num_change total_cells_num_change subdomain_data _150
+      SWAP	//  domain_name domains total_domains_num_change total_cells_num_change _150 subdomain_data
+      STSLICER	//  domain_name domains total_domains_num_change total_cells_num_change _151
+      ENDC	//  domain_name domains total_domains_num_change total_cells_num_change updated_subdomain_data
+      CTOS	//  domain_name domains total_domains_num_change total_cells_num_change _154
+      s0 s4 s3 XCHG3
+      1016 PUSHINT	//  total_cells_num_change total_domains_num_change _154 domain_name domains _155=1016
+      PFXDICTSET	//  total_cells_num_change total_domains_num_change _225 _226
+      DROP	//  total_cells_num_change total_domains_num_change domains
+    }>ELSE<{
+      s5 s8 XCHG
+      s2 s7 XCHG
+      s2 s6 XCHG
+      6 BLKDROP	//  total_cells_num_change total_domains_num_change domains
+    }>
+    -1 PUSHINT	//  total_cells_num_change total_domains_num_change domains _157=-1
+    s1 s3 s3 XCHG3	//  _157=-1 domains total_cells_num_change total_domains_num_change
+  }>
+  update_top_level_domain PROC:<{
+    //  domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove msg_value expiration_table
+    s0 s7 XCHG	//  expiration_table domains dnsrecord_add dnsrecord_remove domains_add domains_remove msg_value domain_name
+    add_ending_delimiter CALLDICT	//  expiration_table domains dnsrecord_add dnsrecord_remove domains_add domains_remove msg_value domain_name
+    s0 s4 PUXC
+    s4 s7 XCHG
+    s3 s6 XCHG
+    s0 s7 s6 XCHG3	//  expiration_table domain_name msg_value domain_name domains dnsrecord_add dnsrecord_remove domains_add domains_remove
+    update_domain CALLDICT	//  expiration_table domain_name msg_value _88 _89 _90 _91
+    2DROP	//  expiration_table domain_name msg_value should_update? domains
+    SWAP	//  expiration_table domain_name msg_value domains should_update?
+    IF:<{	//  expiration_table domain_name msg_value domains
+      s2 s0 PUSH2
+      1016 PUSHINT	//  expiration_table domain_name msg_value domains domain_name domains _17=1016
+      PFXDICTGETQ
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  expiration_table domain_name msg_value domains _93 _92 _94 _95
+      2DROP	//  expiration_table domain_name msg_value domains prefix subdomain_data
+      LDDICT	//  expiration_table domain_name msg_value domains prefix _26 subdomain_data
+      LDDICT	//  expiration_table domain_name msg_value domains prefix _26 _28 subdomain_data
+      32 LDI	//  expiration_table domain_name msg_value domains prefix _26 _28 _30 subdomain_data
+      32 LDI	//  expiration_table domain_name msg_value domains prefix _26 _28 _30 _33 subdomain_data
+      80 LDI	//  expiration_table domain_name msg_value domains prefix _26 _28 _30 _33 _36 subdomain_data
+      32 LDI	//  expiration_table domain_name msg_value domains prefix _26 _28 _30 _33 _36 _39 subdomain_data
+      64 LDI	//  expiration_table domain_name msg_value domains prefix _26 _28 _30 _33 _36 _39 _109 _108
+      DROP	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index
+      NOW	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n
+      get_price_for_storage CALLDICT	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n per_cell per_domain period
+      s2 s8 XCPU	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n period per_domain per_cell subdomain_total_cells
+      MUL	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n period per_domain _52
+      s1 s7 XCPU	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n period _52 per_domain subdomain_total_domains
+      MUL	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n period _52 _53
+      ADD	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n period _54
+      s10 PUSH	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n period _54 prefix
+      calc_price_per_year CALLDICT	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n period _54 _55
+      ADD	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance last_check expiration_index n period cost_per_period
+      s2 s4 PUXC	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance cost_per_period expiration_index n period n last_check
+      SUB	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance cost_per_period expiration_index n period _58
+      s4 PUSH	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance cost_per_period expiration_index n period _58 cost_per_period
+      MUL	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance cost_per_period expiration_index n period _59
+      OVER	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance cost_per_period expiration_index n period _59 period
+      DIV	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance cost_per_period expiration_index n period _60
+      s1 s5 XCHG	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains period cost_per_period expiration_index n remaining_balance _60
+      SUB	//  expiration_table domain_name msg_value domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains period cost_per_period expiration_index n _61
+      s0 s11 XCHG2	//  expiration_table domain_name n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains period cost_per_period expiration_index _61 msg_value
+      ADD	//  expiration_table domain_name n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains period cost_per_period expiration_index remaining_balance
+      s0 s3 PUXC	//  expiration_table domain_name n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance cost_per_period expiration_index remaining_balance period
+      MUL	//  expiration_table domain_name n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance cost_per_period expiration_index _64
+      ROT	//  expiration_table domain_name n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance expiration_index _64 cost_per_period
+      DIV	//  expiration_table domain_name n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance expiration_index _65
+      s9 PUSH	//  expiration_table domain_name n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance expiration_index _65 n
+      ADD	//  expiration_table domain_name n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells subdomain_total_domains remaining_balance expiration_index expiration_time
+      s3 s11 XCHG
+      s1 s0 s10 XCHG3	//  subdomain_total_domains remaining_balance n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells expiration_table expiration_index expiration_time domain_name
+      change_expiration_date CALLDICT	//  subdomain_total_domains remaining_balance n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells new_expiration_index expiration_table
+      NEWC	//  subdomain_total_domains remaining_balance n domains prefix subdomain_dns_record subdomain_domains subdomain_total_cells new_expiration_index expiration_table _70
+      s1 s5 XCHG	//  subdomain_total_domains remaining_balance n domains prefix expiration_table subdomain_domains subdomain_total_cells new_expiration_index subdomain_dns_record _70
+      STDICT	//  subdomain_total_domains remaining_balance n domains prefix expiration_table subdomain_domains subdomain_total_cells new_expiration_index _71
+      s1 s3 XCHG	//  subdomain_total_domains remaining_balance n domains prefix expiration_table new_expiration_index subdomain_total_cells subdomain_domains _71
+      STDICT	//  subdomain_total_domains remaining_balance n domains prefix expiration_table new_expiration_index subdomain_total_cells _72
+      32 STU	//  subdomain_total_domains remaining_balance n domains prefix expiration_table new_expiration_index _74
+      s1 s7 XCHG	//  new_expiration_index remaining_balance n domains prefix expiration_table subdomain_total_domains _74
+      32 STU	//  new_expiration_index remaining_balance n domains prefix expiration_table _76
+      s1 s5 XCHG	//  new_expiration_index expiration_table n domains prefix remaining_balance _76
+      80 STU	//  new_expiration_index expiration_table n domains prefix _78
+      s1 s3 XCHG	//  new_expiration_index expiration_table prefix domains n _78
+      32 STU	//  new_expiration_index expiration_table prefix domains _80
+      s1 s4 XCHG	//  domains expiration_table prefix new_expiration_index _80
+      64 STU	//  domains expiration_table prefix _82
+      ENDC	//  domains expiration_table prefix subdomain
+      CTOS	//  domains expiration_table prefix _85
+      s0 s1 s3 XCHG3
+      1016 PUSHINT	//  expiration_table _85 prefix domains _86=1016
+      PFXDICTSET	//  expiration_table _115 _116
+      DROP	//  expiration_table domains
+    }>ELSE<{
+      s2 POP
+      DROP	//  expiration_table domains
+    }>
+    SWAP	//  domains expiration_table
+  }>
+  authorize PROC:<{
+    //  s_addr domain_table domain_name
+    add_ending_delimiter CALLDICT	//  s_addr domain_table domain_name
+    SWAP
+    1016 PUSHINT	//  s_addr domain_name domain_table _8=1016
+    PFXDICTGETQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  s_addr _31 _30 _32 _33
+    NIP
+    s2 POP	//  s_addr found_domain subdomain
+    SWAP	//  s_addr subdomain found_domain
+    51 THROWIFNOT
+    LDDICT	//  s_addr _35 _34
+    DROP	//  s_addr dnsrecord
+    DUP	//  s_addr dnsrecord dnsrecord
+    DICTEMPTY	//  s_addr dnsrecord _18
+    52 THROWIF
+    -2 PUSHINT	//  s_addr dnsrecord _22=-2
+    SWAP
+    16 PUSHINT	//  s_addr _22=-2 dnsrecord _23=16
+    DICTIGET
+    NULLSWAPIFNOT	//  s_addr owner found_owner
+    53 THROWIFNOT
+    SWAP	//  owner s_addr
+    SDEQ	//  _28
+    54 THROWIFNOT
+  }>
+  dnsresolve PROC:<{
+    //  query category
+    OVER	//  query category query
+    SDEMPTY	//  query category _2
+    IFJMP:<{	//  query category
+      2DROP	// 
+      0 PUSHINT	//  _3=0
+      NULL	//  _3=0 _4
+    }>	//  query category
+    SWAP	//  category query
+    add_ending_delimiter CALLDICT	//  category query
+    load_data CALLDICT	//  category query _53 _54 _55 _56
+    s1 s3 XCHG
+    3 BLKDROP	//  category query domain_table
+    0 PUSHINT	//  category query domain_table found_prefix_len=0
+    s0 s0 PUSH2	//  category query domain_table found_prefix_len=0 ready=0 _17=0
+    NULL	//  category query domain_table found_prefix_len=0 ready=0 res_code=0 res_cell
+    UNTIL:<{
+      s5 s4 PUSH2
+      1016 PUSHINT	//  category query domain_table found_prefix_len ready res_code res_cell query domain_table _23=1016
+      PFXDICTGETQ
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  category query domain_table found_prefix_len ready res_code res_cell prefix subdomain remaining res
+      IF:<{	//  category query domain_table found_prefix_len ready res_code res_cell prefix subdomain remaining
+        s7 POP	//  category query remaining found_prefix_len ready res_code res_cell prefix subdomain
+        SWAP	//  category query remaining found_prefix_len ready res_code res_cell subdomain prefix
+        SBITS	//  category query remaining found_prefix_len ready res_code res_cell subdomain _26
+        s1 s5 XCHG	//  category query remaining subdomain ready res_code res_cell found_prefix_len _26
+        ADD	//  category query remaining subdomain ready res_code res_cell found_prefix_len
+        s0 s4 XCHG	//  category query remaining found_prefix_len ready res_code res_cell subdomain
+        LDDICT	//  category query remaining found_prefix_len ready res_code res_cell _29 subdomain
+        LDDICT	//  category query remaining found_prefix_len ready res_code res_cell _29 _64 _63
+        DROP	//  category query remaining found_prefix_len ready res_code res_cell dnsrecord domain_table
+        s6 PUSH	//  category query remaining found_prefix_len ready res_code res_cell dnsrecord domain_table remaining
+        SDEMPTY	//  category query remaining found_prefix_len ready res_code res_cell dnsrecord domain_table _33
+        IF:<{	//  category query remaining found_prefix_len ready res_code res_cell dnsrecord domain_table
+          s4 POP
+          s5 POP	//  category query dnsrecord found_prefix_len domain_table res_code res_cell
+          s4 PUSH	//  category query dnsrecord found_prefix_len domain_table res_code res_cell dnsrecord
+          DICTEMPTY	//  category query dnsrecord found_prefix_len domain_table res_code res_cell _34
+          IF:<{	//  category query dnsrecord found_prefix_len domain_table res_code res_cell
+            s4 POP	//  category query res_cell found_prefix_len domain_table res_code
+            -1 PUSHINT	//  category query res_cell found_prefix_len domain_table res_code ready=-1
+          }>ELSE<{	//  category query dnsrecord found_prefix_len domain_table res_code res_cell
+            2DROP	//  category query dnsrecord found_prefix_len domain_table
+            s4 PUSH	//  category query dnsrecord found_prefix_len domain_table category
+            0 EQINT	//  category query dnsrecord found_prefix_len domain_table _37
+            IF:<{	//  category query dnsrecord found_prefix_len domain_table
+              -1 PUSHINT	//  category query dnsrecord found_prefix_len domain_table ready=-1
+              s2 PUSH	//  category query res_cell found_prefix_len domain_table ready=-1 res_code
+            }>ELSE<{	//  category query dnsrecord found_prefix_len domain_table
+              16 PUSHINT	//  category query dnsrecord found_prefix_len domain_table _41=16
+              s5 s3 s3 PUXC2	//  category query domain_table found_prefix_len category dnsrecord _41=16
+              DICTIGET
+              NULLSWAPIFNOT	//  category query domain_table found_prefix_len record result
+              -1 PUSHINT	//  category query domain_table found_prefix_len record result ready=-1
+              SWAP	//  category query domain_table found_prefix_len record ready=-1 result
+              IF:<{	//  category query domain_table found_prefix_len record ready=-1
+                SWAP	//  category query domain_table found_prefix_len ready=-1 record
+                NEWC
+                STSLICE
+                ENDC	//  category query domain_table found_prefix_len ready=-1 _44
+                s2 PUSH	//  category query domain_table found_prefix_len ready=-1 res_cell res_code
+              }>ELSE<{	//  category query domain_table found_prefix_len record ready=-1
+                NIP	//  category query domain_table found_prefix_len ready=-1
+                NULL	//  category query domain_table found_prefix_len ready=-1 _45
+                s2 PUSH	//  category query domain_table found_prefix_len ready=-1 res_cell res_code
+              }>
+              s4 s4 s0 XCHG3	//  category query res_cell found_prefix_len domain_table ready=-1 res_code
+            }>
+            SWAP	//  category query res_cell found_prefix_len domain_table res_code ready=-1
+          }>
+        }>ELSE<{	//  category query remaining found_prefix_len ready res_code res_cell dnsrecord domain_table
+          s7 POP	//  category domain_table query found_prefix_len ready res_code res_cell dnsrecord
+          -1 PUSHINT	//  category domain_table query found_prefix_len ready res_code res_cell dnsrecord _48=-1
+          SWAP
+          16 PUSHINT	//  category domain_table query found_prefix_len ready res_code res_cell _48=-1 dnsrecord _49=16
+          DICTIGET
+          NULLSWAPIFNOT	//  category domain_table query found_prefix_len ready res_code res_cell child_resolver crf?
+          IF:<{	//  category domain_table query found_prefix_len ready res_code res_cell child_resolver
+            s0 s3 XCHG
+            3 BLKDROP	//  category domain_table query found_prefix_len child_resolver
+            -1 PUSHINT	//  category domain_table query found_prefix_len child_resolver ready=-1
+            SWAP	//  category domain_table query found_prefix_len ready=-1 child_resolver
+            NEWC
+            STSLICE
+            ENDC	//  category domain_table query found_prefix_len ready=-1 _52
+            s2 PUSH	//  category domain_table query found_prefix_len ready=-1 res_cell res_code
+          }>ELSE<{
+            s1 s2 XCHG
+            DROP	//  category domain_table query found_prefix_len ready res_cell res_code
+          }>
+          s4 s5 XCHG
+          s4 s0 s4 XCHG3	//  category query res_cell found_prefix_len domain_table res_code ready
+        }>
+      }>ELSE<{	//  category query domain_table found_prefix_len ready res_code res_cell prefix subdomain remaining
+        3 BLKDROP
+        s2 POP	//  category query domain_table found_prefix_len res_cell res_code
+        s1 s3 XCHG
+        -1 PUSHINT	//  category query res_cell found_prefix_len domain_table res_code ready
+      }>
+      s0 s1 s4 XCHG3
+      s2 PUSH	//  category query domain_table found_prefix_len ready res_code res_cell ready
+    }>	//  category query domain_table found_prefix_len ready res_code res_cell
+    s2 POP
+    s2 POP
+    s2 POP
+    s2 POP
+    s2 POP	//  res_cell res_code
+    SWAP	//  res_code res_cell
+  }>
+  get_expiration_info PROC:<{
+    //  query unix_timestamp
+    load_data CALLDICT	//  query unix_timestamp _61 _62 _63 _64
+    s1 s3 XCHG
+    3 BLKDROP	//  query unix_timestamp domain_table
+    s0 s2 XCHG	//  domain_table unix_timestamp query
+    add_ending_delimiter CALLDICT	//  domain_table unix_timestamp query
+    ROT
+    1016 PUSHINT	//  unix_timestamp query domain_table _12=1016
+    PFXDICTGETQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  unix_timestamp _66 _65 _67 _68
+    DROP	//  unix_timestamp prefix subdomain remaining
+    SDEMPTY	//  unix_timestamp prefix subdomain _14
+    IFJMP:<{	//  unix_timestamp prefix subdomain
+      LDDICT	//  unix_timestamp prefix _70 _69
+      NIP	//  unix_timestamp prefix subdomain
+      LDDICT	//  unix_timestamp prefix _72 _71
+      NIP	//  unix_timestamp prefix subdomain
+      32 LDI	//  unix_timestamp prefix _29 subdomain
+      32 LDI	//  unix_timestamp prefix _29 _32 subdomain
+      80 LDI	//  unix_timestamp prefix _29 _32 _35 subdomain
+      32 LDI	//  unix_timestamp prefix _29 _32 _35 _80 _79
+      DROP	//  unix_timestamp prefix total_cells total_domains remaining_balance last_check
+      get_price_for_storage CALLDICT	//  unix_timestamp prefix total_cells total_domains remaining_balance last_check per_cell per_domain period
+      s2 s6 XCPU	//  unix_timestamp prefix total_cells total_domains remaining_balance last_check period per_domain per_cell total_cells
+      MUL	//  unix_timestamp prefix total_cells total_domains remaining_balance last_check period per_domain _46
+      s1 s5 XCPU	//  unix_timestamp prefix total_cells total_domains remaining_balance last_check period _46 per_domain total_domains
+      MUL	//  unix_timestamp prefix total_cells total_domains remaining_balance last_check period _46 _47
+      ADD	//  unix_timestamp prefix total_cells total_domains remaining_balance last_check period _48
+      s0 s6 XCHG	//  unix_timestamp _48 total_cells total_domains remaining_balance last_check period prefix
+      calc_price_per_year CALLDICT	//  unix_timestamp _48 total_cells total_domains remaining_balance last_check period _49
+      s1 s6 XCHG	//  unix_timestamp period total_cells total_domains remaining_balance last_check _48 _49
+      ADD	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period
+      s5 s2 PUSH2	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period period remaining_balance
+      MUL	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period _52
+      OVER	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period _52 cost_per_period
+      DIV	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period _53
+      s2 PUSH	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period _53 last_check
+      ADD	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period _54
+      s7 PUSH	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period _54 unix_timestamp
+      SUB	//  unix_timestamp period total_cells total_domains remaining_balance last_check cost_per_period time_to_expiration
+      s7 s2 XCHG2	//  cost_per_period period total_cells total_domains remaining_balance time_to_expiration unix_timestamp last_check
+      SUB	//  cost_per_period period total_cells total_domains remaining_balance time_to_expiration _57
+      s0 s6 XCHG2	//  time_to_expiration period total_cells total_domains remaining_balance _57 cost_per_period
+      MUL	//  time_to_expiration period total_cells total_domains remaining_balance _58
+      s0 s4 XCHG2	//  time_to_expiration remaining_balance total_cells total_domains _58 period
+      DIV	//  time_to_expiration remaining_balance total_cells total_domains _59
+      s1 s3 XCHG	//  time_to_expiration total_domains total_cells remaining_balance _59
+      SUB	//  time_to_expiration total_domains total_cells remaining_balance
+      s1 s2 XCHG	//  time_to_expiration total_cells total_domains remaining_balance
+    }>	//  unix_timestamp prefix subdomain
+    3 BLKDROP	// 
+    0 PUSHINT	//  _15=0
+    s0 s0 s0 PUSH3	//  _15=0 _16=0 _17=0 _18=0
+  }>
+  recv_internal PROC:<{
+    //  msg_value in_msg_cell in_msg
+    SWAP	//  msg_value in_msg in_msg_cell
+    CTOS	//  msg_value in_msg cs
+    4 LDU	//  msg_value in_msg flags cs
+    SWAP
+    1 PUSHINT	//  msg_value in_msg cs flags _9=1
+    AND	//  msg_value in_msg cs _10
+    IFJMP:<{	//  msg_value in_msg cs
+      3 BLKDROP	// 
+    }>	//  msg_value in_msg cs
+    LDMSGADDR	//  msg_value in_msg _86 _85
+    DROP	//  msg_value in_msg s_addr
+    OVER	//  msg_value in_msg s_addr in_msg
+    SEMPTY	//  msg_value in_msg s_addr _14
+    IFJMP:<{	//  msg_value in_msg s_addr
+      3 BLKDROP	// 
+    }>	//  msg_value in_msg s_addr
+    SWAP	//  msg_value s_addr in_msg
+    32 LDU	//  msg_value s_addr op in_msg
+    load_data CALLDICT	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table
+    0 PUSHINT	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?=0
+    s6 PUSH	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?=0 op
+    0 EQINT	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?=0 _27
+    IF:<{	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?=0
+      s0 s5 XCHG	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table in_msg
+      LDREF	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table _29 in_msg
+      SWAP	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table in_msg _29
+      CTOS	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table in_msg domain_name
+      SWAP	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table domain_name in_msg
+      LDDICT	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table domain_name new_dnsrecords in_msg
+      s2 s1 s4 PUSH3	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table domain_name new_dnsrecords in_msg domain_name new_dnsrecords domain_table
+      registration_cost CALLDICT	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table domain_name new_dnsrecords in_msg res cost period cells_num
+      s0 s3 XCHG	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table domain_name new_dnsrecords in_msg cells_num cost period res
+      IF:<{	//  msg_value s_addr op update?=0 seqno pubkey domain_table expiration_table domain_name new_dnsrecords in_msg cells_num cost period
+        s10 POP	//  msg_value s_addr op period seqno pubkey domain_table expiration_table domain_name new_dnsrecords in_msg cells_num cost
+        s4 s6 XCHG
+        s3 s5 XCHG
+        s12 PUSH
+        s4 s5 XCHG2
+        s3 s10 XCHG
+        SWAP	//  msg_value s_addr op in_msg seqno pubkey domain_name new_dnsrecords msg_value cost period cells_num domain_table expiration_table
+        register_domain CALLDICT	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table
+        -1 PUSHINT	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?=-1
+      }>ELSE<{
+        s3 s10 XCHG
+        s3 s5 XCHG
+        5 BLKDROP	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?
+      }>
+    }>	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?
+    s6 PUSH	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update? op
+    1 EQINT	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update? _43
+    IF:<{	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?
+      DROP	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table
+      s0 s4 XCHG	//  msg_value s_addr op expiration_table seqno pubkey domain_table in_msg
+      LDREF	//  msg_value s_addr op expiration_table seqno pubkey domain_table _45 in_msg
+      SWAP	//  msg_value s_addr op expiration_table seqno pubkey domain_table in_msg _45
+      CTOS	//  msg_value s_addr op expiration_table seqno pubkey domain_table in_msg domain_name
+      s8 s2 s5 PUXC2	//  msg_value s_addr op in_msg seqno pubkey domain_name msg_value domain_table expiration_table
+      prolongate_domain CALLDICT	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table
+      -1 PUSHINT	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?=-1
+    }>	//  msg_value s_addr op in_msg seqno pubkey domain_table expiration_table update?
+    s0 s6 XCHG	//  msg_value s_addr update? in_msg seqno pubkey domain_table expiration_table op
+    2 EQINT	//  msg_value s_addr update? in_msg seqno pubkey domain_table expiration_table _51
+    IF:<{	//  msg_value s_addr update? in_msg seqno pubkey domain_table expiration_table
+      s5 POP	//  msg_value s_addr expiration_table in_msg seqno pubkey domain_table
+      s0 s3 XCHG	//  msg_value s_addr expiration_table domain_table seqno pubkey in_msg
+      LDREF	//  msg_value s_addr expiration_table domain_table seqno pubkey _53 in_msg
+      SWAP	//  msg_value s_addr expiration_table domain_table seqno pubkey in_msg _53
+      CTOS	//  msg_value s_addr expiration_table domain_table seqno pubkey in_msg domain_name
+      s6 s4 s6 XCPU2	//  msg_value domain_name expiration_table domain_table seqno pubkey in_msg s_addr domain_table domain_name
+      authorize CALLDICT
+      LDREF	//  msg_value domain_name expiration_table domain_table seqno pubkey _58 in_msg
+      SWAP	//  msg_value domain_name expiration_table domain_table seqno pubkey in_msg _58
+      CTOS	//  msg_value domain_name expiration_table domain_table seqno pubkey in_msg dnsrecord_updates
+      SWAP	//  msg_value domain_name expiration_table domain_table seqno pubkey dnsrecord_updates in_msg
+      LDREF	//  msg_value domain_name expiration_table domain_table seqno pubkey dnsrecord_updates _112 _111
+      DROP	//  msg_value domain_name expiration_table domain_table seqno pubkey dnsrecord_updates _62
+      CTOS	//  msg_value domain_name expiration_table domain_table seqno pubkey dnsrecord_updates domain_updates
+      SWAP	//  msg_value domain_name expiration_table domain_table seqno pubkey domain_updates dnsrecord_updates
+      LDDICT	//  msg_value domain_name expiration_table domain_table seqno pubkey domain_updates _67 dnsrecord_updates
+      LDDICT	//  msg_value domain_name expiration_table domain_table seqno pubkey domain_updates _67 _116 _115
+      DROP	//  msg_value domain_name expiration_table domain_table seqno pubkey domain_updates dnsrecord_add dnsrecord_remove
+      s0 s2 XCHG	//  msg_value domain_name expiration_table domain_table seqno pubkey dnsrecord_remove dnsrecord_add domain_updates
+      LDDICT	//  msg_value domain_name expiration_table domain_table seqno pubkey dnsrecord_remove dnsrecord_add _73 domain_updates
+      LDDICT	//  msg_value domain_name expiration_table domain_table seqno pubkey dnsrecord_remove dnsrecord_add _73 _120 _119
+      DROP	//  msg_value domain_name expiration_table domain_table seqno pubkey dnsrecord_remove dnsrecord_add domains_add domains_remove
+      s7 s8 XCHG
+      4 2 REVERSE
+      2SWAP
+      s9 s8 XCHG2	//  pubkey seqno domain_name domain_table dnsrecord_add dnsrecord_remove domains_add domains_remove msg_value expiration_table
+      update_top_level_domain CALLDICT	//  pubkey seqno domain_table expiration_table
+      -1 PUSHINT	//  pubkey seqno domain_table expiration_table update?=-1
+    }>ELSE<{
+      s2 s7 XCHG
+      s3 s6 XCHG
+      s5 s4 XCHG2
+      s1 s3 XCHG
+      3 BLKDROP	//  pubkey seqno domain_table expiration_table update?
+    }>
+    -ROT	//  pubkey seqno update? domain_table expiration_table
+    garbage_collection CALLDICT	//  pubkey seqno update? domain_table expiration_table e_updated?
+    IF:<{	//  pubkey seqno update? domain_table expiration_table
+      s2 POP	//  pubkey seqno expiration_table domain_table
+      -1 PUSHINT	//  pubkey seqno expiration_table domain_table update?=-1
+    }>ELSE<{
+      s0 s2 XCHG	//  pubkey seqno expiration_table domain_table update?
+    }>
+    IF:<{	//  pubkey seqno expiration_table domain_table
+      s2 s3 XCHG
+      SWAP	//  seqno pubkey domain_table expiration_table
+      save_data CALLDICT
+    }>ELSE<{
+      4 BLKDROP	// 
+    }>
+  }>
+  recv_external PROC:<{
+    //  in_msg
+    DUP	//  in_msg in_msg
+    SBITS	//  in_msg _2
+    8 LESSINT	//  in_msg _4
+    48 THROWIF
+    load_data CALLDICT	//  in_msg seqno pubkey domain_table expiration_table
+    s0 s4 XCHG	//  expiration_table seqno pubkey domain_table in_msg
+    8 LDU	//  expiration_table seqno pubkey domain_table op in_msg
+    SWAP	//  expiration_table seqno pubkey domain_table in_msg op
+    0 EQINT	//  expiration_table seqno pubkey domain_table in_msg _16
+    s4 PUSH	//  expiration_table seqno pubkey domain_table in_msg _16 seqno
+    0 EQINT	//  expiration_table seqno pubkey domain_table in_msg _16 _18
+    MUL	//  expiration_table seqno pubkey domain_table in_msg _19
+    IFJMP:<{	//  expiration_table seqno pubkey domain_table in_msg
+      DROP
+      s2 POP	//  expiration_table domain_table pubkey
+      ACCEPT
+      1 PUSHINT	//  expiration_table domain_table pubkey _21=1
+      s2 s3 XCHG2	//  _21=1 pubkey domain_table expiration_table
+      save_data CALLDICT
+    }>	//  expiration_table seqno pubkey domain_table in_msg
+    NIP
+    NIP
+    s2 POP	//  in_msg seqno
+    SWAP	//  seqno in_msg
+    32 LDU	//  seqno _37 _36
+    DROP	//  seqno provided_seqno
+    SWAP	//  provided_seqno seqno
+    EQUAL	//  _28
+    49 THROWIFNOT
+  }>
+}END>c

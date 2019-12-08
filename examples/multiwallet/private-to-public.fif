@@ -1,0 +1,15 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"multiwallet-code.fif" include
+
+{ 
+	."<private-key>" cr
+	."loading public key from <private-key>.pk"
+	1 halt
+} : usage
+$# 1 < ' usage if
+
+$1 +".pk" load-generate-keypair constant wallet_pk constant public_key
+
+public_key Bx. cr cr

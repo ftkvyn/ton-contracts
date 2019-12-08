@@ -1,0 +1,106 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." <file-base> <seqno> <dest-addr> <amount> [-S <savefile>] [-B <body-boc>] [-T <threshold-num>]" cr
+  ."Creates a order to mutlisig wallet and sign with private key loaded from file <filename-base>.pk " cr
+  ."Multisig parameters are loaded from 'multisig.ctr'. Saves query into <savefile>.boc ('multisig-new-order.boc' by default)" cr 
+  ."Additional message from <body-boc-file> may be attached to message." cr
+  ."Also number of authorization signatures for created order may be set higher than default using -T flag." cr
+  1 halt
+} : usage
+
+$# 4 < $# 10 > or ' usage if
+
+true constant bounce
+
+$1 =: file-base
+$2 parse-int =: seqno
+$3 bounce parse-load-address =: bounce 2=: dest_addr
+$4 $>GR =: amount
+3 constant send-mode  // mode for SENDRAWMSG: +1 - sender pays fees, +2 - ignore errors
+
+$# 6 >= { 5 $() "-B" $= { 6 $() =: body-boc-file } if } if
+$# 6 >= { 5 $() "-S" $= { 6 $() =: save-file } if } if
+$# 6 >= { 5 $() "-T" $= { 6 $() parse-int =: threshold } if } if
+$# 8 >= { 7 $() "-B" $= { 8 $() =: body-boc-file } if } if
+$# 8 >= { 7 $() "-S" $= { 8 $() =: save-file } if } if
+$# 8 >= { 7 $() "-T" $= { 8 $() parse-int =: threshold } if } if
+$# 10 >= { 9 $() "-B" $= { 10 $() =: body-boc-file } if } if
+$# 10 >= { 9 $() "-S" $= { 10 $() =: save-file } if } if
+$# 10 >= { 9 $() "-T" $= { 10 $() parse-int =: threshold } if } if
+
+def? body-boc-file { @' body-boc-file file>B B>boc } { <b b> } cond
+=: body-cell
+
+def? save-file { @' save-file ".boc" $+ }  { "multisig-new-order.boc" } cond
+=: save-filename
+
+"multisig.ctr" file>B
+256 B>u@+ =: multisig-address
+32 B>u@+ =: multisic-wc
+8 B>u@+ =: min-sig-num
+8 B>u@+ =: keys-num
+
+def? threshold
+   { @' threshold dup keys-num > { "Specified threshold higher than keys number" abort } if 
+                  dup min-sig-num < { "Specified threshold less than minimal signatures number of contract" abort } if 
+   }
+   { min-sig-num }
+   cond
+=: threshold
+
+
+
+// ===== Filinig constants
+0xFFFFFFFF =: unix_time_bound
+multisig-address 6277101735386680763835789423207666416102355444464034512896 / =: uniq_token
+file-base +".pk" load-keypair
+constant wallet1_privk
+256 B>u@ constant wallet1_pubk
+3 constant message_mode
+1 constant op_num
+// ======= Creating message
+<b b{01} s, bounce 1 i, b{000100} s, dest_addr addr, amount Gram, 0 9 64 32 + + 1+ u, 
+  body-cell <s 2dup s-fits? not rot over 1 i, -rot { drop body-cell ref, } { s, } cond
+b> constant message_body
+
+<b message_mode 8 u, message_body ref, b> <s constant message_root
+
+// ===== Keys
+dictnew constant provided_keys_info
+
+// === Order
+
+message_root
+0
+dictnew
+7
+udict!
+drop constant order_dict
+
+// ====== Data for signing
+<b b> =: signatures_stairs
+
+<b op_num 8 u, seqno 32 u, unix_time_bound 32 u, threshold 8 u, uniq_token 64 u,
+signatures_stairs ref,
+order_dict dict,
+b>  =: mbody
+
+<b op_num 8 u, seqno 32 u, unix_time_bound 32 u, threshold 8 u, uniq_token 64 u,
+order_dict dict, =: data_for_signing
+
+signatures_stairs hashu 1 >> =: proof_token
+data_for_signing proof_token 255 u, b> hashu wallet1_privk ed25519_sign_uint constant signature1
+
+<b signature1 B, 
+  <b  wallet1_pubk 256 u, mbody <s s,
+  b> ref,
+b> <s constant store_order_message
+
+
+<b b{1000100} s, multisic-wc multisig-address addr, 0 Gram, b{00} s, store_order_message s, b> 
+2 boc+>B dup Bx. cr
+save-filename tuck B>file
+."(Saved to file " type .")" cr
+

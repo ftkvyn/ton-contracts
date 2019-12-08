@@ -1,0 +1,7 @@
+"lib.fif" include
+"TonUtil.fif" include
+
+{ ."Creates a private key and saves it to specifed <filebase>.pk" cr 1 halt } : usage
+$# 1 <> ' usage if
+
+newkeypair drop $1 +".pk" B>file

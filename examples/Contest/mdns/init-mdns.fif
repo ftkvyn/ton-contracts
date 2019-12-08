@@ -1,0 +1,40 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+"mdns.fif" include <s =: contract_code
+
+{ ."usage: " @' $0 type ." <workchain> <privkey-filebase> " cr
+  ."Generate initialisation message for Automatic DNS contract on workchain. Public key may be set as integer or <publick-key> (full filename, not file-base)" cr
+  1 halt
+} : usage
+
+$# 0 > { 1 $() dup "--help" $= swap "-h" $= or ' usage if } if
+$# 2 < $# 2 > or ' usage if
+
+true constant bounce
+$1 parse-int =: wc
+
+$2 +".pk" load-generate-keypair
+constant wallet1_privk
+256 B>u@ constant wallet1_pubk
+
+
+<b 0 32 u, wallet1_pubk 256 u, dictnew dict, dictnew dict, b> =: contract_storage 
+
+
+// build init state
+<b b{00110} s, <b contract_code s, b> ref, contract_storage ref, b>
+dup =: state_init
+dup hashu wc swap 2constant adns_addr
+."new adns wallet address = " adns_addr .addr cr
+
+."Non-bounceable address (for init): " adns_addr 7 .Addr cr
+."Bounceable address (for later access): " adns_addr 6 .Addr cr
+
+<b 0 8 u, b> <s =: init_message 
+<b b{1000100} s, adns_addr addr, b{000010} s, state_init <s s, b{0} s, init_message s, b>
+2 boc+>B
+"mdns-init.boc" tuck B>file
+."(Saved adns contract creating query to file " type .")" cr
+

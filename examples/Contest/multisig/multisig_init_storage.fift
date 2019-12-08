@@ -1,0 +1,22 @@
+"Asm.fif" include
+// automatically generated from `stdlib.fc` `multisig_init_storage.fc` 
+PROGRAM{
+  DECLPROC create_state_init
+  DECLPROC main
+  create_state_init PROC:<{
+    //  min_threshold_num keys
+    NEWDICT	//  min_threshold_num keys _3
+    0 PUSHINT	//  min_threshold_num keys _3 _4=0
+    NEWC	//  min_threshold_num keys _3 _4=0 _5
+    32 STU	//  min_threshold_num keys _3 _7
+    s1 s3 XCHG	//  _3 keys min_threshold_num _7
+    8 STU	//  _3 keys _9
+    STDICT	//  _3 _10
+    STDICT	//  _11
+    ENDC	//  state_init
+  }>
+  main PROC:<{
+    //  min_threshold_num keys
+    create_state_init CALLDICT	//  _2
+  }>
+}END>c

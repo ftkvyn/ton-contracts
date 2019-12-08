@@ -1,0 +1,517 @@
+(cell, int) udict_add?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUADD";
+(cell, ()) ~udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
+(cell) empty_cell () asm "NEWC" "ENDC";
+(slice) empty_slice () asm "NEWC" "ENDC" "CTOS";
+(slice) get_address () asm "MYADDR";
+(int, int) parse_address (slice) asm "REWRITESTDADDR";
+() print_stack () asm "DUMPSTK";
+
+(int) length(tuple t1) asm "TLEN";
+(tuple) empty_tuple() asm "NIL";
+;; Note length should be manually checked (tuple length is less than 255)
+(tuple, ()) ~append_i(tuple t1, int t2) asm(t1 t2) "COMMA";
+(tuple, ()) ~append_t(tuple t1, tuple t2) asm(t1 t2) "COMMA";
+(tuple, ()) ~append_c(tuple t1, cell t2) asm(t1 t2) "COMMA";
+(tuple, ()) ~append_s(tuple t1, slice t2) asm(t1 t2) "COMMA";
+
+;; See smartcontract guideline proposals for details
+int get_uniq_token() method_id {
+  (int wc, int address) = get_address().parse_address();
+  int token = address / 6277101735386680763835789423207666416102355444464034512896; ;; get first 64 bits: deviding by 2**(256-64)
+  return token;
+}
+
+;; Potentially expensive method. However it is used only during contract upgrade.
+int number_of_keys() method_id {
+  slice data_slice = get_data().begin_parse();
+  slice unused_data = data_slice~load_bits(32 + 8) ;
+  cell keys = data_slice~load_dict();
+  var counter = 0;
+  ifnot ( keys.dict_empty?()) {
+    int pubkey = -1; 
+    do {
+      (pubkey, slice signature_slice, int found_pk) = keys.udict_get_next?(256, pubkey);
+      if (found_pk) {      
+        counter += 1;
+      }
+    } until ( ~ found_pk )
+  }
+  return counter;
+}
+
+;; Loads data for subsequent usage and checks message layout, 
+;; antireplay sequence number and validity of first signature.
+;; For all operations except `add_signature_to_order` (operation `0x2`)
+;; global sequence_number is used. This global seq_no is reused as
+;; index for partially signed orders.
+;; For `add_signature_to_order` per order sequence number is used, thus
+;; many orders may be simultaneously signed offline (in parallel) without
+;; necessity of guesing and preserving order.
+(slice, cell, cell, int, int, int, int, int, int) basic_validity_check (slice msg_slice) {
+  int operation = msg_slice~load_uint(8);
+  slice data_slice = get_data().begin_parse();
+  (int stored_seqno, int threshold_num) = (data_slice~load_uint(32), 
+                                           data_slice~load_uint(8));
+  if( operation == 0 ) {
+    throw_unless(33, stored_seqno == 0);
+    return (empty_slice(), new_dict(), new_dict(), 0, 0, 0, 0, 0, 0xFFFFFFFF);
+  }
+  int order_seqno = msg_slice~load_uint(32);
+  int valid_until = -1;
+  int min_signatures_num = 0;
+  if( operation == 1 ) {
+    valid_until = msg_slice~load_uint(32);
+    min_signatures_num = msg_slice~load_uint(8);
+    throw_if(35, valid_until < now());
+    throw_if(41, min_signatures_num < threshold_num); ;;TODO error code
+    threshold_num = min_signatures_num;
+  }
+  int uniq_token = msg_slice~load_uint(64);
+  throw_unless(37, uniq_token == get_uniq_token());
+  throw_unless(36, operation <= 3 ); ;; Fail fast
+
+  var (proof_pub_key, proof_signature) = (msg_slice~load_uint(256), msg_slice~load_bits(512));
+
+  (cell keys_dict, cell stored_orders) = (data_slice~load_dict(),
+                                          data_slice~load_dict());
+  int per_order_seqno_stored = 0;
+  if(operation == 0x2) {
+      (slice order_root_cell, int found) = stored_orders.udict_get?(32, order_seqno);
+      throw_unless(38, found);
+      per_order_seqno_stored = order_root_cell~load_uint(16);
+      valid_until = order_root_cell~load_uint(32); ;; We do not checkthrow here, instead we will allow to garbage collect outdated order
+      int per_order_seqno_provided =  msg_slice~load_uint(16);
+      throw_unless(39, per_order_seqno_stored == per_order_seqno_provided);
+  } else {
+    throw_unless(33, order_seqno == stored_seqno);
+  }
+  data_slice.end_parse();
+
+  var (_, found) = keys_dict.udict_get?(256, proof_pub_key);
+  throw_unless(40, found); ;; TODO check error code
+  cell seed_cell = empty_cell();
+  if(operation == 1) {
+    (slice _1, cell unused_signatures) = msg_slice.load_dict();
+    (slice _3, cell order_dict) = _1.load_dict();
+    seed_cell  = begin_cell().store_uint(operation, 8)
+                                .store_uint(order_seqno, 32)
+                                .store_uint(valid_until, 32)
+                                .store_uint(min_signatures_num, 8)
+                                .store_uint(uniq_token, 64)
+                                .store_dict(order_dict)
+                                .end_cell();
+  }
+  if(operation == 2) {
+    seed_cell  = begin_cell().store_uint(operation, 8)
+                                .store_uint(order_seqno, 32)
+                                .store_uint(uniq_token, 64)
+                                .store_uint(per_order_seqno_stored, 16)
+                                .end_cell();
+
+  }
+  if(operation == 3) {
+    seed_cell  = begin_cell().store_uint(operation, 8)
+                                .store_uint(order_seqno, 32)
+                                .store_uint(uniq_token, 64)
+                                .store_slice(msg_slice)
+                                .end_cell();
+
+  }
+  int seed_hash = cell_hash(seed_cell);
+  throw_unless(34, check_signature(seed_hash, proof_signature, proof_pub_key));  
+  return (msg_slice, keys_dict, stored_orders, order_seqno, operation, proof_pub_key, seed_hash, threshold_num, valid_until);
+}
+
+
+(cell, int) check_form_signatures_set(cell provided_keys_dict, 
+                                      cell stored_keys_dict,
+                                      cell obtained_signatures_dict,
+                                      int first_key,
+                                      int seed_hash) {
+  int added_sigs_num = 0;
+  var found = obtained_signatures_dict~udict_add?(256, first_key, empty_slice() );
+  added_sigs_num -=  found;
+    
+  int pubkey = -1;
+  ifnot ( provided_keys_dict.dict_empty?() ) {
+    do {
+      (pubkey, slice signature_slice, int found_pk) = provided_keys_dict.udict_get_next?(256, pubkey);
+      if (found_pk) {      
+        var (_, found_stored) = stored_keys_dict.udict_get?(256, pubkey);
+        if(found_stored) {   
+          if(check_signature(seed_hash, signature_slice~load_bits(512), pubkey)) {      
+            int found_sign = obtained_signatures_dict~udict_add?(256, pubkey, empty_slice() );
+            added_sigs_num -= found_sign;
+          }
+        }
+      }
+    } until ( ~ found_pk )
+  }
+  return (obtained_signatures_dict, added_sigs_num);
+}
+
+() process_order(cell messages_dict) impure {
+  int message_index = -1; 
+  ifnot ( messages_dict.dict_empty?()) {
+    do {
+      (message_index, slice message_root, int found) = messages_dict.udict_get_next?(7, message_index);
+      if (found) {      
+        (int mode, cell message_body) = (message_root~load_int(8), message_root~load_ref());
+        send_raw_message(message_body, mode);
+      }
+    } until ( ~ found );  
+  }
+}
+
+(builder) pack_order(int per_order_seqno_stored, int unix_time_bound, int order_threshold, int obtained_signatures_num, cell obtained_signatures_dict, cell messages_dict) impure {
+  builder order = begin_cell()
+                           .store_uint(per_order_seqno_stored, 16)
+                           .store_uint(unix_time_bound, 32)
+                           .store_uint(order_threshold, 8)
+                           .store_uint(obtained_signatures_num, 8)
+                           .store_dict(obtained_signatures_dict)
+                           .store_dict(messages_dict);
+  return order;
+}
+
+() update_stored_orders(int update_seqno?, cell updated_orders) impure {
+  slice data_slice = get_data().begin_parse();
+  (int stored_seqno, int threshold_num) = (data_slice~load_uint(32), 
+                                           data_slice~load_uint(8));
+  if (update_seqno?) {
+    stored_seqno += 1;
+  }
+  cell keys = data_slice~load_dict();
+  set_data(begin_cell()
+                       .store_uint(stored_seqno, 32)
+                       .store_uint(threshold_num, 8)
+                       .store_dict(keys)
+                       .store_dict(updated_orders)
+          .end_cell());
+     
+}
+
+() upgrade_contract (slice new_init) impure {
+  ifnot(new_init.slice_refs_empty?()) {
+    cell code = new_init~load_ref();
+    set_code(code);
+  }
+  ifnot(new_init.slice_refs_empty?()) {
+    cell data = new_init~load_ref();
+    set_data(data);
+  }
+}
+
+(cell, int) collect_outdated_orders(cell orders) {
+  int collected = 0;
+  ifnot ( orders.dict_empty?()) {
+    int order_index = -1; 
+    int t = now();
+    do {
+      (order_index, slice order_root, int found) = orders.udict_get_next?(32, order_index);
+      if (found) {       
+        (int per_order_seqno, int valid_until) = (order_root~load_uint(16), order_root~load_uint(32));
+        if(t > valid_until) {
+          orders~udict_delete_get?(32, order_index);
+          collected += 1;
+        }
+      }
+    } until ( ~ found );  
+  }
+  return (orders,  collected);
+}
+
+() recv_external(slice in_msg) impure {
+  if( in_msg.slice_data_empty?() ) {
+    in_msg = in_msg~load_ref().begin_parse();
+  }
+  var (msg_remain, keys_dict, 
+       stored_orders, order_seqno, 
+       operation, first_checked_key,
+       seed_hash, threshold_num, valid_until) = basic_validity_check(in_msg);
+  accept_message();
+  int update_storage? = 0;
+  int update_seqno? = 0;
+  if (operation == 0) {
+     update_storage? = 1;
+     update_seqno? = 1;
+  }
+  if (operation == 1) {
+    (cell provided_signatures, cell order_dict) = (msg_remain~load_dict(), msg_remain~load_dict());
+    cell obtained_signatures_dict = new_dict();
+    int min_signature_num = threshold_num;
+    (cell updated_signatures_dict, int added_sigs_num) = check_form_signatures_set(provided_signatures, keys_dict, obtained_signatures_dict, first_checked_key, seed_hash);
+    if (added_sigs_num >= min_signature_num) {
+      process_order(order_dict);
+      update_storage? = 1;
+      update_seqno? = 1;
+      stored_orders~udict_delete_get?(32, order_seqno);
+    } else {
+      builder new_order_root = pack_order(1, 
+                                       valid_until,
+                                       min_signature_num,
+                                       added_sigs_num,
+                                       updated_signatures_dict,
+                                       order_dict);
+      update_storage? = 1;
+      update_seqno? = 1;
+      stored_orders~udict_set_builder(32, order_seqno, new_order_root);
+    }
+  }
+  if (operation == 2) {
+
+    cell provided_signatures = msg_remain~load_dict();
+    
+    (slice order_root, int found) = stored_orders.udict_get?(32, order_seqno);
+    (int per_order_seqno_stored, 
+     int unix_time_bound,
+     int order_threshold, 
+     int obtained_signatures_num) = (order_root~load_uint(16),
+                                     order_root~load_uint(32),
+                                     order_root~load_uint(8),
+                                     order_root~load_uint(8));
+    cell obtained_signatures_dict = order_root~load_dict();
+    cell messages_dict = order_root~load_dict();
+    (cell updated_signatures_dict, int added_sigs_num) = check_form_signatures_set(provided_signatures,
+                                                                                   keys_dict,
+                                                                                   obtained_signatures_dict, 
+                                                                                   first_checked_key, 
+                                                                                   seed_hash);
+    if (added_sigs_num + obtained_signatures_num >= order_threshold) {
+      if(valid_until > now()) { ;; We do not allow to process outdated order if wasn't garbage colleted on time
+        process_order(messages_dict);
+        update_storage? = 1;
+        stored_orders~udict_delete_get?(32, order_seqno);
+      }
+    } else {
+      builder updated_order_root = pack_order(per_order_seqno_stored + 1, 
+                                           valid_until,
+                                           order_threshold,
+                                           added_sigs_num + obtained_signatures_num,
+                                           updated_signatures_dict,
+                                           messages_dict);
+      update_storage? = 1;
+      stored_orders~udict_set_builder(32, order_seqno, updated_order_root);
+    }
+  }
+  if (operation == 3) {
+    cell provided_signatures = msg_remain~load_dict();
+    cell obtained_signatures_dict = new_dict();
+    (cell updated_signatures_dict, int added_sigs_num) = check_form_signatures_set(provided_signatures, keys_dict, obtained_signatures_dict, first_checked_key, seed_hash);
+    if (added_sigs_num < number_of_keys()) {
+      upgrade_contract(msg_remain);
+    }
+    return ();
+  }
+
+  (stored_orders, int collected) = collect_outdated_orders(stored_orders);
+  if (collected) {
+    update_storage? = 1;
+  }
+  if (update_storage?) {
+    update_stored_orders(update_seqno?, stored_orders);
+  }
+  return();
+}
+
+
+() recv_internal () {
+ ;;
+}
+
+;; Get methods
+
+int seqno() method_id {
+  return get_data().begin_parse().preload_uint(32);
+}
+
+int order_seqno(int order_id) method_id {
+  slice data_slice = get_data().begin_parse();
+  slice unused_data = data_slice~load_bits(32 + 8) ;
+  (cell m, cell stored_orders) = (data_slice~load_dict(),
+                                  data_slice~load_dict());
+  (slice order_root_cell, int found) = stored_orders.udict_get?(32, order_id);
+  throw_unless(38, found);
+  int per_order_seqno_stored = order_root_cell~load_uint(16);
+  return per_order_seqno_stored;
+}
+
+cell all_pending_orders() method_id {
+  cell result = new_dict();
+  slice data_slice = get_data().begin_parse();
+  slice unused_data = data_slice~load_bits(32 + 8) ;
+  (cell m, cell stored_orders) = (data_slice~load_dict(),
+                                  data_slice~load_dict());
+  ifnot ( stored_orders.dict_empty?()) {
+    int order_index = -1; 
+    do {
+      (order_index, slice order_root, int found) = stored_orders.udict_get_next?(32, order_index);
+      if (found) {       
+          result~udict_add?(32, order_index, order_root );
+        }
+    } until ( ~ found );  
+  }
+  return result;
+}
+
+;; Return id of first 255 pending orders
+tuple pending_orders() method_id {
+  var result = empty_tuple();
+  slice data_slice = get_data().begin_parse();
+  slice unused_data = data_slice~load_bits(32 + 8) ;
+  (cell m, cell stored_orders) = (data_slice~load_dict(),
+                                  data_slice~load_dict());
+  int counter = 0;
+  ifnot ( stored_orders.dict_empty?()) {
+    int order_index = -1; 
+    do {
+      (order_index, slice order_root, int found) = stored_orders.udict_get_next?(32, order_index);
+      if (found) {       
+          result~append_i(order_index);
+          counter += 1;
+        }
+    } until ( (~ found) + (counter > 254) );  
+  }
+  return result;
+}
+
+(int, int, int, int, slice) parse_common_message(slice msg) method_id {
+  int ident = msg~load_uint(1);
+  int ihr_disabled = msg~load_uint(1);
+  int bounce = msg~load_uint(1);
+  int bounced = msg~load_uint(1);
+  (slice src_s, slice dest_s)  = (msg~load_msg_addr(), msg~load_msg_addr() );
+  (int wc, int destination_addr) = parse_std_addr(dest_s);
+  int gram_l = msg~load_uint(4);
+  int nanograms = msg~load_uint(gram_l * 8);
+  cell other_currencies = msg~load_dict();
+  int ihr_fee_l = msg~load_uint(4);
+  int ihr_fee = msg~load_uint(ihr_fee_l * 8);
+  int fwd_fee_l = msg~load_uint(4);
+  int fwd_fee = msg~load_uint(fwd_fee_l * 8);
+  int created_lt = msg~load_uint(64);
+  int created_at = msg~load_uint(32);
+  return (wc, destination_addr, nanograms, bounce, msg);
+}
+
+cell all_pending_orders_by_key(int pubkey, int signed?) method_id {
+  cell result = new_dict();
+  slice data_slice = get_data().begin_parse();
+  slice unused_data = data_slice~load_bits(32 + 8) ;
+  (cell m, cell stored_orders) = (data_slice~load_dict(),
+                                  data_slice~load_dict());
+  ifnot ( stored_orders.dict_empty?()) {
+    int order_index = -1; 
+    do {
+      (order_index, slice order_root, int found) = stored_orders.udict_get_next?(32, order_index);
+      if (found) {   
+          (slice temp, slice unused_data)  = order_root.load_bits(16 + 32 + 8 + 8);
+          cell obtained_signatures = temp~load_dict();
+          (slice unused_data, int found) = obtained_signatures.udict_get?(256, pubkey);
+          if(found == signed?) {
+            result~udict_add?(32, order_index, order_root );
+          }
+        }  
+    } until ( ~ found );  
+  }
+  return result;
+}
+cell all_pending_orders_unsigned_by_key(int pubkey) method_id {
+  return all_pending_orders_by_key(pubkey, 0);
+}
+cell all_pending_orders_signed_by_key(int pubkey) method_id {
+  return all_pending_orders_by_key(pubkey, 1);
+}
+
+tuple pending_orders_by_key(int pubkey, int signed?) method_id {
+  var result = empty_tuple();
+  int counter = 0;
+  slice data_slice = get_data().begin_parse();
+  slice unused_data = data_slice~load_bits(32 + 8 ) ;
+  (cell m, cell stored_orders) = (data_slice~load_dict(),
+                                  data_slice~load_dict());
+  ifnot ( stored_orders.dict_empty?()) {
+    int order_index = -1; 
+    do {
+      (order_index, slice order_root, int found) = stored_orders.udict_get_next?(32, order_index);
+      if (found) {   
+          (slice temp, slice unused_data)  = order_root.load_bits(16 + 32 + 8 + 8);
+          cell obtained_signatures = temp~load_dict();
+          (slice unused_data, int found) = obtained_signatures.udict_get?(256, pubkey);
+          if(found == signed?) {
+            result~append_i(order_index);
+            counter += 1;
+          }
+        }  
+    } until ( (~ found) + (counter > 254) );  
+  }
+  return result;
+}
+tuple pending_orders_unsigned_by_key(int pubkey) method_id {
+  return pending_orders_by_key(pubkey, 0);
+}
+tuple pending_orders_signed_by_key(int pubkey) method_id {
+  return pending_orders_by_key(pubkey, -1);
+}
+
+tuple show_order(order_id) method_id {
+  var result = empty_tuple();
+  slice data_slice = get_data().begin_parse();
+  slice unused_data = data_slice~load_bits(32 + 8) ;
+  (cell m, cell stored_orders) = (data_slice~load_dict(),
+                                  data_slice~load_dict());
+  var result = empty_tuple();
+  ifnot ( stored_orders.dict_empty?()) {
+      (slice order_root, int found) = stored_orders.udict_get?(32, order_id);
+      if (found) {   
+          (slice temp, slice unused_data)  = order_root.load_bits(16 + 32 + 8 + 8);
+          cell obtained_signatures = temp~load_dict();
+          cell messages = temp~load_dict();
+          int mid = -1;          
+          do {
+             (mid, slice message, int found_m) = messages.udict_get_next?(7, mid);
+             if (found_m) {   
+               var subres = empty_tuple();
+               int mode = message~load_uint(8);
+               subres~append_i(mode);
+               cell message_body_c = message~load_ref();
+               slice message_body = message_body_c.begin_parse();
+               (int wc, int destination_addr, int nanograms, int bounce, slice msg) = parse_common_message(message_body);
+               subres~append_i(wc);
+               subres~append_i(destination_addr);
+               subres~append_i(nanograms);
+               subres~append_i(bounce);               
+               ;; drop msg: cannot show in userfriendly format anyway
+               result~append_t(subres);
+             }  
+           } until ( ~ found_m );    
+        }  
+  } 
+  return result;
+}
+
+;; Returns n and k (threshold and overall number of keys) as well as keys themselves
+tuple show_general_info() method_id {
+  var result = empty_tuple();
+  slice data_slice = get_data().begin_parse();
+  slice unused_data = data_slice~load_bits(32) ;
+  int n = data_slice~load_uint(8);
+  cell keys = data_slice~load_dict();
+  var result = empty_tuple();
+  var reskeys = empty_tuple();
+  var counter = 0;
+  ifnot ( keys.dict_empty?()) {
+    int pubkey = -1; 
+    do {
+      (pubkey, slice signature_slice, int found_pk) = keys.udict_get_next?(256, pubkey);
+      if (found_pk) {      
+        reskeys~append_i(pubkey);
+        counter += 1;
+      }
+    } until ( ~ found_pk )
+  }
+  result~append_i(n);
+  result~append_i(counter);
+  result~append_t(reskeys);
+  return result;
+}

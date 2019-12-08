@@ -1,0 +1,22 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <pubkeys-filename> <filename-base-1> [<filename-base-2> [ ... ]]" cr
+  ."Generates several keypairs and saves i'th private key to <filename-base-i>.pk and list of all the public keys to <pubkeys-filename> in the same order"
+  cr 1 halt
+} : usage
+
+$# 2 < ' usage if
+
+$1 constant pbk-filename
+
+"" $# { dup } {
+  swap newkeypair 256 B>u@ pubkey>$ rot swap 10 hold $+ -rot over $() +".pk" B>file 
+  1-
+} while
+
+drop $>B pbk-filename B>file
+
+

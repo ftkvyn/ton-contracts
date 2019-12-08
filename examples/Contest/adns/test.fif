@@ -1,0 +1,196 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+"adns.fif" include <s =: contract_code
+{ dup rot dup rot = { drop drop } { "Error: Got " swap (.) $+ " should be " $+ swap (.) $+ abort } cond } : should_be
+
+
+{ 
+//   
+<b b{01} s, 0 1 i, b{0} s, b{100} s, -rot addr, -rot addr, swap Gram, 0 9 64 32 + + 1+ u, swap ref, b>    
+} : build_message
+
+0xC7EAFBC106A7AA4BA3D16007C6AC64CAAC1078B4A43577339E246F466405E896 =: contract_address_int
+<b b{100} s, 0 8 u, contract_address_int 256 u, b> <s =: contract_address_full
+
+0 tuple 0x076ef1ea , // magic
+0 , 0 , // actions msg_sents
+1570470873 , // unix_time
+1 , 1 , 0 , // block_lt, trans_lt, rand_seed
+ 0 tuple 9223372036854775807 , dictnew , , // reamining balance
+contract_address_full , dictnew , // contract_address, global_config
+1 tuple // wrap to another tuple
+constant c7
+
+
+<b 0 8 u, b> <s constant init_message
+-1 =: recv_external
+0 =: recv_internal
+<b 0 32 u, 1 256 u, dictnew dict, dictnew dict, b> =: contract_storage 
+
+init_message recv_external contract_code contract_storage c7 runvmctx
+=: initialised_storage
+drop // exitcode
+
+123660 =: dnsresolve
+120129 =: get_expiration_info
+
+0 0xAABBFBC106A7AA4BA3D16007C6AC64CAAC1078B4A43577339E246F4664333333 2constant src_addr
+0 contract_address_int 2constant dest_addr
+5 1000000000 * =: amount
+
+"baddaboo" =: domain_name
+
+<b 1 1 u, b> <s
+1
+dictnew
+16
+idict!
+drop
+=: dnsrecord
+
+<b b{100} s, src_addr addr, b> <s
+-2
+dnsrecord
+16
+idict!
+drop
+=: dnsrecord
+
+<b 2 2 u, b> <s
+2
+dnsrecord
+16
+idict!
+drop
+=: dnsrecord
+
+<b 1 1 u, b> <s
+-1
+dnsrecord
+16
+idict!
+drop
+=: dnsrecord_redirect
+
+<b 0 32 u, <b domain_name $, b> ref, dnsrecord dict, b> =: message_body
+message_body amount dest_addr src_addr build_message =: internal_message
+
+<b 0 32 u, <b domain_name $, b> ref, dnsrecord_redirect dict, b> =: message_body_rdr
+message_body amount dest_addr src_addr build_message =: internal_message_rdr
+
+
+<b 0 32 u, <b "abra" $, b> ref, dnsrecord dict, b> =: message_body_abra
+message_body_abra amount dest_addr src_addr build_message =: internal_message_abra
+
+amount internal_message_abra message_body_abra <s recv_internal contract_code initialised_storage c7 runvmctx
+=: storage_with_abra
+drop // exitcode
+
+
+amount internal_message message_body <s recv_internal contract_code storage_with_abra c7 runvmctx
+=: storage_with_baddaboo
+0 should_be
+
+amount internal_message_rdr message_body_rdr <s recv_internal contract_code initialised_storage c7 runvmctx
+=: storage_with_baddaboo_redirect
+drop // exitcode
+
+
+<b domain_name $, b> <s 2 dnsresolve contract_code storage_with_baddaboo c7 runvmctx
+.s
+drop // storage
+0 should_be // error_code
+drop domain_name $len 1+ 8 * should_be
+
+<b domain_name 0 hold +"4" $, b> <s 0 dnsresolve contract_code storage_with_baddaboo c7 runvmctx
+drop // storage
+0 should_be // error_code
+drop 0 should_be
+
+<b domain_name 0 hold +"4" $, b> <s 0 dnsresolve contract_code storage_with_baddaboo_redirect c7 runvmctx
+.s
+drop // storage
+0 should_be // error_code
+drop domain_name $len 1+ 8 * should_be
+
+<b domain_name $, b> <s 77 dnsresolve contract_code storage_with_baddaboo_redirect c7 runvmctx
+.s
+drop // storage
+0 should_be // error_code
+drop domain_name $len 1+ 8 * should_be
+// Domain exists, but no such category
+
+
+<b domain_name $, b> <s 1570470874 get_expiration_info contract_code storage_with_baddaboo_redirect c7 runvmctx
+drop
+0 should_be // error_code
+dup 4990996825 > swap 
+    5000000000 < * 1 should_be // error_code
+drop drop
+1500000 > -1 should_be
+
+
+<b 1 32 u, <b domain_name $, b> ref, b> =: add_money_message_body
+add_money_message_body amount dest_addr src_addr build_message =: add_money_internal_message
+amount add_money_internal_message add_money_message_body <s recv_internal contract_code storage_with_baddaboo_redirect c7 runvmctx
+=: storage_with_baddaboo_redirect_prolonged
+0 should_be
+
+<b domain_name $, b> <s 1570470874 get_expiration_info contract_code storage_with_baddaboo_redirect_prolonged c7 runvmctx
+drop
+0 should_be // error_code
+9990996825 > -1 should_be // error_code
+drop drop
+3000000 > -1 should_be
+
+
+// хотим убрать запись 2
+// хотим добавить запись 3
+<b b> <s
+2
+dictnew
+16
+idict!
+drop
+=: dnsrecord_remove
+
+<b 3 3 u, b> <s
+3
+dictnew
+16
+idict!
+drop
+=: dnsrecord_add
+
+
+
+<b dnsrecord_add dict, dnsrecord_remove dict, b> =: records_update
+<b dictnew dict, dictnew dict, b> =: domains_update
+<b 2 32 u, <b domain_name $, b> ref, records_update ref, domains_update ref, b> =: update_domain_message_body
+update_domain_message_body amount dest_addr src_addr build_message =: update_domain_internal_message
+update_domain_message_body amount dest_addr dest_addr build_message =: update_domain_internal_message_unauthorized
+
+amount update_domain_internal_message_unauthorized update_domain_message_body <s recv_internal contract_code storage_with_baddaboo c7 runvmctx
+drop
+54 should_be
+
+amount update_domain_internal_message update_domain_message_body <s recv_internal contract_code storage_with_baddaboo c7 runvmctx
+=: storage_with_baddaboo_updates
+0 should_be
+
+<b domain_name $, b> <s 2 dnsresolve contract_code storage_with_baddaboo_updates c7 runvmctx
+.s
+drop // storage
+0 should_be // error_code
+drop domain_name $len 1+ 8 * should_be
+
+<b domain_name $, b> <s 3 dnsresolve contract_code storage_with_baddaboo_updates c7 runvmctx
+.s
+drop // storage
+0 should_be // error_code
+drop domain_name $len 1+ 8 * should_be
+
+
+."Ok" cr

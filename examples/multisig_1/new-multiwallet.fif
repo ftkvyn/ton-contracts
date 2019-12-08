@@ -1,0 +1,73 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <n> <k> <workchain-id> <filename-base> <pubkeys-filename>" cr
+  ."Creates a new multiwallet(<n>, <k>) in specified workchain, with private key loaded from <filename-base>.pk and list of public keys loaded from <pubkeys-filename>" cr 1 halt
+} : usage
+{ ' usage if } : usageif
+$# 5 <> usageif
+
+// filename n -- list-of-pubkeys
+{ 
+  swap file>B B>$ swap
+  null swap 
+  { dup } 
+  { 1- -rot swap 
+  	48 $| swap parse-pubkey swap 
+  	dup $len { 1 $| nip } if
+  	swap
+  	rot 
+  	cons
+  	rot
+  } while
+  drop nip
+} : load-pubkeys
+
+// some checks of input correctness should be made
+$1 (number) drop constant n
+$2 (number) drop constant k
+$3 parse-workchain-id constant wc 
+$4 constant file-base
+file-base +".pk" load-keypair constant privkey 256 B>u@ constant pubkey
+$5 n load-pubkeys pubkey swap cons sort-int unique-int constant pubkeys
+
+"multiwallet-code.fif" include constant code
+
+vector-set build-key-dict :build-key-dict
+// start-index list-of-pubkeys -- dict
+{
+  over -rot 
+  dup null? { 
+  	nip nip
+  } {
+  	uncons rot 1+ swap build-key-dict 
+  	swap <b swap 256 u, b> <s
+  	-rot 7 udict! drop
+  } cond
+} :build-key-dict
+forget :build-key-dict
+
+0 pubkeys build-key-dict constant key-dict
+<b 0 32 u, n 7 u, k 7 u, key-dict dict, null dict, -1 32 i, b> constant storage
+
+code storage null <b b{0011} s, 3 roll ref, rot ref, swap dict, b> constant StateInit
+
+StateInit hashu wc swap 2dup 2constant wallet_addr
+."new wallet address = " 2dup .addr cr
+2dup file-base +".addr" save-address-verbose
+."Non-bounceable address (for init): " 2dup 7 .Addr cr
+."Bounceable address (for later access): " 6 .Addr cr
+
+<b 0 32 u, now 120 + 32 u, -1 1 i, b> constant message
+
+message hashu privkey ed25519_sign_uint <b pubkeys pubkey find 7 u, swap B, b> 
+<b message <s s, swap ref, b> constant body
+
+<b b{1000100} s, wallet_addr addr, b{000011} s, StateInit ref, b{1} s, body ref, b> dup constant extmessage
+dup ."External message for initialization is " <s csr. cr
+2 boc+>B 
+."Message will be valid next 2 minutes"
+file-base +"-query.boc" tuck B>file
+."(Saved wallet creating query to file " type .")" cr

@@ -1,0 +1,53 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <dest-addr> <seqno> <valid-until> <amount> [-B <message-boc>] [<savefile>]" cr
+  ."Creates body of a new message to multiwallet smc with order to send <amount> of Grams to <dest-addr> and with no signatures"
+  ."and saves it into <savefile>.boc ('wallet-query.boc' by default)" cr 
+  ."With -B flag loads the message body from message-boc" cr
+  1 halt
+} : usage
+{ ' usage if } : usageif
+
+<b b> =: message-body
+def? $5 { @' $5 "-B" $= {
+	def? $6 {
+	  @' $6 file>B B>boc =: message-body
+	  def? $7 {
+	  	@' $7 =: $5
+	  	5 =: $#
+	  } {
+	  	4 =: $#
+	  } cond
+	} {
+	  usage
+	} cond
+  } if
+} if
+
+$# dup 4 < swap 5 > or usageif
+
+true constant bounce
+
+$1 bounce parse-load-address =: bounce 2=: dest_addr
+$2 parse-int =: seqno
+$3 parse-int =: valid-until
+$4 $>GR =: amount
+def? $5 { @' $5 } { "wallet-query" } cond constant savefile
+3 constant send-mode  // mode for SENDRAWMSG: +1 - sender pays fees, +2 - ignore errors
+
+<b b{00} s, bounce 1 i, b{000100} s, dest_addr addr, amount Gram, 0 9 32 64 + + 1+ u, 
+  message-body <s 2dup s-fits? not rot over 1 i, -rot { drop message-body ref, } { s, } cond
+b> constant transfer-message
+
+."Transferring " amount .GR ."to account "
+dest_addr 2dup bounce 7 + .Addr ." = " .addr cr
+."seqno=0x" seqno x. ."bounce=" bounce . cr
+."valid-until=" valid-until . cr
+."Transfer message is " transfer-message <s csr. cr
+  
+."Saving boc to " savefile type cr
+
+ <b seqno 32 u, valid-until 32 u, b{0} s, send-mode 8 u, transfer-message ref, b> boc>B savefile B>file

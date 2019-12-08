@@ -1,0 +1,67 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+
+{ 
+	cr ."<filename-base> <private-key-file> <dest-addr> <seqno> <amount> <timeout> [<savefile>]" cr
+	
+	."Creates a request to multisignature wallet created by new-multiwallet.fif," cr
+	."with private key loaded from file <private-key-file>.pk "
+  	."and address from <filename-base>.addr," cr
+	."and saves it into <savefile>.boc ('wallet-query.boc' by default)" cr cr
+	
+	."<dest-addr> - currency recipient address" cr
+	."<amount>  - number of grams sent" cr 
+	."<timeout> - expiration Unix time, if the value is less than the current time, the current time will be added to it" cr cr
+	
+	."also the script requires the file <filename-base>-keys.boc" cr
+	1 halt
+} : usage
+
+$# 6 < ' usage if
+
+true constant bounce
+3 constant send-mode 	// mode for SENDRAWMSG: +1 - sender pays fees, +2 - ignore errors
+
+$1 =: file-base
+$2 =: pkey-base
+$3 bounce parse-load-address =: bounce 2=: dest_addr
+$4 parse-int =: seqno
+$5 $>GR =: amount
+$6 parse-int now 2dup < { + } { drop } cond =: timeout
+def? $7 { @' $7 } { "wallet-query" } cond =: output-file
+
+<b 0 32 u, "TESTv2" $, b> constant body-cell
+cr 
+
+file-base +".addr" load-address
+2dup 2constant wallet_addr
+."Source wallet address = " 2dup .addr cr 6 .Addr cr cr
+
+pkey-base +".pk" load-keypair constant wallet_pk constant public_key cr
+
+."Transferring " amount .GR ."grams to account" cr
+dest_addr bounce 7 + .Addr cr
+."seqno=0x" seqno x. ."bounce=" bounce . cr
+."Body of transfer message is " body-cell <s csr. cr
+
+// create a message
+<b b{01} s, bounce 1 i, b{000100} s, dest_addr addr, amount Gram, 0 9 64 32 + + 1+ u, 
+  body-cell <s 2dup s-fits? not rot over 1 i, -rot { drop body-cell ref, } { s, } cond
+b>
+<b seqno 32 u, timeout 32 u, send-mode 8 u, swap ref, b>
+dup ."signing message: " <s csr. cr
+
+{ 256 B>u@ -1 0 file-base +"-keys.boc" file>B B>boc 7 { 256 u@ 4 pick = swap drop { nip dup } if 1+ 0 } dictmap 2drop swap drop } : find_key_in_dict
+
+dup hashu wallet_pk ed25519_sign_uint
+
+<b swap B, public_key find_key_in_dict 7 u, b>	// cell with signature
+<b 1 7 u, swap ref, b>							// signature_info
+<b swap ref, swap <s s, b>						// message
+
+<b b{1000100} s, wallet_addr addr, 0 Gram, b{00} s,
+	swap <s s, b>
+dup ."resulting external message: " <s csr. cr
+2 boc+>B output-file +".boc" tuck B>file
+."Expiration Unix time: " timeout . cr cr
+."(Saved to file " type .")" cr

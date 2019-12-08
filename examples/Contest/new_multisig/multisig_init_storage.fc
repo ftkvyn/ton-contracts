@@ -1,0 +1,19 @@
+(cell, int) udict_add?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUADD";
+cell udict_set(cell dict, int key_len, int index, cell value) asm(value index dict key_len) "DICTUSET";
+(cell) null_cell () asm "NEWC" "ENDC";
+(slice) null_slice () asm "NEWC" "ENDC" "CTOS";
+
+(cell) create_state_init(int min_threshold_num, cell keys) impure {
+  cell state_init = begin_cell()
+                       .store_uint(0, 32) ;; seq_no
+                       .store_uint(min_threshold_num, 8)
+                       .store_dict(keys)
+                       .store_dict(new_dict())
+                   .end_cell();
+  return state_init;
+     
+}
+
+(cell) main (int min_threshold_num, cell keys) impure {
+  return create_state_init(min_threshold_num, keys);
+}

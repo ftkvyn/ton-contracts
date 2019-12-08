@@ -1,0 +1,29 @@
+// SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+//
+// SPDX-License-Identifier: MPL-2.0
+
+"Test.fif" include
+"Asm.fif" include
+
+@tests State/Local/Open.fc <-> Roundtrip
+
+"roundtripTest.asm.gen" include constant contract
+
+{ 12345 } : requesterPk
+{ <b 5678 256 u, b> }     : closeReq
+{ <b 456 200 u, b> }      : openState
+167 constant                timestamp
+
+
+{
+  requesterPk
+  openState
+  closeReq
+  timestamp
+  contract <s
+  runvmdict 0= not abort"TVM died unexpectedly"
+  timestamp   assertIntEq
+  closeReq    assertCellEq
+  openState   assertCellEq
+  requesterPk assertIntEq
+} @test closingRoundtrip

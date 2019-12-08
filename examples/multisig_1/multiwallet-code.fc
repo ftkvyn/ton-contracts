@@ -1,0 +1,283 @@
+int xor(int x, int y) asm "XOR";
+int size(tuple) asm "TLEN";
+
+() ifret(int x) impure asm "IFNOT:";
+() ifnotret(int x) impure asm "IF:";
+
+() set_exception_handler() impure asm "c0 PUSH CONT:<{ exception_handler CALLDICT }> c0 SETCONTCTR c2 POP";
+
+;; if got an exception while processing correctly signed (and therefore accepted), but invalid external message, increment seqno and successfully terminate
+;; otherwise the same external message could be processed and accepted arbitrary number of times thus leading to wasting all of the balance
+
+() exception_handler() impure {
+  var ds = get_data().begin_parse();
+  int seqno = ds~load_uint(32) + 1;
+  set_data(begin_cell()
+    .store_uint(seqno, 32)
+    .store_slice(ds)
+    .end_cell());
+}
+
+(slice, slice, int) dict_get_next?(cell dict, int key_len, slice pivot) asm(pivot dict key_len -> 1 0 2) "DICTGETNEXT" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(slice, slice, int) dict_get_prev?(cell dict, int key_len, slice pivot) asm(pivot dict key_len -> 1 0 2) "DICTGETPREV" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(slice, int) dict_get?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTGET" "NULLSWAPIFNOT";
+(cell, int) dict_delete?(cell dict, int key_len, slice index) asm(index dict key_len) "DICTDEL";
+cell dict_set(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSET";
+(cell, ()) ~dict_set(cell dict, int key_len, slice index, slice value) asm(value index dict key_len) "DICTSET";
+(slice, slice, int) dict_get_min?(cell dict, int key_len) asm "DICTMIN" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+
+slice skip_bits_refs(slice s, int len, int r) asm "SSKIPFIRST";
+int tuple_null?(tuple t) asm "ISNULL";
+int slice_compare(slice s1, slice s2) asm "SDLEXCMP";
+builder store_zeroes(builder b, int n) asm "STZEROES";
+
+int get_oet(cell dict) {
+  var (_, oet, f) = dict.dict_get_min?(32 + 256);
+  int oldest_expire_time = 0xffffffff;
+  if (f) {
+    oldest_expire_time = oet.preload_uint(32);
+  }
+  return oldest_expire_time;
+}
+
+;; returns new dict and new oet
+(cell, int) garbage_collect(cell dict) impure {
+  slice bound = begin_cell().store_uint(now() + 1, 32).store_uint(0, 256).end_cell().begin_parse();
+  do {
+    var (dict', i, _, f) = dict.dict_delete_get_min(32 + 256);
+    f~touch();
+    if (f) {
+      f = (slice_compare(i, bound) < 0);
+    }
+    if (f) {
+      dict = dict';
+    }
+  } until (~ f);
+
+  return (dict, get_oet(dict));
+} 
+
+;; just processing internal messages in the way described in guidelines
+;; the only new opcode is 2019. It means asking smc to collect garbage in its persistent storage.
+() recv_internal(cell header, slice in_msg) impure {
+  var cs = header.begin_parse();
+  cs = cs.skip_bits(3);
+  int bounced? = cs~load_uint(1);
+  ifret(bounced?);
+  int sb = in_msg.slice_bits();
+  ifnotret(sb);
+  int op = in_msg~load_uint(32);
+  ifnotret(op);
+  ifret(op >> 31);
+
+  var ds = get_data().begin_parse();
+  if ((op == 2019) & (ds.skip_bits(32 + 7 + 7 + 1 + 1).preload_uint(32) <= now())) { 
+    accept_message();
+    var (dict, oet) = garbage_collect(ds.skip_bits(32 + 7 + 7 + 1).preload_dict());
+    slice bits = ds~load_bits(32 + 7 + 7);
+    cell dict2 = ds~load_dict();
+    set_data(begin_cell().store_slice(bits).store_dict(dict2).store_dict(dict).store_uint(oet, 32).end_cell());
+    return ();
+  }
+  int query_id = in_msg~load_uint(64);
+  var src = cs~load_msg_addr();
+  send_raw_message(begin_cell()
+    .store_uint(8, 6) ;; 0 0 1 0 00
+    .store_slice(src)
+    .store_uint(0, 9 + 64 + 32 + 1 + 1)
+    .store_uint(0xffffffff, 32)
+    .store_uint(query_id, 64)
+    .end_cell(), 64);
+}
+
+(slice, int, int, slice) load_pubkey&signature(slice cs, cell dict) impure {
+  int pubkey_ind = cs~load_uint(7);
+  var signature = cs~load_bits(512);
+  (slice pubkey_slice, int f) = dict.udict_get?(7, pubkey_ind);
+  throw_unless(35, f);
+  int pubkey = pubkey_slice.preload_uint(256);
+  return (cs, pubkey, pubkey_ind, signature);
+}
+
+;; computes number of set bits in x
+int notbuiltin_popcount(int x) {
+  int res = 0;
+  while (x) {
+    res += 1;
+    x = x & (x - 1);
+  }
+  return res;
+}
+
+;; sends the message if signatures are collected in enough quantity
+;; otherwise stores the order along with the union of already stored and new signatures (actually n-bit mask of pubkey indexes)
+
+(cell) update_order(int k, int n, tuple indexes, cell dict, slice order, int valid_until) impure {
+  int order_hash = slice_hash(order);
+  slice key = begin_cell().store_uint(valid_until, 32).store_uint(order_hash, 256).end_cell().begin_parse();
+  (slice stored_order, int f) = dict.dict_get?(32 + 256, key);
+
+  int mask = 0;
+  while (~ tuple_null?(indexes)) {
+    (int ind, indexes) = uncons(indexes);
+    mask = mask | (1 << ind);
+  }
+
+  if (f) {
+    f = false;
+    int stored_mask = stored_order~load_uint(n);
+    mask = mask | stored_mask;
+    if (notbuiltin_popcount(mask) >= k) {
+      var mode = stored_order~load_uint(8);
+      send_raw_message(stored_order~load_ref(), mode);
+      (dict, _) = dict.dict_delete?(32 + 256, key);
+      f = true;
+    }
+  }
+  if (~ f) {
+    var value = begin_cell().store_uint(mask, n).store_slice(order);
+    dict = dict.dict_set_builder(32 + 256, key, value);
+  }
+  return dict;
+}
+
+;; in_msg bits: seqno (32), valid_until (32), mode (8)
+;; in_msg refs: signatures list, order body
+;; cell from signatures list bits: pubkey index (7), signature (512)
+;; cell from signatures list refs: none or the next cell
+
+() recv_external(slice in_msg) impure {
+  var ds = get_data().begin_parse();
+  int seqno = ds~load_uint(32);
+  int msg_hash = slice_hash(in_msg.skip_bits_refs(0, 1));
+  int mseqno = in_msg~load_uint(32);
+  throw_unless(33, mseqno == seqno);
+  int valid_until = in_msg~load_uint(32);
+  throw_if(33, valid_until <= now());
+  (int n, int k, var keys_dict) = (ds~load_uint(7), ds~load_uint(7), ds~load_dict());
+  slice cs = in_msg~load_ref().begin_parse();
+  (cs, int pubkey, int pubkey_ind, slice signature) = load_pubkey&signature(cs, keys_dict);
+  throw_unless(35, check_signature(msg_hash, signature, pubkey));
+  accept_message(); set_exception_handler();
+  int oldest_expire_time = ds.skip_bits(1).preload_uint(32);
+
+  var orders_dict = ds~load_dict();
+  if (in_msg~load_int(1)) { ;; just init or touch message with no orders
+    if (oldest_expire_time <= now()) {
+      (orders_dict, oldest_expire_time) = garbage_collect(orders_dict);
+    }
+    set_data(begin_cell()
+    .store_uint(seqno + 1, 32)
+    .store_uint(n, 7)
+    .store_uint(k, 7)
+    .store_dict(keys_dict)
+    .store_dict(orders_dict)
+    .store_uint(oldest_expire_time, 32)
+    .end_cell());
+    return ();
+  }
+
+  var indexes = cons(pubkey_ind, nil);
+  int i = 1;
+  while ((~ cs.slice_refs_empty?()) & (i < k)) {
+    cs = cs~load_ref().begin_parse();
+    (cs, pubkey, pubkey_ind, signature) = load_pubkey&signature(cs, keys_dict);
+    throw_unless(35, check_signature(msg_hash, signature, pubkey));
+    indexes = cons(pubkey_ind, indexes);
+    i += 1;
+  }
+  
+  if (i == k) {
+    var mode = in_msg~load_uint(8);
+    send_raw_message(in_msg~load_ref(), mode);
+  }
+  else {
+    orders_dict = update_order(k, n, indexes, orders_dict, in_msg, valid_until);
+    oldest_expire_time = get_oet(orders_dict);
+  }
+
+  if (oldest_expire_time <= now()) {
+    (orders_dict, oldest_expire_time) = garbage_collect(orders_dict);
+  }
+
+  set_data(begin_cell()
+    .store_uint(seqno + 1, 32)
+    .store_uint(n, 7)
+    .store_uint(k, 7)
+    .store_dict(keys_dict)
+    .store_dict(orders_dict)
+    .store_uint(oldest_expire_time, 32)
+    .end_cell());
+}
+
+;; get methods
+
+;; returns -1 if pubkey is unknown; its index otherwise
+int pubkey_index(int pubkey) method_id {
+  cell dict = get_data().begin_parse().skip_bits(32 + 7 + 7).preload_dict(); 
+  int i = -1;
+  int ans = -1;
+  do {
+    (i, var cs, var f) = dict.udict_get_next?(7, i);
+    if (f) {
+      int stored_pubkey = cs.preload_int(256);
+      if (stored_pubkey == pubkey) {
+        ans = i;
+        f = false;
+      }
+    }
+  } until (~ f);
+  return ans;
+}
+
+tuple convert_order_dict(cell dict) {
+  var res = nil;  
+  slice i = begin_cell().store_zeroes(32 + 256).end_cell().begin_parse();
+  do {
+    (slice i', var cs, var f) = dict.dict_get_next?(32 + 256, i);
+    if (f) {
+      cell c = begin_cell().store_uint(i.preload_uint(32), 32).store_slice(cs).end_cell();
+      res = cons(c, res);
+      i = i';
+    }
+  } until (~ f);
+  return res;
+}
+
+;; returns tuple of orders represented by cells of type _ valid-until:(## 32) mode:(## 8) message-to-send:^(Message X)
+tuple get_orders() method_id {
+  return convert_order_dict(get_data().begin_parse().skip_bits(32 + 7 + 7).skip_dict().preload_dict());
+}
+
+;; e = false -- returns tuple of orders with signature of given pubkey
+;; e = true -- without
+tuple orders_with_withno_pubkey(int pubkey_ind, int e) method_id {
+  cell dict = get_data().begin_parse().skip_bits(32 + 7 + 7).skip_dict().preload_dict(); 
+  int n = get_data().begin_parse().skip_bits(32).preload_uint(7);
+  cell res = new_dict();
+
+  slice i = begin_cell().store_zeroes(32 + 256).end_cell().begin_parse();
+  do {
+    (slice i', var cs, var f) = dict.dict_get_next?(32 + 256, i);
+    if (f) {
+      if (xor((cs.preload_uint(n) >> pubkey_ind) & 1, e)) {
+        res = res.dict_set(32 + 256, i, cs);
+      }
+      i = i';
+    }
+  } until (~ f);
+
+  return convert_order_dict(res);
+}
+
+int getn() method_id {
+  return get_data().begin_parse().skip_bits(32).preload_uint(7);
+}
+
+int getk() method_id {
+  return get_data().begin_parse().skip_bits(32 + 7).preload_uint(7);
+}
+
+int seqno() method_id {
+  return get_data().begin_parse().preload_uint(32);
+}

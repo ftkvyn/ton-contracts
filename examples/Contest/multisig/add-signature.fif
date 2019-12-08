@@ -1,0 +1,130 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+  
+{ 
+ 1 u@+ swap
+  { ref@+ }
+  { null }
+ cond
+ swap
+} : load_dict@+
+
+{ 
+ 1 u@+ swap
+  { ref@+ }
+  { null }
+ cond
+ swap
+ drop
+} : load_dict@
+
+
+{ ."usage: " @' $0 type ." <order-message> <file-base> [-S <savefile>] " cr
+  ."Sign new-order-request or sign-partial-request loaded from <order-message>.boc file with private key loaded from file <filename-base>.pk " cr
+  ."Rewrites updated query into <order-message>.boc or writes it to <savefile>.boc" cr 
+  1 halt
+} : usage
+
+$# 2 < $# 4 > or ' usage if
+
+true constant bounce
+$1 =: order-message
+$2 =: file-base
+
+$# 4 >= { 3 $() "-S" $= { 4 $() =: save-file } if } if
+
+def? save-file { @' save-file +".boc" }  { order-message +".boc" } cond
+=: save-filename
+
+file-base +".pk" load-keypair
+constant wallet_privk
+256 B>u@ constant wallet_pubk
+
+
+order-message +".boc" file>B B>boc <s =: full_order
+full_order ref@+ swap =: order_header
+<s =: order
+
+
+order 8 u@+ swap =: op_num
+op_num 1 = 
+  {
+    32 u@+ 32 u@+ 8 u@+ 64 u@+ 
+    256 u@+ 64 B@+
+    load_dict@+ load_dict@
+    =: order_dict
+    =: provided_signatures
+    =: proof_signature
+    =: proof_pubkey
+    =: uniq_token
+    =: min_signature_num
+    =: unix_time_bound
+    =: seq_no
+  }
+if
+
+op_num 2 = 
+  {
+    32 u@+ 64 u@+ 
+    256 u@+ 64 B@+
+    16 u@+
+    load_dict@
+    =: provided_signatures
+    =: per_order_seq_no
+    =: proof_signature
+    =: proof_pubkey
+    =: uniq_token
+    =: order_id
+  }
+if
+
+proof_pubkey wallet_pubk = { "Provided key alreday present in orded (main key)" abort } if
+
+op_num 1 = 
+  {
+    // ====== Data for signing
+    <b op_num 8 u, @' seq_no 32 u, @' unix_time_bound 32 u, @' min_signature_num 8 u, uniq_token 64 u, 
+    dup =: message_builder
+    @' order_dict dict, b>  =: data_for_signing
+  }
+if
+
+op_num 2 =
+  {
+    <b op_num 8 u, @' order_id 32 u, uniq_token 64 u,
+    dup =: message_builder
+    @' per_order_seq_no 16 u,
+    b>  =: data_for_signing
+  }
+if
+
+// Signing
+data_for_signing hashu wallet_privk ed25519_sign_uint constant signature
+
+provided_signatures
+<b signature B, b> <s wallet_pubk provided_signatures 256 udict!+
+{ "Provided key already present in orded (additional key)" abort } ifnot
+=: provided_signatures
+
+// compose back
+op_num 1 = 
+  {
+    message_builder proof_pubkey 256 u, proof_signature B, provided_signatures dict, @' order_dict dict, b>
+  }
+if
+
+op_num 2 = 
+  {
+    message_builder proof_pubkey 256 u, proof_signature B, @' per_order_seq_no 16 u, provided_signatures dict,  b>
+  }
+if
+=: updated_order
+
+ 
+<b order_header s, updated_order ref, b>
+2 boc+>B dup Bx. cr
+save-filename tuck B>file
+."(Saved to file " type .")" cr
+

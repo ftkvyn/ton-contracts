@@ -1,0 +1,233 @@
+#!/usr/bin/env fift -s
+
+/*
+  Created for: Telegram (Open Network) Blockchain Contest
+       Task 1: Multi-signature wallet
+     Flavor 1: n, k and pub-key-list is static
+               no partial-signed tx storage
+               4-search-tree is used for public key storage
+               (may use more code storage, but should use less gas for search)
+       Script: Wallet code creation script
+  Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)
+          September - October 2019
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack
+
+// Load contract code from multisig-1-code.fif into a cell
+PROGRAM{ "multisig-1-code.fif" include }END>c constant Code
+
+{ cr ."/------------------------------------------------------------------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <n> <k> <workchain-id> <filename-base> [-r or -R]"
+//  | Usage:  <n> <k> <workchain-id> <filename-base> [-r or -R]                                            |
+  @' $0 $len 44 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Creates a new multisignature wallet in workchain, with public keys loaded from specified files.      |" cr
+  ."| ! To perform transaction on the wallet <k> signatures out of <n> keys will be required.              |" cr
+  ."| You can use multisig-keygen.fif script to generate private-public key pairs.                         |" cr
+  ."| Files with public keys shall be named <filename-base>-1.kpub to <filename-base>-n.kpub .             |" cr
+  ."| Address will be saved to <filename-base>.addr, and query will be saved to <filename-base>-init.boc . |" cr
+  ."|     -r activates robot mode (output will be more friendly to robots or interfacing program)          |" cr
+  ."|     -R activates full robot mode (without writing to files: filename-base is used only for reading)  |" cr
+  ."\------------------------------------------------------------------------------------------------------/" cr  
+  cr 1 halt
+} : usage
+
+$# 4 >= ' usage ifnot // Verify argument count
+$# 5 <= ' usage ifnot 
+
+$1 parse-int          =: n-val
+$2 parse-int          =: k-val
+$3 parse-workchain-id =: wc
+$4                    =: file-base
+def? $5 { @' $5 } { "" } cond constant Flags
+
+variable RMode     false RMode !
+variable FRMode    false FRMode !
+Flags "-r" $= { true RMode ! } if
+Flags "-R" $= { true RMode ! true FRMode ! } if
+
+// Verify 0 < k <= n <= 100
+
+n-val     0 >  { ."! Error: n must be greater than zero!" cr
+  ."Entered value: n=" n-val . ."<= 0"  cr 2 halt } ifnot
+
+n-val   100 <= { ."! Error: n must be less than or equal to 100!" cr
+  ."Entered value: n=" n-val . ."> 100" cr 3 halt } ifnot
+  
+k-val     0 >  { ."! Error: k must be greater than zero!" cr
+  ."Entered value: k=" k-val . ."<= 0"  cr 3 halt } ifnot
+
+k-val   100 <= { ."! Error: k must be less than or equal to 100!" cr
+  ."Entered value: k=" k-val . ."> 100" cr 4 halt } ifnot
+  
+k-val n-val <= { ."! Error: k must be less than or equal to n!" cr
+  ."Entered values: k=" k-val . ."> n=" n-val . cr 5 halt } ifnot
+
+// Verify existance of public key files [<filename-base>]-n.kpub
+// And load all keys from them in form of 256-bit ints
+// ... + 512-bit signature of public key made with private key for verification
+  
+1 { dup (.) file-base swap "-" swap $+ $+ ".kpub" $+ dup dup file-exists?
+  { ."Error: public key file " type ." does not exist!" cr 6 halt }
+  ifnot file>B dup Blen 96 =
+  { ."Error: File " over type ." contains corrupted key material of length " 
+    Blen . ."(96 expected)" cr 7 halt } ifnot
+  nip 32 B| swap dup -rot dup -rot ed25519_chksign
+  { ."Error: File " over type ." public key signature is corrupted!" cr 7 halt } ifnot
+  256 B>u@ swap 1+ } n-val times drop
+
+// Merge sort (fiftbase.pdf)
+{ hole dup 1 { @ execute } does create 1 ' ! does create
+} : vector-set
+vector-set sort :sort
+vector-set merge :merge
+vector-set less :less
+{ null null rot
+  { dup null? not }
+  { uncons swap rot cons -rot } while drop
+} : split
+{ dup null? { drop } {
+    over null? { nip } {
+      over car over car less ' swap if
+      uncons rot merge cons
+    } cond
+  } cond
+} :merge
+{ dup null? {
+  dup cdr null? {
+      split sort swap sort merge
+    } ifnot
+  } ifnot
+} :sort
+forget :merge
+forget :sort
+' < :less
+
+n-val list sort             // Sort numbers via list
+{ uncons } n-val times drop // Deconstruct list
+n-val tuple constant keys   // Store keys tuple into constant
+variable cnt
+variable cur
+
+{ keys swap 1- [] } : get-key // Key access by index 1 .. n
+{ 0 1 u, } : bit0, { 1 1 u, } : bit1,
+{ dup null? { drop bit0, } { ref, bit1, } cond } : optref,
+
+// Build 4ST for public keys
+// Input: j i
+{ 2dup - 1+ 
+  // over 3 pick 2 pick 2 exch ."> > mk_short_node " . . ."( s:" . .")" cr
+  2 pick 2 pick - dup swap 0 <     // i >= j
+  3 pick 1 <                       // i >= 1
+  5 pick n-val >                   // j <= n
+  or or not
+  {  
+    <b swap 1+ dup cnt ! 2 u, bit0,
+    2 pick get-key 256 u, bit0,
+    cnt @ 2 >= {
+      2 pick 1+ get-key 256 u, bit0,
+      cnt @ 3 >= {
+        2 pick 2+ get-key 256 u, bit0,
+      } if
+    } if
+    b> 
+  }
+  { null nip } // Invalid range
+  cond 
+} : mk_short_node // 1, 2 or 3 elements
+
+variable 'mk_node // For recursion
+{ 'mk_node @ execute } : mk_node
+// Input: j i
+{ // 2dup ."> mk_node " . . cr
+  2dup - 1+ /* j-i+1 */ 
+  dup 3 <=
+  { drop mk_short_node }                     // 6 5 4 3 2 1 0
+  { 3 / 2dup + 1- 2dup + dup 3 pick + 2 exch // j i d c b a <|
+    <b 3 2 u, // Number of PKs is definitely 3
+       swap dup cur ! 1- 5 pick mk_node optref,             // ST-1: i .. a-1
+       cur @ get-key 256 u,                                 // PK-1: a
+       swap cur @ swap dup cur ! 1- swap 1+ mk_node optref, // ST-2: a+1 .. b-1
+       cur @ get-key 256 u,                                 // PK-2: b
+       swap cur @ swap dup cur ! 1- swap 1+ mk_node optref, // ST-3: b+1 .. c-1
+       cur @ get-key 256 u,                                 // PK-4: c
+       3 pick cur @ 1+ mk_node optref,                      // ST-4: c+1 .. j
+    b> 
+  }
+  cond nip nip nip
+} 'mk_node !
+
+n-val 1 mk_node // Build the tree
+
+// Build data
+<b     0 32 u, // seqno
+   n-val  8 u, // n
+   k-val  8 u, // k
+   swap  ref,   // PK tree
+b> constant Data
+
+null constant Lib
+
+<b
+   b{0011} s, // 0 split_depth:nothing$0, 0 special:nothing$0
+   Code ref,  // 1 code:just$1 ^Cell,
+   Data ref,  // 1 data:just$1 ^Cell
+   Lib dict,  // 0 library:nothing$0 (Maybe ^Cell)
+b> constant StateInit
+
+wc StateInit hash 2dup 2constant WalletAddr
+
+<b 
+//  ext_in_msg_info$10
+//  ||src:MsgAddressExt addr_none$00
+//  ||||dest:MsgAddressInt addr_std$10
+//  ||||||anycast:(Maybe Anycast) nothing$0 {X:Type} = Maybe X;
+//  |||||||
+//  \/\/\/V
+  b{1000100} s,
+  WalletAddr addr, // workchain_id:int8 address:uint256 = MsgAddressInt;
+//   import_fee:Grams = CommonMsgInfo; 0000: zero length = zero
+//   || init:(Maybe (Either StateInit ^StateInit))
+//   || just$1 {X:Type} value:X = Maybe X;
+//   || |left$0 {X:Type} {Y:Type} value:X = Either X Y; (Selected StateInit)
+//   || ||
+//  \\//VV
+  b{000010} s,
+  StateInit <s s,
+  b{0} s, // body:(Either X ^X) = Message X; (Selected left$0: X)
+  <b 0 64 u, b> <s s, // Drop in 64 zero bits
+b> constant InitMessage
+
+InitMessage 2 boc+>B dup Blen constant IMLen dup constant IM
+FRMode @ { file-base +"-init.boc" B>file } { drop } swap cond
+
+FRMode @ { 2dup file-base +".addr" save-address } ifnot
+
+RMode @ {
+."/-----------------------------------------------------------------------------------------------------------------------------------------~" cr
+."| * New wallet address (raw): " 2dup .addr cr           
+."| * Address saved to file " file-base type .".addr, "
+    ."wallet-creating query saved to file " file-base type ."-init.boc" cr
+."|>! In order to complete creation of the wallet and use it, you need to follow some steps:" cr
+."| 1. Send some grams to " 2dup 7 .Addr ." (initialization address) to pay for the wallet initialization" cr
+."| 2. Make sure that grams have arrived (use last and getaccount " 2dup 6 .Addr ." commands in lite-client)" cr
+."| 3. Upload wallet-creating query to the network (using command sendfile <path to file>/" file-base type ."-init.boc)" cr
+."| 4. In order to top-up the wallet, use following address: " 6 .Addr ." (not the initialization one)" cr
+."| 5! Pay attention that spending money (sending messages) from the wallet requires " k-val . ."out of "
+    n-val . ."authorized signatures!" cr
+."\-----------------------------------------------------------------------------------------------------------------------------------------~" cr
+} { 
+  ."wallet_address=" 2dup .addr cr
+  ."init_address=" 2dup 7 .Addr cr
+  ."send_address=" 6 .Addr cr
+  ."wc=" wc (.) type cr
+  ."n=" n-val (.) type cr
+  ."k=" k-val (.) type cr
+FRMode @ { ."file_base=" file-base type cr } ifnot
+  1 { dup ."public_key_" (.) type ."=" dup get-key 256 u>B Bx. cr 1+ } n-val times drop
+  1 { dup ."public_key_int_" (.) type ."=" dup get-key (.) type cr 1+ } n-val times drop
+  ."boc=" IM Bx. cr
+  ."boc_len=" IMLen (.) type cr
+} swap cond

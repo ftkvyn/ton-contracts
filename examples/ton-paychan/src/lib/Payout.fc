@@ -1,0 +1,44 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+cell makePayoutMessage(addr, grams) impure {
+  ;; int_msg_info$0
+  ;;   ihr_disabled:Bool = 1
+  ;;   bounce:Bool = 0
+  ;;   bounced:Bool = 0
+  ;;   src:MsgAddress = addr_none$00
+  ;; -> 010000
+  var msg = begin_cell()
+    .store_uint(0x10, 6) ;; 0x10 = 010000, as described above
+    .store_slice(addr)
+    .store_grams(grams)
+    ;; extra_currencies = hash_map_empty$0
+    ;; ihr_fee: Grams = 0000 (0 grams)
+    ;; fwd_fee: Grams = 0000 (0 grams)
+    ;; created_lt: uint64 = 0
+    ;; created_at: uint32 = 0
+    ;; init: Maybe  = nothing$0
+    ;; body: Either = left$0
+    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+    ;; reqOp: uint32 = 0
+    .store_uint(0, 32);
+  return msg.end_cell();
+}
+
+() performFinalPayout(
+  slice addr1,
+  int amount1,
+  slice addr2,
+  int amount2) impure {
+
+  send_raw_message(makePayoutMessage(addr1, amount1), 0);
+  send_raw_message(makePayoutMessage(addr2, amount2), 0);
+}
+
+() sendSingleShare(
+  slice addr,
+  int amount) impure {
+
+  send_raw_message(makePayoutMessage(addr, amount), 0);
+}

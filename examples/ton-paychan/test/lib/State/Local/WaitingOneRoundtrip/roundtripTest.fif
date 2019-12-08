@@ -1,0 +1,29 @@
+// SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+//
+// SPDX-License-Identifier: MPL-2.0
+
+"Test.fif" include
+"Asm.fif" include
+
+@tests State/Local/WaitingOne.fc <-> Roundtrip
+
+"roundtripTest.asm.gen" include constant contract
+
+{
+  <b
+  b{10} s, // addr_std tag
+  b{0} s,   // maybe anycast = Nothing
+  -1 8 i,   // workchainId
+  1901223 256 u, // address
+  b>
+} : buildStdAddr
+
+
+{
+  buildStdAddr <s
+  1234
+  contract <s
+  runvmdict 0= not abort"TVM died unexpectedly"
+  1234 assertIntEq
+  buildStdAddr <s assertSliceEq
+} @test waitingOneRoundtrip

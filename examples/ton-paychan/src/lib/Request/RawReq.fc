@@ -1,0 +1,39 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+;; msg_pkn, cell
+(int, cell) parseRawReq(slice msg_body, cell globalState) {
+  var reqOp = msg_body~load_uint(32);
+  var pkn = msg_body~load_pkn();
+  var pk = globalState.pkn2pk(pkn);
+
+  var (wc, addr) = (msg_body~load_int(8), msg_body~load_uint(256));
+
+  var req = msg_body~load_ref();
+
+  var signature = msg_body~load_bits(512);
+
+  var signedCell =
+    begin_cell()
+      .store_uint(reqOp, 32)
+      .store_pkn(pkn)
+      .store_int(wc, 8)
+      .store_uint(addr, 256)
+      .store_ref(req)
+      .end_cell();
+
+   throw_unless_(
+      RawReq::BadSignature(),
+      check_signature(cell_hash(signedCell), signature, pk)
+      );
+
+  var (myWc, myAddr) = parse_std_addr(my_address());
+
+  throw_unless_(
+    RawReq::AddressMismatch(),
+    (myWc == wc) & (myAddr == addr)
+    );
+
+  return (pkn, req);
+}

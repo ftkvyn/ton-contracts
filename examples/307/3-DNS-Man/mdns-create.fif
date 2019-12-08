@@ -1,0 +1,203 @@
+#!/usr/bin/env fift -s
+
+/*
+  /------------------------------------------------------------------------\
+  | Created for: Telegram (Open Network) Blockchain Contest                |
+  |      Task 3: DNS Resolver (Manually controlled)                        |
+  >------------------------------------------------------------------------<
+  | Script: Smart contract BoC generation tool                             |
+  >------------------------------------------------------------------------<
+  | Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)    |
+  |         October 2019                                                   |
+  \------------------------------------------------------------------------/
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack tool
+
+// Parameters: workchain-id filename-base [flag]
+
+"mdns-logic.fif" file-exists? { ."Error: contract logic file mdns-logic.fif "
+	."is required to calculate address!" cr "mdns-logic.fc" file-exists? {
+	."Because source code exists you should execute" cr 
+	."    func mdns-logic.fc -omdnslogic.fif" cr
+	."and then try calling this script again!" cr
+	} if 66 halt } ifnot
+
+// Load code
+PROGRAM{ "mdns-logic.fif" include }END>c =: Code
+
+{ cr ."/---------------------------------------[General information]------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <workchain-id> <filename-base> [-r or -R]"
+//  | Usage:  <workchain-id> <filename-base> [-r or -R]                                                    |
+  @' $0 $len 52 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Prepares a file to create a manually controlled TON DNS resolver in the specified workchain.         |" cr
+  ."| You will need to deploy resulting .boc file into blockchain using, for example, lite-client.         |" cr
+  ."| Contract address will be saved to .adr file, public key to .tpub, private key to .tpriv accordingly. |" cr
+  .">--------------------------------------[Parameters description]----------------------------------------<" cr
+  ."| !!!     You must not specify < and > or [ and ] characters, only text value of the parameter     !!! |" cr
+  ."| <workchain-id> specifies where to deploy the contract (0 for basechain, -1 for masterchain)          |" cr
+  ."| <filename-base> sets the file name (base name) of taddr, tpub, tpriv, boc files.                     |" cr
+  ."|  ! ! If any of such files exist, they will not be overwritten (if tpriv file does not exist)    ! !  |" cr
+  ."|  ! ! If tpriv file does exist and contain valid data taddr, tpub and boc files will be restored ! !  |" cr
+  ."| -r activates robot mode (output will be more friendly to robots or interfacing program)              |" cr
+  ."| -R activates full robot mode (without writing to files at all, make sure to save or process output!) |" cr	
+  ."\------------------------------------------------------------------------------------------------------/" cr  
+  cr 1 halt
+} : usage
+
+$# 2 >= ' usage ifnot // Verify argument count
+$# 3 <= ' usage ifnot
+
+$1 parse-workchain-id =: wc
+$2                    =: file-base
+def? $3 { @' $3 } { "" } cond =: Flags
+
+variable RMode     false RMode  !
+variable FRMode    false FRMode !
+Flags "-r" $= { true RMode ! } if
+Flags "-R" $= { true RMode ! true FRMode ! } if
+
+RMode  @ =: RM
+FRMode @ =: FRM
+
+file-base dup +".tpub"  file-exists? =: FPubExists
+          dup +".tpriv" file-exists? =: FPrivExists
+		  dup +".taddr" file-exists? =: FAddrExists
+		      +".boc"   file-exists? =: FBocExists
+		  
+FPrivExists not FRM not and { // If tpriv does not exist we need some additional checks
+	FPubExists  { ."Error! Public key file exists, but private key file does not!"   cr 1 halt } if
+	FAddrExists { ."Error! Address file exists, but private key file does not!"      cr 2 halt } if
+	FBocExists  { ."Error! Bag of cells file exists, but private key file does not!" cr 3 halt } if
+} if
+
+variable bPrK   variable bPuK   
+variable uPrK   variable uPuK
+
+RM { cr } ifnot
+FPrivExists { // if private file exists, load the key
+	RM { ."Loading *EXISTING* private key from " file-base +".tpriv" type ."..." cr } ifnot
+	file-base +".tpriv" file>B dup Blen dup 64 = {
+		."Error: File " file-base +".tpriv" type ." contains corrupted private key material " 
+		."of length " . ."(64 expected)" cr 4 halt } ifnot     drop
+	32 B| over -rot 256 B>u@ swap <b swap B, b> hash = {
+		."Error: File " file-base +".tpriv" type ." contains corrupted private key material " 
+		."(hash check failed)" cr 5 halt } ifnot
+	dup priv>pub
+	dup bPuK ! 256 B>u@ uPuK !
+	dup bPrK ! 256 B>u@ uPrK !
+	FRM { <b bPuK @ B, bPuK @ bPrK @ ed25519_sign B, b>
+		<s dup sbits 8 / B@+ drop file-base +".tpub" B>file 
+		RM { ."Public key saved to file " file-base +".tpub" type cr } ifnot
+	} ifnot
+} { // else generate the key
+	RM { ."Generating *NEW* private and public key pair..." cr } ifnot
+	newkeypair
+	dup bPuK ! 256 B>u@ uPuK !
+	dup bPrK ! 256 B>u@ uPrK !
+	FRM {
+// (B)hash is inconsistent with documentation, it is documented as 32-byte Bytes value, but returns uint!
+		<b bPrK @ B, <b bPrK @ B, b> hash 256 u, b>
+			<s dup sbits 8 / B@+ drop file-base +".tpriv" B>file
+		RM { ."Private key saved to file " file-base +".tpriv" type cr } ifnot
+		<b bPuK @ B, bPuK @ bPrK @ ed25519_sign B, b>
+			<s dup sbits 8 / B@+ drop file-base +".tpub" B>file
+		RM { ."Public key saved to file " file-base +".tpub" type cr } ifnot
+	} ifnot
+} cond
+
+// Build data
+<b 
+	0 32 u,    // seqno
+	bPuK @ B,  // public_key
+	null dict, // root (empty)
+b> constant Data
+
+null constant Lib
+
+{ 0 1 u, } : bit0, { 1 1 u, } : bit1, // v<- use undocumented dict,
+// { dup null? { drop bit0, } { ref, bit1, } cond } : optref,
+
+<b
+   b{0011} s, // 0 split_depth:nothing$0, 0 special:nothing$0
+   Code ref,  // 1 code:just$1 ^Cell,
+   Data ref,  // 1 data:just$1 ^Cell
+   Lib dict,  // 0 library:nothing$0 (Maybe ^Cell)
+b> constant StateInit
+
+wc StateInit hash 2constant WalletAddr
+
+<b  0 32 u, // seqno
+	0 6 u,  // op 00 init
+	0 1 u,  // name flag
+b> dup =: InitBody
+
+hashu bPrK @ ed25519_sign_uint =: InitBodySign
+
+<b 
+//  ext_in_msg_info$10
+//  ||src:MsgAddressExt addr_none$00
+//  ||||dest:MsgAddressInt addr_std$10
+//  ||||||anycast:(Maybe Anycast) nothing$0 {X:Type} = Maybe X;
+//  |||||||
+//  \/\/\/V
+  b{1000100} s,
+  WalletAddr addr, // workchain_id:int8 address:uint256 = MsgAddressInt;
+//   import_fee:Grams = CommonMsgInfo; 0000: zero length = zero
+//   || init:(Maybe (Either StateInit ^StateInit))
+//   || just$1 {X:Type} value:X = Maybe X;
+//   || |left$0 {X:Type} {Y:Type} value:X = Either X Y; (Selected StateInit)
+//   || ||
+//  \\//VV
+  b{000010} s,
+  StateInit <s s,
+  b{0} s, // body:(Either X ^X) = Message X; (Selected left$0: X)
+  InitBodySign B, InitBody <s s,
+b> constant InitMessage
+
+InitMessage 2 boc+>B dup Blen =: IMLen dup =: IM
+
+FRM { IM file-base +"-init.boc" B>file
+ RM { ."Initialization query saved to " file-base +"-init.boc" type cr } ifnot
+} ifnot
+
+FRM { WalletAddr file-base +".addr" save-address
+ RM { ."Contract address saved to " file-base +".addr" type cr } ifnot	
+} ifnot
+
+RMode @ {
+
+cr ."/---------------------------------------------------------------------------------\" cr
+."| All necessary files to deploy the TON DNS resolver smart contract into the      |" cr
+."|     network have been successfully created! However, please be aware, that      |" cr
+.">---[In order to complete creation and use it, you need to follow some steps!]----<" cr
+."| 1. Send some grams to    " WalletAddr 5 .Addr ."       |" cr 
+."|    (initialization address) to pay for the contract initialization.             |" cr
+."|    (Something like 5-10 Grams should be reasonable amount, please account       |" cr
+."|     for storage and gas fees and note that masterchain is much more costly)     |" cr
+."| 2. Make sure that grams have arrived (for example, use lite-client commands     |" cr
+."|    like last and getaccount " WalletAddr 4 .Addr ." )  |" cr
+."| 3. Upload wallet-creating query to the network (for example, once again,        |" cr
+."|    using lite-client command sendfile <path to file>/" file-base type ."-init.boc )            |" cr
+."| 4. In order to send money to the contract, use the next address:                |" cr 
+."|    " WalletAddr 4 .Addr ." (not the init one)          |" cr
+."|  ! Please note that contract may induce some storage and processing (gas)       |" cr
+."|    fees, make sure to keep an eye on it's balance to prevent account freezing!  |" cr
+."| 5. To control the contract you may use mdns-add.fif and mdns-del.fif scripts.   |" cr
+."| +. You may transfer ownership to another publ key with mdns-transfer.fif script |" cr
+."\---------------------------------------------------------------------------------/" cr cr
+
+} { 
+	WalletAddr
+  ."raw_address=" 2dup .addr cr
+  ."init_address=" 2dup 5 .Addr cr
+  ."send_address=" 4 .Addr cr
+  ."workchain_id=" wc (.) type cr
+FRM { ."file_base=" file-base type cr } ifnot
+  ."public_key=" bPuK @ Bx. cr
+  ."private_key=" bPrK @ Bx. cr
+  ."init_query=" IM Bx. cr
+  ."init_query_len=" IMLen (.) type cr
+} swap cond

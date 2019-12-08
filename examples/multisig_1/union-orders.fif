@@ -1,0 +1,48 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <order-file-1> <order-file-2> <result-file> [<k>]" cr
+  ."Loads messages bodies with order from <order-file-1> and <order-file-2> and unions the signatures sets" cr
+  ."Saves the result message body to <result-file>" cr
+  ."If the cardinality of the union is greater than <k>, leaves only <k> signatures" cr
+  ."If <k> is not specified, the default value 10 is used" cr
+  1 halt
+} : usage
+$# dup 3 <> swap 4 <> and ' usage if
+
+$1 constant order-file-1
+$2 constant order-file-2
+$3 constant result-file
+def? $4 { @' $4 parse-int } { 10 } cond constant k
+
+order-file-1 file>B B>boc <s constant message-1
+order-file-2 file>B B>boc <s constant message-2
+
+{ dup srefs 1- { ref@+ drop } if } : get-message-body
+message-1 get-message-body 
+message-2 get-message-body 
+2dup s>c hashu swap s>c hashu <> abort"Messages has different bodies"
+drop
+
+{
+  dup srefs 1- {
+    ref@ parse-sign-list
+  } {
+    null
+  } cond
+} : get-sign-list
+
+message-1 get-sign-list message-2 get-sign-list conc-lists
+{ s>c hashu swap s>c hashu = } :unique-eq-op
+{ s>c hashu swap s>c hashu < } :less
+sort unique k list-tail drop serialize-sign-list 
+<b swap ref, swap s, b> constant message
+
+."New signatures list is " cr message <s ref@ <s csr.
+."New message is " cr message <s csr.
+."Saving new message boc to " result-file type cr
+message boc>B result-file B>file
+
+

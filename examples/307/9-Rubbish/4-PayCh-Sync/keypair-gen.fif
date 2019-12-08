@@ -1,0 +1,91 @@
+#!/usr/bin/env fift -s
+
+/*
+  /------------------------------------------------------------------------\
+  | Created for: Telegram (Open Network) Blockchain Contest                |
+  |      Task 1: Multi-signature wallet                                    |
+  |      Task 4: Synchronous Payment Channel                               |
+  |      Task 5: Asynchronous Payment Channel                              |
+  >------------------------------------------------------------------------<
+  | Script: Keypair generation script (universal)                          |
+  >------------------------------------------------------------------------<
+  | Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)    |
+  |         October 2019                                                   |
+  \------------------------------------------------------------------------/
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack
+
+{ cr ."/-----------------------------------------------------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <filename-base> [-r or -R]"
+//  | Usage:  <filename-base> [-r or -R]                                                      |  
+  @' $0 $len 54 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Generates a signed public-private keypair for usage in multisig wallet or payment chann |" cr
+  ."| Script will create files <filename-base>.tpriv and <filename-base>.kpub.                |" cr
+  ."| Script will not overwrite files if they exist for your own safety.                      |" cr
+  ."| ! You need to provide ONLY signed public key file (kpub) to another party.              |" cr
+  ."| ! NEVER give your private key file (tpriv) to ANYONE! Use it only for SIGNING req/state |" cr
+  ."|     -r activates robot mode (output will be more friendly to robots or some program)    |" cr
+  ."|     -R activates full robot mode (without even writing to files: filename-base ignored) |" cr
+  ."\-----------------------------------------------------------------------------------------/" cr
+  cr 1 halt
+} : usage
+
+$# 1 >= ' usage ifnot // Verify argument count
+$# 2 <= ' usage ifnot 
+
+$1 =: file-base
+def? $2 { @' $2 } { "" } cond constant Flags
+
+variable RMode     false RMode !
+variable FRMode    false FRMode !
+Flags "-r" $= { true RMode ! } if
+Flags "-R" $= { true RMode ! true FRMode ! } if
+
+file-base dup +".tpriv" =: PrivFile
+              +".tpub"  =: PublFile
+
+FRMode @ { // Check file existance only if not -R
+  PrivFile file-exists? { ."Error: Private key file " PrivFile type ." already exists!" cr 2 halt } if
+  PublFile file-exists? { ."Error: Public key file "  PublFile type ." already exists!" cr 3 halt } if
+} ifnot
+              
+newkeypair
+  constant Public
+  constant Private
+
+// (B)hash is inconsistent with documentation, it is documented as 32-byte Bytes value, but returns uint!
+<b Private B, <b Private B, b> hash dup =: PrivateHash 256 u, b> =: PrivateData
+<b Public B, Public Private ed25519_sign dup =: PublicSign B, b> =: PublicData
+  
+FRMode @ { // B@ does not remove slice (inconsistent with documentation!)
+  PrivateData <s dup sbits 8 / B@+ drop PrivFile B>file
+  PublicData  <s dup sbits 8 / B@+ drop PublFile B>file
+} ifnot
+
+RMode @ { cr
+."/-------------------------------------------------------------\" cr
+."| Public key saved to file " PublFile type ."!"
+// |Public key saved to file !                                 |
+  PublFile $len 34 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+."| > You should give this file another party to allow creation |" cr
+."|   of multisignature wallet or payment channel.              |" cr
+."|-------------------------------------------------------------|" cr
+."| Private key saved to file " PrivFile type ."!" 
+// |Private key saved to file !                                |
+  PrivFile $len 33 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+."|           !!! NEVER give this file to anyone !!!            |" cr
+."\-------------------------------------------------------------/" cr
+cr } { 
+// Comment for robots: PrivateData (.tpriv) = private_key + private_hash
+//                     PublicData  (.tpub)  = public_key + public_sign
+  ."private_key=" Private Bx. cr
+  ."public_key=" Public Bx. cr
+  ."private_hash=" PrivateHash 256 u>B Bx. cr
+  ."public_sign=" PublicSign Bx. cr
+FRMode @ { ."file_base=" file-base type cr } ifnot
+} swap cond
+
+// n-val k-val wc file-base .s

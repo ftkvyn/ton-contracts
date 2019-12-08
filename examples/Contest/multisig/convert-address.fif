@@ -1,0 +1,20 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." <workchain> <destination-address>" cr
+  ."Convert to raw and userfriendly format" cr
+  1 halt
+} : usage
+
+$# 1 < $# 2 > or ' usage if
+
+true constant bounce
+$1 parse-int =: wc
+$2 parse-int =: address
+wc address
+2constant multisig_addr
+
+."Raw address " multisig_addr .addr cr
+."Non-bounceable address: " multisig_addr 7 .Addr cr
+."Bounceable address : " multisig_addr 6 .Addr cr

@@ -1,0 +1,43 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <order-file> <filename-base> <key-index> [<result-file>]" cr
+  ."Loads message body with order from <order-file> and add the signature with private key loaded from <filename-base>" 
+  ."Saves the result message to <order-file> or <result-file> if specified"
+  cr 1 halt
+} : usage
+$# dup 3 <> swap 4 <> and ' usage if
+
+$1 constant order-file
+$2 constant file-base
+$3 parse-int =: key-index
+def? $4 { @' $4 } { order-file } cond constant result-file
+file-base +".pk" load-keypair nip constant wallet_pk
+
+variable sign-list 
+variable message
+variable message-hash
+variable sign
+order-file file>B B>boc <s message !
+
+message @ dup srefs 1- {
+  ref@+ sign-list ! dup shash 256 B>u@ message-hash ! message !
+  message-hash @ wallet_pk ed25519_sign_uint sign !
+  { s>c hashu swap s>c hashu = } :unique-eq-op
+  { s>c hashu swap s>c hashu < } :less
+  sign-list @ parse-sign-list <b key-index 7 u, sign @ B, b> <s swap cons
+  sort unique serialize-sign-list sign-list !
+} {
+  shash 256 B>u@ wallet_pk ed25519_sign_uint sign ! 
+  <b key-index 7 u, sign @ B, b> sign-list !
+} cond
+
+."New signatures list is " sign-list @ <s csr.
+<b sign-list @ ref, message @ s, b> message !
+."New message is " message @ <s csr.
+."Saving new message boc to " result-file type cr
+message @ boc>B result-file B>file
+
+

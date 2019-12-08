@@ -1,0 +1,93 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." <partial1> <partial2> [-S <savefile>]" cr
+  ."Merge two sign-partial-request loaded from <partial1>.boc and <2partial2>" cr
+  ."Rewrites updated query into <partial1>.boc or writes it to <savefile>.boc" cr 
+  1 halt
+} : usage
+
+$# 2 < $# 4 > or ' usage if
+
+true constant bounce
+$1 =: partial1
+$2 =: partial2
+
+$# 4 >= { 3 $() "-S" $= { 4 $() =: save-file } if } if
+
+def? save-file { @' save-file +".boc" }  { partial1 +".boc" } cond
+=: save-filename
+
+
+partial1 +".boc" file>B B>boc <s =: partial1_message
+partial2 +".boc" file>B B>boc <s =: partial2_message
+
+partial1_message ref@+ swap =: order_header
+<s =: partial1_message
+partial2_message ref@+ swap =: order_header
+<s =: partial2_message
+
+
+partial1_message
+    8 u@+ 32 u@+ 64 u@+ 
+    256 u@+ 64 B@+
+    16 u@+
+    dict@
+    =: provided_signatures1
+    =: per_order_seq_no1
+    =: proof_signature1
+    =: proof_pubkey1
+    =: uniq_token1
+    =: seq_no1
+    =: op_num1
+
+partial2_message 
+    8 u@+ 32 u@+ 64 u@+ 
+    256 u@+ 64 B@+
+    16 u@+
+    dict@
+    =: provided_signatures2
+    =: per_order_seq_no2
+    =: proof_signature2
+    =: proof_pubkey2
+    =: uniq_token2
+    =: seq_no2
+    =: op_num2
+
+op_num1 2 =
+{ "Not sign-partial order" abort }
+ifnot
+
+op_num1 op_num2 = 
+seq_no2 seq_no2 =
+uniq_token1 uniq_token2 =
+per_order_seq_no1 per_order_seq_no2 =
+* * * -1 *
+{ "Partials are for different orders" abort }
+ifnot
+
+provided_signatures1 provided_signatures2 256
+{ drop B, -1 }
+dictmerge 
+=: merged_signatures
+
+<b proof_signature2 B, b> <s
+proof_pubkey2
+merged_signatures
+256
+udict!
+drop
+=: merged_signatures
+
+// merged_signatures may also contain proof_pubkey1 -> proof_signature1, but it is ok
+
+<b op_num1 8 u, seq_no1 32 u, uniq_token1 64 u, proof_pubkey1 256 u, proof_signature1 B,  per_order_seq_no1 16 u, merged_signatures dict, b> constant sign_partial_order_message
+
+<b order_header s, sign_partial_order_message ref, b>
+
+2 boc+>B dup Bx. cr
+save-filename tuck B>file
+."(Saved to file " type .")" cr
+
+

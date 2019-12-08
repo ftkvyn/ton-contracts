@@ -1,0 +1,31 @@
+;; SPDX-FileCopyrightText: 2019 Serokell <https://serokell.io>
+;;
+;; SPDX-License-Identifier: MPL-2.0
+
+;; MkStateClosing
+
+
+cell mkStateClosing(
+  int requesterPkn,
+  cell openState,
+  cell closeReq,
+  int timestamp) {
+
+  return begin_cell()
+    .store_StateTag(StateTags::Closing())
+    .store_uint(requesterPkn - 1, 1)
+    .store_ref(openState)
+    .store_ref(closeReq)
+    .store_timestamp(timestamp)
+    .end_cell();
+}
+
+;; pkn, openState, closeReq, timestamp
+(int, cell, cell, int) parseStateClosing(slice s) {
+  throw_when(
+    Prs::StateClosing(),
+    s~load_StateTag() != StateTags::Closing()
+    );
+
+  return (s~load_uint(1) + 1, s~load_ref(), s~load_ref(), s~load_timestamp());
+}

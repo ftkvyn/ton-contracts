@@ -1,0 +1,59 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+{ ."usage: " @' $0 type ." <file-base> <order-id> <per-order-id-seqno> [-S <savefile>] " cr
+  ."Create authorization message for order with order-id and sign with private key loaded from file <filename-base>.pk " cr
+  ."Multisig parameters are loaded from 'multisig.ctr'. Saves query into <savefile>.boc ('multisig-sign-order.boc' by default)" cr 
+  1 halt
+} : usage
+
+$# 3 < $# 5 > or ' usage if
+
+true constant bounce
+
+$1 =: file-base
+$2 parse-int =: order_id
+$3 parse-int =:  per_order_seq_no
+
+$# 5 >= { 4 $() "-S" $= { 5 $() =: save-file } if } if
+
+def? save-file { @' save-file ".boc" $+ }  { "multisig-sign-order.boc" } cond
+=: save-filename
+
+"multisig.ctr" file>B
+256 B>u@+ =: multisig-address
+32 B>u@+ =: multisic-wc
+8 B>u@+ =: min-sig-num
+8 B>u@+ =: keys-num
+
+
+// ===== Filinig constants
+0xFFFFFFFF =: unix_time_bound
+multisig-address 6277101735386680763835789423207666416102355444464034512896 / =: uniq_token
+file-base +".pk" load-keypair
+constant wallet1_privk
+256 B>u@ constant wallet1_pubk
+3 constant message_mode
+2 constant op_num
+
+// ===== Keys
+dictnew constant provided_keys_info
+
+// ====== Data for signing
+<b op_num 8 u, order_id 32 u, uniq_token 64 u,
+dup constant message_builder
+per_order_seq_no 16 u,
+b>  constant data_for_signing
+
+// Signing
+data_for_signing hashu wallet1_privk ed25519_sign_uint constant signature1
+
+// Finishing message
+message_builder wallet1_pubk 256 u, signature1 B,  per_order_seq_no 16 u, provided_keys_info dict, b> constant sign_partial_order_message
+
+<b b{1000100} s, multisic-wc multisig-address addr, 0 Gram, b{00} s, sign_partial_order_message ref, b> 
+2 boc+>B dup Bx. cr
+save-filename tuck B>file
+."(Saved to file " type .")" cr
+

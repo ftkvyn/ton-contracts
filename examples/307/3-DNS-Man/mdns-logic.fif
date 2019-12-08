@@ -1,0 +1,444 @@
+// automatically generated from `mdns-logic.fc` 
+DECLPROC store_data
+DECLPROC recv_internal
+DECLPROC recv_external
+85143 DECLMETHOD seqno
+123660 DECLMETHOD dnsresolve
+store_data PROC:<{
+  NEWC
+  s1 s3 XCHG
+  32 STU
+  256 STU
+  STOPTREF
+  ENDC
+  c4 POP
+}>
+recv_internal PROC:<{
+  3 BLKDROP
+}>
+recv_external PROC:<{
+  9 PUSHPOW2
+  LDSLICEX
+  c4 PUSH
+  CTOS
+  32 LDU
+  256 LDU
+  s3 PUSH
+  HASHSU
+  s0 s4 XCHG
+  32 LDU
+  s1 s4 XCPU
+  EQUAL
+  33 THROWIFNOT
+  s4 s5 s2 XC2PU
+  CHKSIGNU
+  34 THROWIFNOT
+  ACCEPT
+  s0 s2 XCHG
+  LDOPTREF
+  s0 s4 XCHG
+  6 LDU
+  1 LDU
+  SWAP
+  1 EQINT
+  s2 PUSH
+  0 EQINT
+  s5 PUSH
+  0 EQINT
+  AND
+  IFJMP:<{
+    3 BLKDROP
+    s3 POP
+    INC
+    s0 s2 XCHG
+    store_data CALLDICT
+  }>
+  s2 PUSH
+  10 LESSINT
+  44 THROWIF
+  NULL
+  0 PUSHINT
+  s4 PUSH
+  20 LESSINT
+  IF:<{
+    DROP
+    s0 s2 XCHG
+    16 LDI
+  }>ELSE<{
+    s0 s3 XCHG2
+  }>
+  0 PUSHINT
+  s5 PUSH
+  30 LESSINT
+  IF:<{
+    s9 POP
+    s0 s2 XCHG
+    IF:<{
+      SWAP
+      LDREF
+      SWAP
+      CTOS
+    }>ELSE<{
+      SWAP
+      6 LDU
+      SWAP
+      3 LSHIFT#
+      LDSLICEX
+      SWAP
+    }>
+    DUP
+    SBITS
+    15 GTINT
+    38 THROWIFNOT
+    DUP
+    8 PUSHINT
+    SDCUTLAST
+    8 LDU
+    DROP
+    0 EQINT
+    40 THROWIFNOT
+    -1 PUSHINT
+    OVER
+    WHILE:<{
+      OVER
+    }>DO<{
+      8 LDU
+      SWAP
+      0 EQINT
+      IF:<{
+        s0 s10 XCHG
+        INC
+      }>ELSE<{
+        s0 s10 XCHG
+      }>
+      s10 PUSH
+      SBITS
+      0 EQINT
+      IF:<{
+        NIP
+        0 PUSHINT
+      }>ELSE<{
+        SWAP
+      }>
+      s0 s10 XCHG2
+    }>
+    2DROP
+  }>ELSE<{
+    s1 s3 s9 XCHG3
+    NIP
+  }>
+  NEWC
+  s1 s9 XCHG
+  7 STU
+  s0 s8 XCHG2
+  STSLICER
+  ENDC
+  CTOS
+  s3 PUSH
+  20 LESSINT
+  IF:<{
+    s0 s4 PUSH2
+    10 PUSHPOW2DEC
+    PFXDICTGETQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT
+    s3 POP
+    s0 s2 XCHG
+    IF:<{
+      s4 POP
+      SEMPTY
+      35 THROWIFNOT
+      NEWC
+      s0 s3 XCHG2
+      STSLICER
+      ENDC
+    }>ELSE<{
+      s2 s4 XCHG
+      2DROP
+    }>
+  }>ELSE<{
+    s0 s2 XCHG
+  }>
+  s3 PUSH
+  11 EQINT
+  IFJMP:<{
+    s3 POP
+    s0 s6 XCHG
+    LDREF
+    DROP
+    s6 s2 XCHG2
+    16 PUSHINT
+    DICTISETREF
+    CTOS
+    s0 s4 s4 XCHG3
+    10 PUSHPOW2DEC
+    PFXDICTSET
+    36 THROWIFNOT
+    s0 s2 XCHG
+    INC
+    s0 s2 XCHG
+    store_data CALLDICT
+  }>
+  s3 PUSH
+  12 EQINT
+  IFJMP:<{
+    s3 POP
+    s6 POP
+    s5 s5 XCHG2
+    16 PUSHINT
+    DICTIDEL
+    37 THROWIFNOT
+    DUP
+    DICTEMPTY
+    IF:<{
+      DROP
+      s1 s3 XCHG
+      10 PUSHPOW2DEC
+      PFXDICTDEL
+      36 THROWIFNOT
+    }>ELSE<{
+      CTOS
+      s0 s4 s4 XCHG3
+      10 PUSHPOW2DEC
+      PFXDICTSET
+      36 THROWIFNOT
+    }>
+    s0 s2 XCHG
+    INC
+    s0 s2 XCHG
+    store_data CALLDICT
+  }>
+  2DROP
+  OVER
+  21 EQINT
+  IFJMP:<{
+    NIP
+    s0 s4 XCHG
+    LDREF
+    DROP
+    CTOS
+    s0 s4 s4 XCHG3
+    10 PUSHPOW2DEC
+    PFXDICTSET
+    37 THROWIFNOT
+    s0 s2 XCHG
+    INC
+    s0 s2 XCHG
+    store_data CALLDICT
+  }>
+  OVER
+  22 EQINT
+  IFJMP:<{
+    NIP
+    s4 POP
+    s1 s3 XCHG
+    10 PUSHPOW2DEC
+    PFXDICTDEL
+    37 THROWIFNOT
+    s0 s2 XCHG
+    INC
+    s0 s2 XCHG
+    store_data CALLDICT
+  }>
+  DROP
+  DUP
+  31 EQINT
+  IFJMP:<{
+    2DROP
+    s0 s2 XCHG
+    LDREF
+    DROP
+    s0 s2 XCHG
+    INC
+    s0 s2 XCHG
+    store_data CALLDICT
+  }>
+  DUP
+  32 EQINT
+  IFJMP:<{
+    2DROP
+    s2 POP
+    SWAP
+    INC
+    NULL
+    s1 s2 XCHG
+    store_data CALLDICT
+  }>
+  s3 POP
+  s0 s2 XCHG
+  51 EQINT
+  IFJMP:<{
+    s0 s2 XCHG
+    256 LDU
+    DROP
+    s0 s2 XCHG
+    INC
+    -ROT
+    store_data CALLDICT
+  }>
+  3 BLKDROP
+  44 THROW
+}>
+seqno PROC:<{
+  c4 PUSH
+  CTOS
+  32 PLDU
+}>
+dnsresolve PROC:<{
+  NULL
+  s2 PUSH
+  SBITS
+  3 MODPOW2#
+  0 NEQINT
+  30 THROWIF
+  s2 PUSH
+  SBITS
+  0 EQINT
+  IFJMP:<{
+    NIP
+    NIP
+    0 PUSHINT
+    SWAP
+  }>
+  s2 PUSH
+  8 PUSHINT
+  SDCUTLAST
+  8 LDU
+  DROP
+  DUP
+  0 EQINT
+  s4 PUSH
+  SBITS
+  8 EQINT
+  AND
+  IFJMP:<{
+    s1 s3 XCHG
+    3 BLKDROP
+    0 PUSHINT
+    SWAP
+  }>
+  s3 s(-1) PUXC
+  0 NEQINT
+  IF:<{
+    DROP
+    0 PUSHINT
+    NEWC
+    s0 s4 XCHG2
+    STSLICER
+    s1 s3 XCHG
+    8 STU
+    ENDC
+    CTOS
+  }>ELSE<{
+    s0 s3 XCHG2
+    DROP
+  }>
+  c4 PUSH
+  CTOS
+  288 PUSHINT
+  SDSKIPFIRST
+  LDDICT
+  DROP
+  0 PUSHINT
+  -1 PUSHINT
+  s3 PUSH
+  WHILE:<{
+    OVER
+  }>DO<{
+    8 LDU
+    SWAP
+    0 EQINT
+    IF:<{
+      s0 s2 XCHG
+      INC
+    }>ELSE<{
+      s0 s2 XCHG
+    }>
+    s2 PUSH
+    SBITS
+    0 EQINT
+    IF:<{
+      NIP
+      0 PUSHINT
+    }>ELSE<{
+      SWAP
+    }>
+    ROT
+  }>
+  2DROP
+  WHILE:<{
+    DUP
+    0 GTINT
+  }>DO<{
+    DUP
+    NEWC
+    7 STU
+    s3 PUSH
+    STSLICER
+    ENDC
+    CTOS
+    s2 PUSH
+    10 PUSHPOW2DEC
+    PFXDICTGETQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT
+    DUP
+    IF:<{
+      s4 POP
+      1 PUSHINT
+    }>ELSE<{
+      s0 s4 XCHG
+    }>
+    DEC
+    s0 s3 XCHG
+    101 PUSHINT
+    SETGLOBVAR
+    SWAP
+    102 PUSHINT
+    SETGLOBVAR
+    103 PUSHINT
+    SETGLOBVAR
+    SWAP
+    104 PUSHINT
+    SETGLOBVAR
+  }>
+  3 BLKDROP
+  101 PUSHINT
+  GETGLOBVAR
+  102 PUSHINT
+  GETGLOBVAR
+  103 PUSHINT
+  GETGLOBVAR
+  104 PUSHINT
+  GETGLOBVAR
+  NOT
+  IFJMP:<{
+    4 BLKDROP
+    0 PUSHINT
+    SWAP
+  }>
+  s4 POP
+  s0 s3 XCHG
+  SEMPTY
+  NOT
+  IF:<{
+    NIP
+    -1 PUSHINT
+  }>ELSE<{
+    SWAP
+  }>
+  SWAP
+  SBITS
+  -7 ADDCONST
+  NEWC
+  s0 s3 XCHG2
+  STSLICER
+  ENDC
+  OVER
+  0 EQINT
+  IFJMP:<{
+    NIP
+  }>
+  16 PUSHINT
+  DICTIGETOPTREF
+}>

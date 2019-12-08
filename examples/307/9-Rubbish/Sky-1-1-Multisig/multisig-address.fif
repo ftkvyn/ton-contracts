@@ -1,0 +1,76 @@
+#!/usr/bin/env fift -s
+
+/*
+  Created for: Telegram (Open Network) Blockchain Contest
+       Task 1: Multi-signature wallet
+   Flavor ALL: No difference, addr and boc files are always the same :)
+       Script: Keypair generation script
+  Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)
+          September - October 2019
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack
+
+{ cr ."/------------------------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <filename> [-r]"
+//  | Usage:  <filename> [-r]                                    |  
+  @' $0 $len 36 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Retrieves and shows wallet address from .addr or .boc file |" cr
+  ."| -r activates robot mode (output more friendly to robots)   |" cr
+  ."\------------------------------------------------------------/" cr
+  cr 1 halt
+} : usage
+
+$# 1 >= ' usage ifnot // Verify argument count
+$# 2 <= ' usage ifnot 
+
+$1 =: FileName
+def? $2 { @' $2 } { "" } cond constant Flags
+
+variable RMode
+Flags "-r" $= RMode !
+Flags "-R" $= RMode @ or RMode ! // Compability with -R
+
+FileName file-exists? { ."Error: Specified file " FileName type ." does not exist!" cr 2 halt } ifnot
+
+variable Parsed
+0 Parsed !
+// Try parse: as .addr file should have 32 or 36 bytes, otherwise try as boc if longer than 100
+FileName file>B dup Blen constant FileLen
+FileLen 32 = {
+  // Try work as with .addr file, 32 bytes address, Basechain ID (0)
+  256 B>u@ =: WalletAddr
+  0 =: WalletWC
+  1 Parsed !
+} if
+FileLen 36 = {
+  // Try work as with .addr file, 32 bytes address, 4 bytes workchain ID
+  256 B>u@+ =: WalletAddr
+  32  B>i@ =: WalletWC
+  1 Parsed !
+} if
+FileLen 100 > {
+  // Try work as with BOC (1000100 WalletAddr: workchain_id:int8 address:uint256)
+  B>boc <s 7 u@+ swap 0b1000100 = { ."Error: Unrecognized BOC InitMessage header" cr 3 halt } ifnot
+  8 i@+ swap =: WalletWC 256 u@ =: WalletAddr
+  1 Parsed !
+} if
+
+Parsed @ 1 = { ."Error: Failed to determine type of file " FileName type ."!" cr 4 halt } ifnot
+
+WalletWC WalletAddr
+RMode @ { cr
+."/----------------------------------------------------------------------------------\" cr
+."| Send address: " 2dup 6 .Addr ."      (Bounceable) |" cr
+."| Init address: " 2dup 7 .Addr ."                   |" cr
+."| Raw address: " .addr WalletWC 0 >= { ." " } if ."|" cr
+."\----------------------------------------------------------------------------------/" cr
+cr } { 
+  ."wallet_address=" 2dup .addr cr
+  ."init_address=" 2dup 7 .Addr cr
+  ."send_address=" 6 .Addr cr
+} swap cond
+
+// n-val k-val wc file-base .s

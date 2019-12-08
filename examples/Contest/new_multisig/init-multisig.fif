@@ -1,0 +1,79 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+
+"multisig.fif" include <s =: contract_code
+"multisig_init_storage.fift" include <s =: contract_storage_initializer // (uniq_token, min_signature_num, public_keys_dict) -> cell
+
+{ ."usage: " @' $0 type ." <workchain> <N> <K> public_key1 [<public_key2> ...]" cr
+  ."Generates a new multisignature contract in specified blockchain with minimum number of authorization N and total number of publick keys K" cr
+  ."Public keys should be specified as integers or filenames (full names, not filebase) containing public keys" cr
+  ."Contract description (address and params) is saved to 'multisig.ctr'" cr
+  1 halt
+} : usage()
+
+$# 4 < ' usage() if
+
+$1 parse-workchain-id =: wc 
+$2 parse-int 1 < { "Minimum number of authorization signatures cannot be less than 1" abort } if
+$2 parse-int 255 >  { "Maximum number of authorization signatures cannot be higher than 255" abort } if
+$3 parse-int 1 < { "Total number of keys cannot be less than 1" abort } if
+$3 parse-int 255 >  { "Total number of keys cannot be higher than 255" abort } if
+
+$2 parse-int =: min_signature_num
+$3 parse-int =: keys_num
+
+
+//   ================== Parsing arguments and saving public keys to dict =========
+<b b> <s =: value
+// stack: keydict current_arg
+dictnew 4
+{
+  dup
+  $# swap < { "Not enough public keys were provided" abort } if
+  dup
+  $() dup (number)
+    { swap drop }
+    { file>B dup Blen 32 <> abort"Public key must be exactly 32 bytes long" 256 B>u@ }
+    cond
+  // Now on stack: dict counter key
+  rot 256 // counter key dict 256
+  3 pick <b swap 1+ 8 u, b> <s
+  3 -roll // counter value key dict 256
+  udict! drop
+  swap 1+
+} keys_num times
+drop 
+=: keys
+
+//   ================== Generating contract storage =========
+min_signature_num keys contract_storage_initializer runvmdict
+drop 
+constant contract_storage
+
+// build init state
+<b b{00110} s, <b contract_code s, b> ref, contract_storage ref, b>
+dup =: state_init
+dup hashu wc swap 2constant multisig_addr
+."new multisig wallet address = " multisig_addr .addr cr
+
+multisig_addr
+256 u>B swap
+32 u>B
+min_signature_num 8 u>B
+keys_num 8 u>B
+B+ B+ B+  =: contract_description
+contract_description "multisig.ctr" B>file
+."(Saved multisig contract description to 'multisig.ctr')" cr
+
+
+."Non-bounceable address (for init): " multisig_addr 7 .Addr cr
+."Bounceable address (for later access): " multisig_addr 6 .Addr cr
+
+<b 0 8 u, b> <s =: init_message 
+
+<b b{1000100} s, multisig_addr addr, b{000010} s, state_init <s s, b{0} s, init_message s, b>
+2 boc+>B
+"multisig-init.boc" tuck B>file
+."(Saved multisig contract creating query to file " type .")" cr
+

@@ -1,0 +1,25 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <filename-base> <order-file> <result-file>" cr
+  ."Loads message body with order from <order-file>, inserts it as the body of external message to address loaded from <filename-base>.addr and saves the result boc to <result-file>" cr 1 halt
+} : usage
+$# 3 <> ' usage if
+
+$1 constant file-base
+$2 constant order-file
+$3 constant result-file
+file-base +".addr" load-address 2constant wallet_addr
+
+order-file file>B B>boc constant message
+
+<b b{1000100} s, wallet_addr addr, b{00000} s, 
+	message <s 2dup s-fits? not rot over 1 i, -rot { drop message ref, } { s, } cond
+b> constant extmessage
+
+."External message is " cr extmessage <s csr. cr
+."Saving external message to " result-file type cr
+extmessage boc>B result-file B>file
+

@@ -1,0 +1,247 @@
+(tuple) empty_tuple() asm "NIL";
+(tuple, ()) ~append_s(tuple t1, slice t2) asm(t1 t2) "COMMA";
+(cell) empty_cell () asm "NEWC" "ENDC";
+(cell) null_cell () asm "NULL";
+(slice) empty_slice () asm "NEWC" "ENDC" "CTOS";
+(slice, slice, slice, int ) find_prefix? (cell D, slice s, int n) asm( s D n -> 1 0 2 3) "PFXDICTGETQ" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(cell, (int)) ~add_prefix? (cell D, slice index, slice value, int n) asm( value index D n) "PFXDICTADD";
+(cell, (int)) ~put_prefix? (cell D, slice index, slice value, int n) asm( value index D n) "PFXDICTSET";
+(cell, (int)) ~remove_prefix?(cell dict, int key_len, slice index) asm(index dict key_len) "PFXDICTDEL";
+int check_slice_equality(slice s1, slice s2) asm(s1 s2) "SDEQ";
+
+cell s2c (slice s) asm "NEWC" "STSLICE" "ENDC";
+int 2** ( int x ) asm "PUSHPOW2";
+int or ( int x, int y ) asm "OR";
+int and ( int x, int y ) asm "AND";
+
+
+(slice, int, int) imin (cell D, int index_len) asm "DICTIMIN" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(slice, int, int) umin (cell D, int index_len) asm "DICTUMIN" "NULLSWAPIFNOT" "NULLSWAPIFNOT";
+(cell, ()) ~udict_set(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTUSET";
+(cell, (int)) ~idict_add?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTIADD";
+(cell, (slice, int)) ~idict_setget?(cell dict, int key_len, int index, slice value) asm(value index dict key_len) "DICTISETGET" "NULLSWAPIFNOT";
+(cell, (int)) ~idict_del?(cell dict, int key_len, int index) asm(index dict key_len) "DICTIDEL";
+
+;; (slice, (int)) ~remove_from_begining?(slice t1, slice t2) asm(s1 s2) "SDBEGINSXQ";
+
+;; now it is only prohibited for domain to conatin \0
+int suitable_domain_name(slice domain) method_id {
+  int res = -1;
+  ifnot(domain.slice_bits() % 8 == 0) {
+    res = 0;
+  } else {
+    do {
+      int current_byte = domain~load_uint(8);
+      if (current_byte == 0 ) { 
+        res = 0;
+      }
+    } until ( (domain.slice_data_empty?()).or( ~ res ) )
+  }
+ return res;
+}
+
+(int, slice) add_ending_delimiter (slice query) method_id {
+  if(query.slice_bits() > 1016 - 8) {
+    return (0, empty_slice());
+  } else {
+    return (-1, begin_cell().store_slice(query).store_int(0, 8).end_cell().begin_parse());
+  }
+}
+
+(int, int, cell) load_data () {
+  var cs = get_data().begin_parse();
+  (int seqno, int owner_pubkey, cell domain_table) = 
+  (cs~load_uint(32), cs~load_uint(256), cs~load_dict());
+  return (seqno, owner_pubkey, domain_table); 
+}
+
+() save_data (int seqno, int pubkey, cell dnsrecords) impure {
+  cell storage = begin_cell().store_int(seqno, 32)
+                             .store_uint(pubkey, 256)
+                             .store_dict(dnsrecords)
+                 .end_cell();
+  set_data(storage);
+}
+
+(int, cell) register_domain(slice domain_name, 
+                       cell new_dnsrecords,
+                       cell domain_table) {
+  (int res, domain_name) = add_ending_delimiter(domain_name);
+  ifnot(res) {
+    return (res, domain_table);
+  }
+  cell subdomain = begin_cell().store_dict(new_dnsrecords)
+                               .store_dict( new_dict() ) ;; subdomains
+                   .end_cell();
+  int res = domain_table~add_prefix?(domain_name, subdomain.begin_parse(), 1016);
+  return (res, domain_table);
+}
+
+;; success, domains_table
+(int, cell) update_domain(slice domain_name, 
+                                          cell domains,
+                                          cell dnsrecord_add,
+                                          cell dnsrecord_remove,
+                                          cell domains_add,
+                                          cell domains_remove) {
+  (int res, domain_name) = add_ending_delimiter(domain_name);
+  (slice subdomain_data, slice prefix, slice remaining, int res) = domains.find_prefix?(domain_name, 1016);
+  ifnot(res) {
+    return (0, domains);
+  }
+  int should_update? = 0;
+  (cell subdomain_dns_record, 
+   cell subdomain_domains) = (subdomain_data~load_dict(),
+                              subdomain_data~load_dict());
+  if( remaining.slice_data_empty?() ) { 
+    should_update? = -1;
+    ifnot (dnsrecord_add.dict_empty?()) {
+      (var record, int record_index, int found_i) = dnsrecord_add.imin(16);
+      do {
+          (slice replaced_value, int added?) = subdomain_dns_record~idict_setget?(16, record_index, record);
+          (record_index, record, found_i) = dnsrecord_add.idict_get_next?(16, record_index);      
+      } until ( ~ found_i );
+    }
+    ifnot (dnsrecord_remove.dict_empty?()) {
+      (var record, int record_index, int found_i) = dnsrecord_remove.imin(16);        
+      do {
+        int deleted? = subdomain_dns_record~idict_del?(16, record_index);
+        (record_index, record, found_i) = dnsrecord_remove.idict_get_next?(16, record_index);
+      } until ( ~ found_i );
+    }
+    ifnot (domains_add.dict_empty?()) {
+      (var record, int record_index, int found_dar) = domains_add.imin(16);
+      do {
+        cell added_domain_dns_record = record~load_dict();
+        slice added_domain_name = record;
+        (slice _subdomain, slice _prefix, slice _remaining, int found_pfx) = subdomain_domains.find_prefix?(added_domain_name, 1016);
+        ifnot (found_pfx) {
+          cell added_domain = begin_cell().store_dict(added_domain_dns_record)
+                                          .store_dict( new_dict() ) ;; subdomains
+                             .end_cell();     
+          subdomain_domains~put_prefix?(added_domain_name, added_domain.begin_parse(), 1016);    
+        } 
+        (record_index, record, found_dar) = domains_add.idict_get_next?(16, record_index); 
+      } until ( ~ found_dar );
+    }
+    ifnot (domains_remove.dict_empty?()) {
+      (var subdomain_name, int record_index, int found_drr) = domains_remove.imin(16);      
+      do {
+        subdomain_domains~remove_prefix?(1016, subdomain_name);    
+        (record_index, subdomain_name, found_drr) = domains_remove.idict_get_next?(16, record_index);
+      } until ( ~ found_drr );
+    }
+  } else { ;; update of subdomain requsted
+    (should_update?, subdomain_domains) =
+      update_domain(remaining, 
+                    subdomain_domains,
+                    dnsrecord_add,
+                    dnsrecord_remove,
+                    domains_add,
+                    domains_remove);
+  }
+  if ( should_update? ) {
+    cell updated_subdomain_data = begin_cell()
+                                       .store_dict(subdomain_dns_record)
+                                       .store_dict(subdomain_domains)
+                                 .end_cell();
+    domains~put_prefix?(domain_name, updated_subdomain_data.begin_parse(), 1016);
+  }
+  return (-1, domains);
+}
+
+(int) seq_no () method_id {
+  (var seqno, var pubkey, cell domain_table) = load_data();
+  return seqno;
+}
+
+(int, cell) dnsresolve (slice query, int category) method_id {
+  if ( query.slice_data_empty?() ) {
+    return (0, null_cell() );
+  }
+  (int res, query) = add_ending_delimiter(query);
+  (var seqno, var pubkey, cell domain_table) = load_data();
+  int found_prefix_len = 0;
+  int ready = 0;
+  (int res_code, cell res_cell) = ( 0, null_cell() );
+  do {
+    (slice subdomain, slice prefix, slice remaining, int res) = domain_table.find_prefix?(query, 1016);
+    ifnot (res) {
+      ready = -1;
+    } else { 
+      found_prefix_len += prefix.slice_bits();
+      (cell dnsrecord, domain_table) = (subdomain~load_dict(),
+                                        subdomain~load_dict() );
+      if( remaining.slice_data_empty?() ) {
+        if( dnsrecord.dict_empty?() ) {
+          ready = -1;
+        } else {
+          if (category == 0) {
+            ready = -1;
+            (res_code, res_cell) = ( found_prefix_len, dnsrecord);
+          } else {
+            (slice record, int result ) = dnsrecord.idict_get?(16, category);
+            ready = -1;
+            if(result) {
+              (res_code, res_cell) = ( found_prefix_len, s2c(record));
+            } else {
+              (res_code, res_cell) = ( 0, null_cell() );
+            }
+          }
+        }    
+      } else {
+        query = remaining;
+        (slice child_resolver, int crf?) = dnsrecord.idict_get?(16, -1);
+        if ( crf? ) {
+          ready = -1;
+          (res_code, res_cell) = (found_prefix_len, s2c(child_resolver) );
+        }
+      }
+    } 
+  } until ( ready );
+  return (res_code, res_cell);
+}
+
+() recv_internal (int msg_value, cell in_msg_cell, slice in_msg) {
+  ;;
+}
+
+() recv_external (slice in_msg) impure {
+  (int seqno, int pubkey, cell domains) = load_data();  
+  if( seqno == 0 ) {
+    accept_message();
+    save_data(1, pubkey, domains);
+    return ();
+  }
+  slice b_msg = in_msg~load_ref().begin_parse();
+  slice signature = b_msg~load_bits(512);
+  slice cs = b_msg;
+  int provided_seqno = cs~load_uint(32);
+  throw_unless(49, provided_seqno == seqno); 
+  throw_unless(34, check_signature(slice_hash(b_msg), signature, pubkey));
+  accept_message();
+  cs~touch();
+  int op = cs~load_uint(8);
+  if (op == 1) { ;; register domain
+    slice domain_name = cs~load_ref().begin_parse();
+    cell new_dnsrecords = cs~load_dict();
+    (int res, domains) = register_domain(domain_name, 
+                              new_dnsrecords,
+                              domains);
+  }
+  if (op == 2) { ;; update_domain
+    slice domain_name = cs~load_ref().begin_parse();
+    slice dnsrecord_updates = cs~load_ref().begin_parse();
+    slice domain_updates = cs~load_ref().begin_parse();
+    dnsrecord_updates~touch();
+    (cell dnsrecord_add, cell dnsrecord_remove) = (dnsrecord_updates~load_dict(), dnsrecord_updates~load_dict());
+    (cell domains_add, cell domains_remove) = (domain_updates~load_dict(), domain_updates~load_dict());
+    (int res, domains) = update_domain(domain_name,
+                                      domains, 
+                                      dnsrecord_add, 
+                                      dnsrecord_remove, 
+                                      domains_add, 
+                                      domains_remove);
+  }
+  save_data(seqno + 1, pubkey, domains);
+}

@@ -1,0 +1,262 @@
+// automatically generated from `multisig-1-code.fc` 
+DECLPROC find_public_key
+DECLPROC recv_internal
+DECLPROC recv_external
+85143 DECLMETHOD seqno
+78225 DECLMETHOD getn
+90420 DECLMETHOD getk
+68334 DECLMETHOD findpk
+find_public_key PROC:<{
+  2 LDU
+  OVER
+  0 EQINT
+  IFJMP:<{
+    3 BLKDROP
+    FALSE
+  }>
+  LDOPTREF
+  256 LDU
+  s4 s1 PUSH2
+  EQUAL
+  IFJMP:<{
+    5 BLKDROP
+    TRUE
+  }>
+  s4 s1 PUXC
+  LESS
+  IFJMP:<{
+    DROP
+    NIP
+    DUP
+    ISNULL
+    IFJMP:<{
+      2DROP
+      FALSE
+    }>
+    CTOS
+    find_public_key CALLDICT
+  }>
+  NIP
+  LDOPTREF
+  s2 PUSH
+  1 EQINT
+  IFJMP:<{
+    DROP
+    NIP
+    DUP
+    ISNULL
+    IFJMP:<{
+      2DROP
+      FALSE
+    }>
+    CTOS
+    find_public_key CALLDICT
+  }>
+  256 LDU
+  s4 s1 PUSH2
+  EQUAL
+  IFJMP:<{
+    5 BLKDROP
+    TRUE
+  }>
+  s4 s1 PUXC
+  LESS
+  IFJMP:<{
+    DROP
+    NIP
+    DUP
+    ISNULL
+    IFJMP:<{
+      2DROP
+      FALSE
+    }>
+    CTOS
+    find_public_key CALLDICT
+  }>
+  NIP
+  LDOPTREF
+  s0 s2 XCHG
+  2 EQINT
+  IFJMP:<{
+    NIP
+    DUP
+    ISNULL
+    IFJMP:<{
+      2DROP
+      FALSE
+    }>
+    CTOS
+    find_public_key CALLDICT
+  }>
+  DROP
+  256 LDU
+  s2 s1 PUXC
+  EQUAL
+  IFJMP:<{
+    2DROP
+    TRUE
+  }>
+  LDOPTREF
+  DROP
+  DUP
+  ISNULL
+  IFJMP:<{
+    2DROP
+    FALSE
+  }>
+  CTOS
+  find_public_key CALLDICT
+}>
+recv_internal PROC:<{
+  DROP
+}>
+recv_external PROC:<{
+  c4 PUSH
+  CTOS
+  32 LDU
+  8 LDU
+  8 LDU
+  LDREF
+  DROP
+  s3 PUSH
+  0 EQINT
+  s5 PUSH
+  SBITS
+  72 LESSINT
+  AND
+  IFJMP:<{
+    s4 POP
+    ACCEPT
+    s0 s2 XCHG
+    INC
+    NEWC
+    32 STU
+    8 STU
+    8 STU
+    STREF
+    ENDC
+    c4 POP
+  }>
+  s0 s4 XCHG
+  8 LDU
+  LDREF
+  DUP
+  HASHSU
+  SWAP
+  32 LDU
+  32 LDU
+  NOW
+  s1 s2 XCHG
+  LESS
+  35 THROWIF
+  s4 s5 PUSH2
+  LESS
+  36 THROWIF
+  s1 s7 XCPU
+  EQUAL
+  33 THROWIFNOT
+  0 PUSHINT
+  NEWDICT
+  WHILE:<{
+    s5 PUSH
+    0 GTINT
+  }>DO<{
+    s0 s5 XCHG
+    DEC
+    s4 PUSH
+    CTOS
+    256 LDU
+    9 PUSHPOW2
+    LDSLICEX
+    s6 s1 PUXC
+    s3 PUSH
+    CHKSIGNU
+    34 THROWIFNOT
+    s1 s7 PUSH2
+    8 PUSHPOW2
+    DICTUGET
+    NULLSWAPIFNOT
+    NIP
+    39 THROWIF
+    s11 PUSH
+    CTOS
+    s2 s(-1) PUXC
+    find_public_key CALLDICT
+    IF:<{
+      s0 s3 XCHG
+      INC
+      NEWC
+      s0 s0 s8 XCHG3
+      8 PUSHPOW2
+      DICTUSETB
+    }>ELSE<{
+      s3 s7 XCHG
+      s3 s3 XCHG2
+      DROP
+    }>
+    OVER
+    0 GTINT
+    IF:<{
+      s5 POP
+      SWAP
+      LDREF
+    }>ELSE<{
+      s1 s5 s5 XCHG3
+    }>
+    ENDS
+    s5 s4 XCHG2
+  }>
+  DROP
+  s2 POP
+  s2 POP
+  s2 POP
+  s1 s2 XCPU
+  LESS
+  38 THROWIF
+  ACCEPT
+  WHILE:<{
+    DUP
+    SREFS
+  }>DO<{
+    8 LDU
+    LDREF
+    s0 s2 XCHG
+    SENDRAWMSG
+  }>
+  ENDS
+  s0 s2 XCHG
+  INC
+  NEWC
+  32 STU
+  8 STU
+  8 STU
+  STREF
+  ENDC
+  c4 POP
+}>
+seqno PROC:<{
+  c4 PUSH
+  CTOS
+  32 PLDU
+}>
+getn PROC:<{
+  c4 PUSH
+  CTOS
+  32 PUSHINT
+  SDSKIPFIRST
+  8 PLDU
+}>
+getk PROC:<{
+  c4 PUSH
+  CTOS
+  40 PUSHINT
+  SDSKIPFIRST
+  8 PLDU
+}>
+findpk PROC:<{
+  c4 PUSH
+  CTOS
+  PLDREF
+  CTOS
+  find_public_key CALLDICT
+}>

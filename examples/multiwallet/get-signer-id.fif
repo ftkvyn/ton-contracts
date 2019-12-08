@@ -1,0 +1,17 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+
+{ 
+	."<filename-base> <public-key>" cr
+	."Searches for <public-key> in the key dictionary from '<filename-base>-keys.boc' and return key-id" cr
+	1 halt
+} : usage
+$# 2 < ' usage if
+
+$1 =: file-base
+
+{ 256 B>u@ -1 0 file-base +"-keys.boc" file>B B>boc 7 { 256 u@ 4 pick = swap drop { nip dup } if 1+ 0 } dictmap 2drop swap drop } : find_key_in_dict
+<b $2 $>s  { 8 u@+ swap dup 64 > { 55 - } { 48 - } cond rot swap 4 u, swap } over sbits 8 / times drop b> <s 32 B@ find_key_in_dict
+
+cr ."You id: " . cr
+

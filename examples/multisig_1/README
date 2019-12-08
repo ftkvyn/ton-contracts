@@ -1,0 +1,35 @@
+Here are scripts for interacting with multisignature wallet smartcontract along with its FunC code.
+
+HOWTO:
+First create one or several keypairs using the generate-keypairs.fif script.
+It will save private keys in specified files and list of serilized public keys in another file.
+Then create a initializing external message using new-multiwallet.fif. It will load one specified private key and list of public keys from the files. Public keys and specified parameters n, k will be stored in smartcontract persisten data. The private key will be used to sign the external message.
+Let's suppose now that the wallet is initialized. You can use following scripts to interact with it:
+. garbage-collect.fif requires one private key and creates an (external) message asking wallet to collect garbage in its storage.
+. new-order.fif creates the body of prospective external message with new order to send some message, its expiration time and seqno, than saves it to specified file.
+. sign-order.fif loads such body from specified order and add a signature to it using specified private key. If the signature is already present nothing would change. 
+Notice that the wallet will recognize the key a signature correspond to using the key index. By definition, the index is equal to the number of public keys lesser as unsigned integers than the given. You can use a get method of the wallet to determine the key index what will be discussed below.
+. union-orders.fif can be used to unite signatures sets associated with two equal orders. It checks if orders are equal.
+. create-external-message.fif loads the order from specified file and envelop it to external message ready to send to the wallet.
+. pubkey-to-int.fif parsed public key serialization from its input and converts it to unsigned integer which can be used in the get method.
+. getpubkey.fif loads private key from file, calculates the public key and display its serialization
+Get methods of the wallet:
+. seqno -- returns seqno
+. getn -- returns stored n
+. getk -- returns stored k
+. pubkey_index(int) -- takes public key as uinteger and returns the public key index or -1 if it is unknowen
+. get_orders() -- returns tuple of orders represented by cells of type _ valid-until:(## 32) mode:(## 8) message-to-send:^(Message X)
+. orders_with_withno_pubkey(int, int) -- takes public key index and a flag and returns tuple with orders signed (e = 0) or unsigned (e = -1) with specified key.
+
+The wallet also supports reciving internal messages as described in the guidelines. The 2019 opcode can be used to ask wallet to collect garbage if necessary.
+
+
+Some schemes: 
+_ seqno:(## 32) valid_until:(## 32) sign-list:(^Sign-List) suff:Message-Suff = ExtMessageBody;
+touch$1 = Message-Suff;
+ordinary$0 mode:(## 8) message-to-send:^(Message X) = Message-Suff;
+Sign-List "type" can not be desribed in TL-B, because there are two variants of Sign-List cells differing from each other only in the number of cell references (1 or 0), but TL-B provides the only way to differ constructors by its (prefix) codes.
+Anyway, a Sign-List cell consists of 7 bit desribing the public key index, 512 signature bits and maybe (not Maybe) a reference to the next Sign-List cell.
+The wallet stores orders in dictionary with 32 + 256 bits keys (32 for valid-unril and 256 for order hash) and values with order body (without valid-until) along with n-bit mask of keys already used for sign the order.
+It stores keys as dictionaty from keys indexes to keys themself.
+It also stores the minimal expiration time of stored orders or 2^32 - 1 if there are no orders.

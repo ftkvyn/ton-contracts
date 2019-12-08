@@ -1,0 +1,1 @@
+For information on using, compiling and exploiting smart contracts please refer to Documentation.pdf!

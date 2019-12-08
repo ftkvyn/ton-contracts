@@ -1,0 +1,353 @@
+"Asm.fif" include
+// automatically generated from `/home/arsen/TON-project/ton-master/crypto/smartcont/stdlib.fc` `/home/arsen/TON-project/multiwallet/multiwallet-code.fc` 
+PROGRAM{
+  DECLPROC bits_count
+  DECLPROC ~get_order_signers
+  DECLPROC ~save_order
+  DECLPROC ~garbage_collector
+  DECLPROC signatures_validation
+  DECLPROC recv_external
+  DECLPROC recv_internal
+  DECLPROC ~pass_dict
+  DECLPROC find_orders_signed
+  85143 DECLMETHOD seqno
+  68006 DECLMETHOD get_orders_all
+  114449 DECLMETHOD get_orders_signed_by
+  119948 DECLMETHOD get_orders_unsigned_by
+  bits_count PROC:<{
+    //  number
+    0 PUSHINT	//  number res=0
+    WHILE:<{
+      OVER	//  number res number
+    }>DO<{	//  number res
+      OVER	//  number res number
+      DEC	//  number res _4
+      s1 s2 XCHG	//  res number _4
+      AND	//  res number
+      SWAP	//  number res
+      INC	//  number res
+    }>	//  number res
+    NIP	//  res
+  }>
+  ~get_order_signers PROC:<{
+    //  dict hash
+    SWAP
+    8 PUSHPOW2	//  hash dict _5=256
+    DICTUDELGET
+    NULLSWAPIFNOT	//  dict order result
+    IFJMP:<{	//  dict order
+      100 PLDU	//  dict _8
+    }>	//  dict order
+    DROP	//  dict
+    0 PUSHINT	//  dict _9=0
+  }>
+  ~save_order PROC:<{
+    //  dict hash signers order
+    NEWC	//  dict hash signers order _5
+    s1 s2 XCHG	//  dict hash order signers _5
+    100 STU	//  dict hash order _7
+    SWAP	//  dict hash _7 order
+    STSLICER	//  dict hash data
+    s0 s2 XCHG
+    8 PUSHPOW2	//  data hash dict _10=256
+    DICTUSETB	//  dict
+  }>
+  ~garbage_collector PROC:<{
+    //  orders_dict time
+    OVER
+    32 PUSHINT	//  orders_dict time orders_dict _5=32
+    DICTUGETPREVEQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  orders_dict _26 _25 _27
+    s2 POP	//  orders_dict f max_time
+    WHILE:<{
+      SWAP	//  orders_dict max_time f
+    }>DO<{	//  orders_dict max_time
+      SWAP
+      32 PUSHINT	//  max_time orders_dict _10=32
+      DICTUREMMIN
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  max_time _28 _30 _29 _31
+      DROP
+      NIP	//  max_time orders_dict min_time
+      s2 PUSH	//  max_time orders_dict min_time max_time
+      LESS	//  max_time orders_dict f
+      ROT	//  orders_dict f max_time
+    }>	//  orders_dict max_time
+    DROP	//  orders_dict
+    0 PUSHINT	//  orders_dict _16=0
+    OVER
+    32 PUSHINT	//  orders_dict _16=0 orders_dict _17=32
+    DICTUGETNEXTEQ
+    NULLSWAPIFNOT
+    NULLSWAPIFNOT	//  orders_dict _33 _32 _34
+    s2 POP	//  orders_dict n new_call_time
+    SWAP	//  orders_dict new_call_time n
+    NOT	//  orders_dict new_call_time _19
+    IF:<{	//  orders_dict new_call_time
+      DROP	//  orders_dict
+      32 PUSHPOW2DEC	//  orders_dict new_call_time
+    }>	//  orders_dict new_call_time
+  }>
+  signatures_validation PROC:<{
+    //  message signatures_info public_keys
+    0 PUSHINT	//  message signatures_info public_keys signers_valid=0
+    s0 s3 XCHG	//  signers_valid=0 signatures_info public_keys message
+    HASHSU	//  signers_valid=0 signatures_info public_keys message_hash
+    s0 s2 XCHG	//  signers_valid=0 message_hash public_keys signatures_info
+    CTOS	//  signers_valid=0 message_hash public_keys signatures_chain
+    7 LDU	//  signers_valid=0 message_hash public_keys _9 signatures_chain
+    SWAP	//  signers_valid=0 message_hash public_keys signatures_chain _9
+    REPEAT:<{	//  signers_valid message_hash public_keys signatures_chain
+      PLDREF	//  signers_valid message_hash public_keys _12
+      CTOS	//  signers_valid message_hash public_keys signatures_chain
+      9 PUSHPOW2	//  signers_valid message_hash public_keys signatures_chain _16=512
+      LDSLICEX	//  signers_valid message_hash public_keys signature signatures_chain
+      7 LDU	//  signers_valid message_hash public_keys signature signer_id signatures_chain
+      s1 s3 PUSH2
+      7 PUSHINT	//  signers_valid message_hash public_keys signature signer_id signatures_chain signer_id public_keys _23=7
+      DICTUGET 36 THROWIFNOT	//  signers_valid message_hash public_keys signature signer_id signatures_chain _24
+      256 PLDU	//  signers_valid message_hash public_keys signature signer_id signatures_chain public_key
+      s5 s3 s3 PUXC2	//  signers_valid message_hash public_keys signatures_chain signer_id message_hash signature public_key
+      CHKSIGNU	//  signers_valid message_hash public_keys signatures_chain signer_id _27
+      IF:<{	//  signers_valid message_hash public_keys signatures_chain signer_id
+        s4 PUSH	//  signers_valid message_hash public_keys signatures_chain signer_id signers_valid
+        0 EQINT	//  signers_valid message_hash public_keys signatures_chain signer_id _29
+        IF:<{	//  signers_valid message_hash public_keys signatures_chain signer_id
+          ACCEPT
+        }>	//  signers_valid message_hash public_keys signatures_chain signer_id
+        POW2	//  signers_valid message_hash public_keys signatures_chain _32
+        s1 s4 XCHG	//  signatures_chain message_hash public_keys signers_valid _32
+        OR	//  signatures_chain message_hash public_keys signers_valid
+      }>ELSE<{
+        s1 s4 XCHG
+        DROP	//  signatures_chain message_hash public_keys signers_valid
+      }>
+      s0 s3 XCHG	//  signers_valid message_hash public_keys signatures_chain
+    }>
+    3 BLKDROP	//  signers_valid
+  }>
+  recv_external PROC:<{
+    //  in_msg
+    LDREF	//  signatures_info in_msg
+    DUP	//  signatures_info message in_msg
+    32 LDU	//  signatures_info message message_seqno in_msg
+    DUP	//  signatures_info message message_seqno message_order in_msg
+    32 LDU	//  signatures_info message message_seqno message_order message_time in_msg
+    NOW	//  signatures_info message message_seqno message_order message_time in_msg current_time
+    s2 s0 PUSH2	//  signatures_info message message_seqno message_order message_time in_msg current_time message_time current_time
+    LEQ	//  signatures_info message message_seqno message_order message_time in_msg current_time _17
+    35 THROWIF
+    c4 PUSH	//  signatures_info message message_seqno message_order message_time in_msg current_time _20
+    CTOS	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_data
+    32 LDU	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_time contract_data
+    s1 s4 PUSH2	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_time contract_data contract_time message_time
+    GREATER	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_time contract_data _26
+    IF:<{	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_time contract_data
+      NIP	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_data
+      s3 PUSH	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_data contract_time
+    }>ELSE<{
+      SWAP	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_data contract_time
+    }>
+    SWAP	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_time contract_data
+    32 LDU	//  signatures_info message message_seqno message_order message_time in_msg current_time contract_time contract_seqno contract_data
+    s7 s1 XCPU	//  signatures_info message contract_data message_order message_time in_msg current_time contract_time contract_seqno message_seqno contract_seqno
+    EQUAL	//  signatures_info message contract_data message_order message_time in_msg current_time contract_time contract_seqno _32
+    33 THROWIFNOT
+    s0 s6 XCHG	//  signatures_info message contract_seqno message_order message_time in_msg current_time contract_time contract_data
+    LDDICT	//  signatures_info message contract_seqno message_order message_time in_msg current_time contract_time orders_dict contract_data
+    s5 s1 PUSH2
+    32 PUSHINT	//  signatures_info message contract_seqno message_order message_time in_msg current_time contract_time orders_dict contract_data message_time orders_dict _38=32
+    DICTUGETOPTREF	//  signatures_info message contract_seqno message_order message_time in_msg current_time contract_time orders_dict contract_data orders_time
+    SWAP	//  signatures_info message contract_seqno message_order message_time in_msg current_time contract_time orders_dict orders_time contract_data
+    LDDICT	//  signatures_info message contract_seqno message_order message_time in_msg current_time contract_time orders_dict orders_time public_keys contract_data
+    7 PLDU	//  signatures_info message contract_seqno message_order message_time in_msg current_time contract_time orders_dict orders_time public_keys signers_req
+    s10 s11 s10 XC2PU	//  signers_req public_keys contract_seqno message_order message_time in_msg current_time contract_time orders_dict orders_time message signatures_info public_keys
+    signatures_validation CALLDICT	//  signers_req public_keys contract_seqno message_order message_time in_msg current_time contract_time orders_dict orders_time signers_valid
+    DUP	//  signers_req public_keys contract_seqno message_order message_time in_msg current_time contract_time orders_dict orders_time signers_valid signers_valid
+    38 THROWIFNOT
+    s0 s7 XCHG	//  signers_req public_keys contract_seqno signers_valid message_time in_msg current_time contract_time orders_dict orders_time message_order
+    HASHSU	//  signers_req public_keys contract_seqno signers_valid message_time in_msg current_time contract_time orders_dict orders_time order_hash
+    TUCK	//  signers_req public_keys contract_seqno signers_valid message_time in_msg current_time contract_time orders_dict order_hash orders_time order_hash
+    ~get_order_signers CALLDICT	//  signers_req public_keys contract_seqno signers_valid message_time in_msg current_time contract_time orders_dict order_hash orders_time _52
+    s1 s8 XCHG	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict order_hash signers_valid _52
+    OR	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict order_hash signers_valid
+    DUP	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict order_hash signers_valid signers_valid
+    bits_count CALLDICT	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict order_hash signers_valid signers_valid_count
+    s11 PUSH	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict order_hash signers_valid signers_valid_count signers_req
+    GEQ	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict order_hash signers_valid _57
+    IF:<{	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict order_hash signers_valid
+      2DROP	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict
+      s3 PUSH	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict in_msg
+      SREFS	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict _58
+      IF:<{	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict
+        s0 s3 XCHG	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time in_msg
+        8 LDU	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time mode in_msg
+        LDREF	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time mode _111 _110
+        DROP	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time mode _63
+        SWAP	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time _63 mode
+        SENDRAWMSG
+      }>ELSE<{
+        s3 POP	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time
+      }>
+    }>ELSE<{	//  signers_req public_keys contract_seqno orders_time message_time in_msg current_time contract_time orders_dict order_hash signers_valid
+      s3 s7 XCHG
+      s1 s0 s5 XCHG3	//  signers_req public_keys contract_seqno contract_time message_time orders_dict current_time orders_time order_hash signers_valid in_msg
+      ~save_order CALLDICT	//  signers_req public_keys contract_seqno contract_time message_time orders_dict current_time orders_time
+      s0 s4 XCHG	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time
+    }>
+    s4 PUSH	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time orders_time
+    ISNULL	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time _68
+    IF:<{	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time
+      s4 POP	//  signers_req public_keys contract_seqno contract_time message_time orders_dict current_time
+      -ROT
+      32 PUSHINT	//  signers_req public_keys contract_seqno contract_time current_time message_time orders_dict _70=32
+      DICTUDEL DROP	//  signers_req public_keys contract_seqno contract_time current_time orders_dict
+    }>ELSE<{	//  signers_req public_keys contract_seqno orders_time message_time orders_dict current_time contract_time
+      s4 s3 s4 XCHG3
+      32 PUSHINT	//  signers_req public_keys contract_seqno contract_time current_time orders_time message_time orders_dict _73=32
+      DICTUSETREF	//  signers_req public_keys contract_seqno contract_time current_time orders_dict
+    }>
+    s2 s1 PUSH2	//  signers_req public_keys contract_seqno contract_time current_time orders_dict contract_time current_time
+    LESS	//  signers_req public_keys contract_seqno contract_time current_time orders_dict _75
+    IF:<{	//  signers_req public_keys contract_seqno contract_time current_time orders_dict
+      s2 POP	//  signers_req public_keys contract_seqno orders_dict current_time
+      ~garbage_collector CALLDICT	//  signers_req public_keys contract_seqno orders_dict contract_time
+    }>ELSE<{
+      -ROT
+      DROP	//  signers_req public_keys contract_seqno orders_dict contract_time
+    }>
+    s0 s2 XCHG	//  signers_req public_keys contract_time orders_dict contract_seqno
+    INC	//  signers_req public_keys contract_time orders_dict _80
+    NEWC	//  signers_req public_keys contract_time orders_dict _80 _81
+    s1 s3 XCHG	//  signers_req public_keys _80 orders_dict contract_time _81
+    32 STU	//  signers_req public_keys _80 orders_dict _83
+    s1 s2 XCHG	//  signers_req public_keys orders_dict _80 _83
+    32 STU	//  signers_req public_keys orders_dict _85
+    STDICT	//  signers_req public_keys _86
+    STDICT	//  signers_req _87
+    7 STU	//  _89
+    ENDC	//  new_data
+    c4 POP
+  }>
+  recv_internal PROC:<{
+    //  in_msg
+    DROP	// 
+  }>
+  ~pass_dict PROC:<{
+    //  list_signed dict time mask inv
+    0 PUSHINT	//  list_signed dict time mask inv id=0
+    UNTIL:<{
+      s4 PUSH
+      8 PUSHPOW2	//  list_signed dict time mask inv id dict _9=256
+      DICTUGETNEXT
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  list_signed dict time mask inv value id f
+      DUP	//  list_signed dict time mask inv value id f f
+      IF:<{	//  list_signed dict time mask inv value id f
+        s0 s2 XCHG	//  list_signed dict time mask inv f id value
+        100 LDU	//  list_signed dict time mask inv f id signers value
+        s1 s4 PUSH2	//  list_signed dict time mask inv f id signers value signers inv
+        XOR	//  list_signed dict time mask inv f id signers value _15
+        s6 PUSH	//  list_signed dict time mask inv f id signers value _15 mask
+        AND	//  list_signed dict time mask inv f id signers value _16
+        IF:<{	//  list_signed dict time mask inv f id signers value
+          PUSHNULL	//  list_signed dict time mask inv f id signers value order_info
+          OVER	//  list_signed dict time mask inv f id signers value order_info value
+          SREFS	//  list_signed dict time mask inv f id signers value order_info _19
+          IF:<{	//  list_signed dict time mask inv f id signers value order_info
+            DROP	//  list_signed dict time mask inv f id signers value
+            LDREF	//  list_signed dict time mask inv f id signers _48 _47
+            DROP	//  list_signed dict time mask inv f id signers _21
+            CTOS	//  list_signed dict time mask inv f id signers _23
+            9 PUSHINT	//  list_signed dict time mask inv f id signers _23 _24=9
+            SDSKIPFIRST	//  list_signed dict time mask inv f id signers body
+            8 LDI	//  list_signed dict time mask inv f id signers _27 body
+            256 LDU	//  list_signed dict time mask inv f id signers _27 _30 body
+            -ROT	//  list_signed dict time mask inv f id signers body _27 _30
+            PAIR	//  list_signed dict time mask inv f id signers body address
+            SWAP	//  list_signed dict time mask inv f id signers address body
+            LDGRAMS	//  list_signed dict time mask inv f id signers address _54 _53
+            DROP	//  list_signed dict time mask inv f id signers address grams_amount
+            PAIR	//  list_signed dict time mask inv f id signers order_info
+          }>ELSE<{
+            NIP	//  list_signed dict time mask inv f id signers order_info
+          }>
+          s6 s(-1) s(-1) PUXC2	//  list_signed dict time mask inv f id time signers order_info
+          TRIPLE	//  list_signed dict time mask inv f id transaction
+          s0 s7 XCHG2	//  id dict time mask inv f transaction list_signed
+          PAIR	//  id dict time mask inv f list_signed
+        }>ELSE<{
+          s2 s8 XCHG
+          2DROP	//  id dict time mask inv f list_signed
+        }>
+      }>ELSE<{
+        s7 s2 XCHG2
+        DROP	//  id dict time mask inv f list_signed
+      }>
+      SWAP	//  id dict time mask inv list_signed f
+      NOT	//  id dict time mask inv list_signed _41
+      s1 s6 XCHG	//  list_signed dict time mask inv id _41
+    }>	//  list_signed dict time mask inv id
+    5 BLKDROP	//  list_signed
+  }>
+  find_orders_signed PROC:<{
+    //  mask inv
+    PUSHNULL	//  mask inv list_signed
+    c4 PUSH	//  mask inv list_signed _5
+    CTOS	//  mask inv list_signed _6
+    64 PUSHINT	//  mask inv list_signed _6 _7=64
+    SDSKIPFIRST	//  mask inv list_signed _8
+    PLDDICT	//  mask inv list_signed orders
+    0 PUSHINT	//  mask inv list_signed orders time_sec=0
+    UNTIL:<{
+      OVER
+      32 PUSHINT	//  mask inv list_signed orders time_sec orders _14=32
+      DICTUGETNEXT
+      NULLSWAPIFNOT
+      NULLSWAPIFNOT	//  mask inv list_signed orders time_dict time_sec f
+      DUP	//  mask inv list_signed orders time_dict time_sec f f
+      IF:<{	//  mask inv list_signed orders time_dict time_sec f
+        s0 s2 XCHG	//  mask inv list_signed orders f time_sec time_dict
+        PLDREF	//  mask inv list_signed orders f time_sec time_dict
+        s4 s0 s4 XC2PU
+        s7 s6 PUSH2	//  mask inv time_sec orders f list_signed time_dict time_sec mask inv
+        ~pass_dict CALLDICT	//  mask inv time_sec orders f list_signed
+      }>ELSE<{
+        s4 s2 XCHG2
+        DROP	//  mask inv time_sec orders f list_signed
+      }>
+      SWAP	//  mask inv time_sec orders list_signed f
+      NOT	//  mask inv time_sec orders list_signed _20
+      s1 s3 XCHG	//  mask inv list_signed orders time_sec _20
+    }>	//  mask inv list_signed orders time_sec
+    s2 s4 XCHG
+    4 BLKDROP	//  list_signed
+  }>
+  seqno PROC:<{
+    // 
+    c4 PUSH	//  _0
+    CTOS	//  _1
+    32 PUSHINT	//  _1 _2=32
+    SDSKIPFIRST	//  _3
+    32 PLDU	//  _5
+  }>
+  get_orders_all PROC:<{
+    // 
+    -1 PUSHINT	//  _0=-1
+    0 PUSHINT	//  _0=-1 _1=0
+    find_orders_signed CALLDICT	//  _2
+  }>
+  get_orders_signed_by PROC:<{
+    //  signer_id
+    POW2	//  _2
+    0 PUSHINT	//  _2 _3=0
+    find_orders_signed CALLDICT	//  _4
+  }>
+  get_orders_unsigned_by PROC:<{
+    //  signer_id
+    POW2	//  _2
+    -1 PUSHINT	//  _2 _3=-1
+    find_orders_signed CALLDICT	//  _4
+  }>
+}END>c

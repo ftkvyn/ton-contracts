@@ -1,0 +1,12 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Asm.fif" include
+"lib.fif" include
+
+{ ."usage: " @' $0 type ." <pubkey>" cr
+  ."Converts pubkey serilization to integer for pubkey_index get method" cr 1 halt
+} : usage
+$# 1 <> ' usage if
+
+$1 parse-pubkey . cr
+

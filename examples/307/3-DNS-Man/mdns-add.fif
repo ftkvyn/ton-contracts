@@ -1,0 +1,276 @@
+#!/usr/bin/env fift -s
+
+/*
+  /------------------------------------------------------------------------\
+  | Created for: Telegram (Open Network) Blockchain Contest                |
+  |      Task 3: DNS Resolver (Manually controlled)                        |
+  >------------------------------------------------------------------------<
+  | Script: Add domain,category=value BoC generation tool                  |
+  >------------------------------------------------------------------------<
+  | Author: Oleksandr Murzin (tg: @skydev / em: alexhacker64@gmail.com)    |
+  |         October 2019                                                   |
+  \------------------------------------------------------------------------/
+*/
+
+"TonUtil.fif" include
+"Asm.fif" include
+{ .s 255 halt } : ^ // inspect stack tool
+
+{ cr ."/---------------------------------------[General information]------------------------------------------\" cr
+  ."| Usage: " @' $0 type ." <pkfile> <address OR wch-id OR -> <seqno> <domain> <category> <value> [-r or -R]"
+  @' $0 $len 13	 swap - { ." " } swap dup 0 <= { 2drop } { times ."|" } cond cr
+  ."| Prepares a file to set a specified category of specified (sub)domain to specified value.             |" cr
+  ."| !!! This file must be used ONLY with Manually controlled TON DNS Resolver contract (mdns-create.fif) |" cr
+  ."| !!! Resulting query will be saved to <pkfilebs>-<seqno>-vset.boc and needs to be sent to the network |" cr
+  .">--------------------------------------[Parameters description]----------------------------------------<" cr
+  ."| !!!     You must not specify < and > or [ and ] characters, only text value of the parameter     !!! |" cr
+  ."| <pkfile> shall contain filename .tpriv file (with or without extension) corresponding to the current |" cr
+  ."|     owner public key of the resolver contract, address of which is provided in the next parameter.   |" cr
+  ."| <address> may contain contract address (in any form) or filename of .addr file (with / without ext)  |" cr
+  ."|     if address is omitted (provide wch id in that case) it will be calculated out of the .tpriv file |" cr
+  ."|     if address is completely omitted (just - is provided) it will be looked for in <pkfile>.addr file|" cr
+  ."| <seqno> have to match aforementioned smart contract's current seqno (use seqno SC method to get it)  |" cr
+  ."| <domain> has to contain domain (subdomain) name in text form that is to be manipulated               |" cr
+  ."| <category> needs to contain the Category ID value to be set in specified domain (16-bit signed int)  |" cr
+  ."|     Special values: -1 is the next contract address for resolving subdomains, 0 should not be used   |" cr
+  ."| <value> is to contain the value that will be assigned to domain and category provided above          |" cr
+  ."| -r activates robot mode (output will be more friendly to robots or interfacing program)              |" cr
+  ."| -R activates full robot mode (without writing to files at all, make sure to save or process output!) |" cr
+  .">---------------------------------------[Use with binary data]-----------------------------------------<" cr
+  ."| Some of the parameters can be written in special form in order to use binary data from existing file |" cr
+  ."|   or to encode hexadecimal value that will be decoded into binary value: <domain> and <value>.       |" cr
+  ."| In order to read binary data from a file parameter must begin with F: and contain full file name.    |" cr
+  ."| If binary data encoded in hexadecimal form is used, parameter must begin with prefix H: or X:.       |" cr
+  ."| <address> or <value> can also contain address in well-defined format (wc:hexadr, base64 or base64url)|" cr
+  ."\------------------------------------------------------------------------------------------------------/" cr  
+  cr 1 halt
+} : usage
+
+$# 6 >= ' usage ifnot // Verify argument count
+$# 7 <= ' usage ifnot
+
+variable PKB // PKFile base
+$1 =: APKFile // can contain extension! .tpriv
+$2 "-" $= { 
+	APKFile dup $len dup 6 > 
+	{ // APKFile has length > 6 (".tpriv"), may contain extension
+		6 - $| ".tpriv" $= { dup PKB ! +".addr" } { drop APKFile dup PKB ! } cond
+	} {
+		2drop APKFile dup PKB ! // APKFile just cant contain extension
+	} cond 
+} { $2 dup PKB ! } cond =: AAddress
+$3 =: ASeqNo
+$4 =: ADomain
+$5 =: ACategory
+$6 =: AValue
+def? $7 { @' $7 } { "" } cond =: Flags
+// ."PKB " PKB @ type cr
+
+variable RMode     false RMode  !
+variable FRMode    false FRMode !
+Flags "-r" $= { true RMode ! } if
+Flags "-R" $= { true RMode ! true FRMode ! } if
+
+RMode  @ =: RM
+FRMode @ =: FRM
+
+APKFile file-exists? {
+	APKFile =: PKFile
+} {
+	APKFile +".tpriv" file-exists? {
+		APKFile +".tpriv" =: PKFile
+	} {
+		."Private key file " APKFile type ." or " APKFile type .".tpriv not found!"
+		cr 1 halt
+	} cond
+} cond
+
+variable BKey
+variable UKey
+
+RM { ."Loading private key from " PKFile type ."..." cr } ifnot
+PKFile file>B dup Blen dup 64 = {
+	."Error: File " PKFile type ." contains corrupted private key material " 
+	."of length " . ."(64 expected)" cr 4 halt } ifnot     drop
+32 B| over -rot 256 B>u@ swap <b swap B, b> hash = {
+	."Error: File " PKFile type ." contains corrupted private key material " 
+	."(hash check failed)" cr 5 halt } ifnot
+dup BKey ! 256 B>u@ UKey !
+
+variable AddrWC
+variable Addr
+
+// If address is number, try to resolve it from the private key
+AAddress (number) 1 = {
+	"mdns-logic.fif" file-exists? { ."Error: contract logic file mdns-logic.fif "
+	."is required to calculate address!" cr "mdns-logic.fc" file-exists? {
+	."Because source code exists you should execute" cr 
+	."    func mdns-logic.fc -omdnslogic.fif" cr
+	."and then try calling this script again!" cr
+	} if 66 halt } ifnot
+	RM { ."Resolving address from private key..." cr } ifnot
+	<b b{0011} s,
+		PROGRAM{ "mdns-logic.fif" include }END>c ref,
+		<b 0 32 u, BKey @ priv>pub B, null dict, b> ref,
+	null dict, b> hash Addr ! AddrWC !
+} if
+
+// If address is still not resolved and it is SMCA address in any format
+Addr @ null? AAddress $>smca dup { nip -rot 2over and {
+	Addr ! AddrWC ! 2drop
+} if } { 2drop } cond
+
+// Last resort - consider it as a file name
+variable AddrFile
+Addr @ null? {
+	AAddress file-exists? {
+		AAddress AddrFile !
+	} { 
+		AAddress +".addr" file-exists? {
+			AAddress +".addr" AddrFile !
+		} { 
+			."Error: Unable to determine and parse address in any of possible ways!"
+			cr 3 halt
+		} cond
+	} cond
+	RM { ."Loading address from " AddrFile @ type ."..." cr } ifnot
+	// Now need to load file from AddrFile
+	AddrFile @ file>B dup Blen dup 36 = {
+		."Error: Incorrect address file length, expected 36 bytes, got " . ."bytes"
+		cr 6 halt
+	} ifnot drop
+	256 B>u@+ swap 16 B>i@ AddrWC ! Addr !
+} if
+
+{ dup @ dup $len 2 > {
+	2 $| swap
+	dup "F:" $= swap dup "f:" $= rot or 
+	{ -rot dup file-exists? 
+	{ ."Error: Parameter file " type ." does not exist!" cr 9 halt } ifnot 
+	file>B <b swap B, b> <s swap ! drop
+	} {
+		dup "X:" $= swap dup "H:" $= swap dup "x:" $= swap "h:" $= or or or
+		{ x>B <b swap B, b> <s swap ! }
+		{ drop dup @ $>s swap ! } cond
+	} cond
+} { drop dup @ $>s swap ! } cond } : ProcVarPfx
+
+variable Seq
+ASeqNo (number) 1 = { 
+."Error: SeqNo must be a 32-bit unsigned integer, provided input is not a number!" cr 10 halt } ifnot
+dup 0 < { ."Error: SeqNo must be a 32-bit unsigned integer, provided input is negative!" cr 11 halt } if
+dup 32 ufits { ."Error: SeqNo must be a 32-bit unsigned integer, provided input is out of bounds!" cr 12 halt } ifnot 
+Seq !
+RM not Seq @ 0 = and { ."Warning: Zero SeqNo should not be met in wild, please double-check your input!" cr } if
+
+variable Domain
+ADomain Domain !
+Domain ProcVarPfx
+
+variable Cat
+ACategory (number) 1 = 
+{ dup -32768 >= over 32767 <= and { ."Error: Category must be a signed 16-bit number, provided "
+	."input is out of bounds!" cr 7 halt } ifnot Cat ! }
+{ ."Error: Category must be a signed 16-bit number, provided input is not a number!" cr 8 halt } cond
+RM not Cat @ 0 = and { ."Warning: Zero category should not be used!" cr } if
+
+variable Value
+AValue $>smca {
+	drop <b swap 256 u, swap 32 u, b> <s Value !
+} {
+	AValue Value !
+	Value ProcVarPfx
+} cond
+
+// Add ending zero char to Domain if missing
+Domain @ dup sbits 8 / dup -rot B@ swap 1- B| 8 B>u@ nip 0 = 
+{ Domain @ sbits 1008 <= { ."Error: Domain name without \0 is too long (max 126 chars)" cr 15 halt } ifnot
+<b Domain @ s, 0 8 u, b> <s Domain ! } ifnot
+
+// Some more checks for lengths, and determine inlinity
+Domain @ dup sbits dup 1016 <= { ."Error: Domain name is too long (max 127 chars)" cr 13 halt } ifnot
+8 / 58 <= /* Inline name length limit */ =: InlName
+
+Value @ sbits 1016 <= { ."Error: Value is too long (max 127 chars)" cr 14 halt } ifnot
+
+// We have Domain at stack top now, lets check amount of \0 characters
+/* Multiple zero characters seem to be allowed as per github issue response
+0 swap { 8 u@+ swap 0 = { swap 1+ swap } if dup sbits 0 = } until drop
+1 = { ."Error: Domain name contains several zero code characters (including ending one)" cr 15 halt } ifnot
+*/ drop
+
+<b  Seq @ 32 u, 11 6 u, InlName 1+ 1 u, Cat @ 16 i,
+	InlName
+	{ Domain @ dup sbits 8 / rot swap 6 u, swap s, }
+	{ <b Domain @ s, b> ref, } cond
+	<b Value @ s, b> ref,
+b> dup =: Message
+
+// <s 32 u@+ 6 u@+ 1 u@+ 16 i@+ 6 u@+ 1 pick B@ ^
+
+hashu BKey @ ed25519_sign_uint =: MessageSign
+
+<b 
+//  ext_in_msg_info$10
+//  ||src:MsgAddressExt addr_none$00
+//  ||||dest:MsgAddressInt addr_std$10
+//  ||||||anycast:(Maybe Anycast) nothing$0 {X:Type} = Maybe X;
+//  |||||||
+//  \/\/\/V
+  b{1000100} s,
+  AddrWC @ Addr @ addr, // workchain_id:int8 address:uint256 = MsgAddressInt;
+//   import_fee:Grams = CommonMsgInfo; 0000: zero length = zero
+//   || init:(Maybe (Either StateInit ^StateInit))
+//   || nothing$0 {X:Type} value:X = Maybe X;
+//   || |body:(Either X ^X) = Message X;
+//   || ||
+//  \\//V\----\ Will select a bit bit later!
+  b{00000} s,
+  dup b> <s sbits 1+ 1022 swap - // remaining free space in slice (-1 to be safe)
+  <b MessageSign B, Message <s s, dup b> <s sbits // used bits by Sign+Message
+  rot <= 
+  /* Inline */ { swap b{0} s, swap b> <s s, } 
+  /* Ref-ed */ { swap b{1} s, swap b> ref, } cond
+b> constant ExtMessage
+
+{ dup 0 -rot -1 swap { 8 u@+ swap dup dup 32 >= swap 127 <= and { drop } { 
+0 = swap dup sbits 0 = rot and { -1 4 exch drop } { nip 0 swap } cond } cond dup sbits 0 = } until drop
+{ dup sbits 8 / rot + $@ type } // Can print as text (far var is -1 if has \0 at end)
+{ nip dup sbits 8 / dup 36 = // Should print as hex, but may be it is an address?
+{ drop 256 u@+ 32 u@ dup 0 = swap dup 1 = rot or { swap 4 ."Addr:" .Addr } { B@ Bx. } cond }
+{ B@ ."0x" Bx. } cond } 
+cond } : PrintSliceMaybeText // Allows \0 at the end
+
+PKB @ +"-" Seq @ (.) $+ +"-vset.boc" =: BocFile
+RM { BocFile file-exists? { ."Warning! BoC file will be overwritten!" cr } if } ifnot
+
+ExtMessage 2 boc+>B dup Blen =: EMLen =: EM
+
+FRM { EM BocFile B>file
+ RM { ."Query saved to " BocFile type cr } ifnot
+} ifnot
+
+RMode @ { cr 
+	."/-[Success: The query to create set domain,category->value has been created!]" cr
+	."| Domain name: " Domain @ PrintSliceMaybeText cr
+	."|    Category: " Cat @ . cr
+	."|   New value: " Value @ PrintSliceMaybeText cr
+	.">-> The query have been saved to <path-to-file>/" BocFile type cr
+	."| You need to use some tool to send the query to the network!" cr
+	."| For example, you can use lite-client's sendfile method, just like" cr
+	."\-[ sendfile <path-to-file>/" BocFile type ." ]" cr cr
+} { 
+	."type=vset" cr
+	."pk_file=" PKFile type cr
+	."sc_addr=" AddrWC @ Addr @ .addr cr
+FRM { ."boc_file=" BocFile type cr } ifnot
+	."seqno=" Seq @ (.) type cr
+	."domain_hex=" Domain @ dup sbits 8 / B@ Bx. cr
+	."category=" Cat @ (.) type cr
+	."value_hex=" Value @ dup sbits 8 / B@ Bx. cr
+	."domain=" Domain @ PrintSliceMaybeText cr
+	."value=" Value @ PrintSliceMaybeText cr
+	."query=" EM Bx. cr
+	."query_len=" EMLen (.) type cr
+	."value_cell_hash=" Value @ shash Bx. cr
+} swap cond
